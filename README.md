@@ -8,6 +8,8 @@
 
 - Basic database to track offenses on each server
 - Cheat detection to prevent users editing/deleting messages to avoid 3pseatBot
+- Uses .env file to store bot tokens to prevent leaking the token
+  - See [python-dotenv](https://github.com/theskumar/python-dotenv)
 - Commands:
   - !3pseat : what are the rules?
   - !list : list the current offense counts on the server
