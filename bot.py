@@ -15,7 +15,7 @@ TOKEN = os.getenv("TOKEN")
 bot = commands.Bot(command_prefix='!')
 
 # Max global offenses
-MAX_OFFENSE = 3
+MAX_OFFENSE = 100
 
 # Create database
 db = Bans()
@@ -30,7 +30,7 @@ async def _list(ctx):
     msg = '3pseat {0.author.mention}, here are the strikes:'.format(ctx.message)
     serverCount = 0
     for user in db.getDB(ctx.message.server.name):
-    	if user['name'] is not 'server':
+    	if user['name'] != 'server':
     	    msg = msg + '\n{0}: {1}/{2}'.format(user['name'], user['count'], MAX_OFFENSE)
     	else:
     		serverCount = user['count']
@@ -55,18 +55,18 @@ async def on_message(message):
             await bot.kick(message.author)
             msg = '3pseat Press F to pay respects'.format(message)
             await bot.send_message(message.channel, msg)
-            print(getTime() + message.author.name + ' made a fatal mistake')
+            print(getTime() + ' ' + message.server.name + ': ' + message.author.name + ' made a fatal mistake')
         else:
             msg = '3pseat {0.author.mention}! You\'ve disturbed the spirits'.format(message)
             msg = msg + ' ('+ str(count) + '/' + str(MAX_OFFENSE) + ')'
             await bot.send_message(message.channel, msg)
-            print(getTime() + message.author.name + ' made a mistake (' + str(count) + '/' + str(MAX_OFFENSE) + ')')
+            print(getTime() + ' ' + message.server.name + ': ' + message.author.name + ' made a mistake (' + str(count) + '/' + str(MAX_OFFENSE) + ')')
 
 @bot.event
 async def on_message_delete(message):
     msg = '3pseat {0.author.mention} where\'d your message go? It was:\n{0.clean_content}'.format(message)
     await bot.send_message(message.channel, msg)
-    print(getTime() + message.author.name + ' deleted something')
+    print(getTime() + ' ' + message.server.name + ': ' + message.author.name + ' deleted something')
 
 @bot.event
 async def on_message_edit(before, after):
@@ -75,7 +75,7 @@ async def on_message_edit(before, after):
     #   return
     msg = '3pseat {0.author.mention} why\'d you change your message? In case you forgot, it was:\n{0.clean_content}'.format(before)
     await bot.send_message(before.channel, msg)
-    print(getTime() + before.author.name + ' edited their message')
+    print(getTime() + ' ' + message.server.name + ': ' + before.author.name + ' edited their message')
 
 @bot.event
 async def on_ready():
