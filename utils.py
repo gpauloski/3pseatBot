@@ -17,12 +17,12 @@ class Bans:
     def up(self, server, name):
         db = self.getTable(server)
         # Add 1 to user count
-        val = self.check(server, name) + 1
-        db.update({'count': val}, self.__user.name == name)
+        valUser = self.check(server, name) + 1
+        db.update({'count': valUser}, self.__user.name == name)
         # Add 1 to server count
-        val = self.check(server, 'server') + 1
-        db.update({'count': val}, self.__user.name == name)
-        return val
+        valServer = self.check(server, 'server') + 1
+        db.update({'count': valServer}, self.__user.name == 'server')
+        return valUser
     def clear(self, server, name):
         db = self.getTable(server)
         self.check(server, name)

@@ -5,7 +5,7 @@ from tinydb import TinyDB, Query
 from dotenv import load_dotenv
 
 # TODO
-#   - check type of message is user message
+# - Meme of the day command
 
 # Load token from .env
 load_dotenv(verbose=True)
@@ -15,7 +15,7 @@ TOKEN = os.getenv("TOKEN")
 bot = commands.Bot(command_prefix='!')
 
 # Max global offenses
-MAX_OFFENSE = 100
+MAX_OFFENSE = 3
 
 # Create database
 db = Bans()
@@ -39,7 +39,7 @@ async def _list(ctx):
 
 @bot.command(name='source', pass_context=True, brief='3pseatBot source code')
 async def _3pseat(ctx):
-    msg = '3pseatBot\'s source code can be found here: '.format(ctx.message)
+    msg = '3pseatBot\'s source code can be found here: https://github.com/gpauloski/3pseatBot'.format(ctx.message)
     await bot.send_message(ctx.message.channel, msg)
 
 @bot.event
@@ -70,10 +70,12 @@ async def on_message_delete(message):
 
 @bot.event
 async def on_message_edit(before, after):
+    # Ignore embeded messages because when discord embeds, it counts as edited message
+    #if before.embeds is None:
+    #   return
     msg = '3pseat {0.author.mention} why\'d you change your message? In case you forgot, it was:\n{0.clean_content}'.format(before)
     await bot.send_message(before.channel, msg)
     print(getTime() + before.author.name + ' edited their message')
-
 
 @bot.event
 async def on_ready():
