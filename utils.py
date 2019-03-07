@@ -3,7 +3,7 @@ import datetime
 
 class Bans:
     def __init__(self):
-        self.__db = TinyDB('3pseatBans.json')
+        self.__db = TinyDB('/home/gpauloski/Repositories/3pseatBot/3pseatBans.json')
         self.__user = Query()
     def getTable(self, server):
         return self.__db.table(server)

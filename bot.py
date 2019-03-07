@@ -10,12 +10,15 @@ from dotenv import load_dotenv
 # Load token from .env
 load_dotenv(verbose=True)
 TOKEN = os.getenv("TOKEN")
+NETWORKNAME = os.getenv("NETWORKNAME")
+NETWORKPASS = os.getenv("NETWORKPASS")
+SERVERIP = os.getenv("SERVERIP")
 
 # Initialize bot
 bot = commands.Bot(command_prefix='!')
 
 # Max global offenses
-MAX_OFFENSE = 100
+MAX_OFFENSE = 3
 
 # Create database
 db = Bans()
@@ -42,11 +45,24 @@ async def _3pseat(ctx):
     msg = '3pseatBot\'s source code can be found here: https://github.com/gpauloski/3pseatBot'.format(ctx.message)
     await bot.send_message(ctx.message.channel, msg)
 
+# @bot.command(name='mc', pass_context=True, brief='Minecraft Server Login')
+# async def _3pseat(ctx):
+#     if ctx.message.server.name == "Little Plops":
+#         msg = '3pseat: To login to the StoneBlock2 server:\n'.format(ctx.message)
+#         msg = msg + '  1. Download the StoneBlock2 FTB pack in the Twitch launcher\n'
+#         msg = msg + '  2. Download and install logmein Hamachi\n'
+#         msg = msg + '  3. In Hamachi, go to Network->Join an existing network\n'
+#         msg = msg + '       Network ID : {0}\n'.format(NETWORKNAME)
+#         msg = msg + '       Network Password : {0}\n'.format(NETWORKPASS)
+#         msg = msg + '  4. Join the server using IP : {0}\n'.format(SERVERIP)
+#         msg = msg + 'Message @Atomos#2059 for whitelist'
+#         await bot.send_message(ctx.message.channel, msg)
+
 @bot.event
 async def on_message(message):
     if message.author == bot.user or message.content.startswith('!'):
         await bot.process_commands(message)
-    elif not message.content.lower().startswith('3pseat'):
+    elif not message.content.lower().startswith('3pseat') and message.embeds is None:
         count = db.up(message.server.name, message.author.name)
         if count >= MAX_OFFENSE:
             db.clear(message.server.name, message.author.name)
@@ -64,18 +80,21 @@ async def on_message(message):
 
 @bot.event
 async def on_message_delete(message):
+    if message.author == bot.user:
+        return
     msg = '3pseat {0.author.mention} where\'d your message go? It was:\n{0.clean_content}'.format(message)
     await bot.send_message(message.channel, msg)
     print(getTime() + ' ' + message.server.name + ': ' + message.author.name + ' deleted something')
 
 @bot.event
 async def on_message_edit(before, after):
-    # Ignore embeded messages because when discord embeds, it counts as edited message
-    #if before.embeds is None:
-    #   return
+    if after.author == bot.user:
+        return
+    if after.embeds is not None:
+        return
     msg = '3pseat {0.author.mention} why\'d you change your message? In case you forgot, it was:\n{0.clean_content}'.format(before)
     await bot.send_message(before.channel, msg)
-    print(getTime() + ' ' + message.server.name + ': ' + before.author.name + ' edited their message')
+    print(getTime() + ' ' + before.server.name + ': ' + before.author.name + ' edited their message')
 
 @bot.event
 async def on_ready():
