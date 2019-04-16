@@ -10,12 +10,14 @@ from dotenv import load_dotenv
 # Load token from .env
 load_dotenv(verbose=True)
 TOKEN = os.getenv("TOKEN")
+ZEROTIER = os.getenv("ZEROTIER")
+ZTIP = os.getenv("ZTIP")
 NETWORKNAME = os.getenv("NETWORKNAME")
 NETWORKPASS = os.getenv("NETWORKPASS")
 SERVERIP = os.getenv("SERVERIP")
 
 # Initialize bot
-bot = commands.Bot(command_prefix='!')
+bot = commands.Bot(command_prefix='$')
 
 # Max global offenses
 MAX_OFFENSE = 3
@@ -45,24 +47,25 @@ async def _3pseat(ctx):
     msg = '3pseatBot\'s source code can be found here: https://github.com/gpauloski/3pseatBot'.format(ctx.message)
     await bot.send_message(ctx.message.channel, msg)
 
-# @bot.command(name='mc', pass_context=True, brief='Minecraft Server Login')
-# async def _3pseat(ctx):
-#     if ctx.message.server.name == "Little Plops":
-#         msg = '3pseat: To login to the StoneBlock2 server:\n'.format(ctx.message)
-#         msg = msg + '  1. Download the StoneBlock2 FTB pack in the Twitch launcher\n'
-#         msg = msg + '  2. Download and install logmein Hamachi\n'
-#         msg = msg + '  3. In Hamachi, go to Network->Join an existing network\n'
-#         msg = msg + '       Network ID : {0}\n'.format(NETWORKNAME)
-#         msg = msg + '       Network Password : {0}\n'.format(NETWORKPASS)
-#         msg = msg + '  4. Join the server using IP : {0}\n'.format(SERVERIP)
-#         msg = msg + 'Message @Atomos#2059 for whitelist'
-#         await bot.send_message(ctx.message.channel, msg)
+@bot.command(name='mc', pass_context=True, brief='Minecraft Server Login')
+async def _mc(ctx):
+    if ctx.message.server.name == "3pseat Little Plops" or ctx.message.server.name == "BotTesting":
+        msg = '3pseat: To login to the vanilla server:\n'.format(ctx.message)
+        msg = msg + '  1. Download the the latest Minecraft release\n'
+        msg = msg + '  2. Download and install ZeroTier\n'
+        msg = msg + '     https://www.zerotier.com/download.shtml\n'
+        msg = msg + '  3. In the task tray, right-click on ZeroTier and click join network\n'
+        msg = msg + '       Network ID : {0}\n'.format(ZEROTIER)
+        msg = msg + '       Message @Atomos#2059 to accept network join request\n'
+        msg = msg + '  4. Join the server using IP : {0}\n'.format(ZTIP)
+        msg = msg + 'Message @Atomos#2059 for whitelist'
+        await bot.send_message(ctx.message.channel, msg)
 
 @bot.event
 async def on_message(message):
-    if message.author == bot.user or message.content.startswith('!'):
-        await bot.process_commands(message)
-    elif not message.content.lower().startswith('3pseat') and message.embeds is None:
+    if message.author == bot.user or message.content.startswith('!') or message.content.startswith('$'):
+        pass
+    elif not message.content.lower().startswith('3pseat') and not message.attachments:
         count = db.up(message.server.name, message.author.name)
         if count >= MAX_OFFENSE:
             db.clear(message.server.name, message.author.name)
@@ -77,6 +80,7 @@ async def on_message(message):
             msg = msg + ' ('+ str(count) + '/' + str(MAX_OFFENSE) + ')'
             await bot.send_message(message.channel, msg)
             print(getTime() + ' ' + message.server.name + ': ' + message.author.name + ' made a mistake (' + str(count) + '/' + str(MAX_OFFENSE) + ')')
+    await bot.process_commands(message)
 
 @bot.event
 async def on_message_delete(message):
@@ -88,9 +92,9 @@ async def on_message_delete(message):
 
 @bot.event
 async def on_message_edit(before, after):
-    if after.author == bot.user:
+    if before.author == bot.user:
         return
-    if after.embeds is not None:
+    if after.embeds:
         return
     msg = '3pseat {0.author.mention} why\'d you change your message? In case you forgot, it was:\n{0.clean_content}'.format(before)
     await bot.send_message(before.channel, msg)
