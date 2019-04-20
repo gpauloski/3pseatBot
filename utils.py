@@ -33,3 +33,17 @@ class Bans:
 def getTime():
     now = datetime.datetime.now()
     return '[' + now.strftime('%Y-%m-%d %H:%M:%S') + '] '
+
+def troll(message, key):
+    '''
+      Very poorly written function to get the first word after an
+      occurence of a keyword
+
+      The goal is if someone say ex: "I'm angry that  blah blah"
+      3pseatBot will say "Hi angry, I'm 3pseatBot"
+    '''
+    before, keyword, after = message.content.lower().partition(key)
+    if after[0] is ' ':
+        after = after[1:]
+    before1, keyword1, after1 = after.partition(' ')
+    return 'Hi ' + before1 + ', I\'m 3pseatBot!'

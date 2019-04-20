@@ -1,5 +1,5 @@
 import discord, os, datetime
-from utils import Bans, getTime
+from utils import Bans, getTime, troll
 from discord.ext import	commands
 from tinydb import TinyDB, Query
 from dotenv import load_dotenv
@@ -63,7 +63,7 @@ async def _mc(ctx):
 
 @bot.event
 async def on_message(message):
-    if message.author == bot.user or message.content.startswith('!') or message.content.startswith('$'):
+    if message.author == bot.user or message.content.startswith('!') or message.content.startswith('$') or message.author.bot:
         pass
     elif not message.content.lower().startswith('3pseat') and not message.attachments:
         count = db.up(message.server.name, message.author.name)
@@ -80,6 +80,10 @@ async def on_message(message):
             msg = msg + ' ('+ str(count) + '/' + str(MAX_OFFENSE) + ')'
             await bot.send_message(message.channel, msg)
             print(getTime() + ' ' + message.server.name + ': ' + message.author.name + ' made a mistake (' + str(count) + '/' + str(MAX_OFFENSE) + ')')
+    elif message.content.lower().startswith('3pseat i\'m '):
+        await bot.send_message(message.channel, troll(message, 'i\'m'))
+    elif message.content.lower().startswith('3pseat im '):
+        await bot.send_message(message.channel, troll(message, 'im'))
     await bot.process_commands(message)
 
 @bot.event
