@@ -11,11 +11,7 @@ from dotenv import load_dotenv
 # Load token from .env
 load_dotenv(verbose=True)
 TOKEN = os.getenv("TOKEN")
-ZEROTIER = os.getenv("ZEROTIER")
-ZTIP = os.getenv("ZTIP")
-NETWORKNAME = os.getenv("NETWORKNAME")
-NETWORKPASS = os.getenv("NETWORKPASS")
-SERVERIP = os.getenv("SERVERIP")
+ZTIP = os.getenv("IP")
 
 # Initialize bot
 bot = commands.Bot(command_prefix='$')
@@ -52,15 +48,21 @@ async def _3pseat(ctx):
 async def _mc(ctx):
     if ctx.message.guild.name == "3pseat Little Plops" or ctx.message.guild.name == "BotTesting":
         msg = '3pseat: To login to the vanilla server:\n'.format(ctx.message)
-        msg = msg + '  1. Download the the latest Minecraft release\n'
-        msg = msg + '  2. Download and install ZeroTier\n'
-        msg = msg + '     https://www.zerotier.com/download.shtml\n'
-        msg = msg + '  3. In the task tray, right-click on ZeroTier and click join network\n'
-        msg = msg + '       Network ID : {0}\n'.format(ZEROTIER)
-        msg = msg + '       Message @Atomos#2059 to accept network join request\n'
-        msg = msg + '  4. Join the server using IP : {0}\n'.format(ZTIP)
+        msg = msg + 'Join the server using IP : {0}\n'.format(ZTIP)
         msg = msg + 'Message @Atomos#2059 for whitelist'
         await ctx.channel.send(msg)
+
+@bot.command(name='yeet', pass_context=True, brief='Yeet tha boi')
+async def _yeet(ctx, user: discord.User):
+	await ctx.channel.send('3pseat yeeting {}'.format(user))
+	#role = discord.utils.get(ctx.guild.roles, name='admin')
+	#if not role in ctx.message.author.roles:
+	if not ctx.message.author.guild_permissions.administrator:
+		await ctx.channel.send("3pseat {0.author.mention}, you do not have yeet (admin) priviledge".format(ctx.message))
+	#elif role in user.roles:
+#		await ctx.channel.send("3pseat {} has yeet priviledge, cannot be yeeted".format(user))
+	else:
+		await ctx.guild.kick(user)
 
 @bot.event
 async def on_message(message):
@@ -76,7 +78,7 @@ async def on_message(message):
                 msg = '3pseat Failed to kick {0.author.mention}, damn you.'.format(message)
                 await message.channel.send(msg)
             else:
-                await bot.kick(message.author)
+                await message.guild.kick(message.author)
                 msg = '3pseat Press F to pay respects'.format(message)
                 await message.channel.send(msg)
             print(getTime() + ' ' + message.guild.name + ': ' + message.author.name + ' made a fatal mistake')
