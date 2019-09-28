@@ -66,7 +66,7 @@ async def _yeet(ctx, user: discord.User):
 
 @bot.event
 async def on_message(message):
-    if message.author == bot.user or message.content.startswith('!') or message.content.startswith('$') or message.content.startswith(':') or message.author.bot:
+    if message.author == bot.user or message.content.startswith('!') or message.content.startswith('$') or message.content.startswith('<:') or message.author.bot:
         pass
     elif not message.content.lower().startswith('3pseat') and not message.attachments:
         count = db.up(message.guild.name, message.author.name)
