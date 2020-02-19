@@ -75,7 +75,7 @@ async def on_message(message):
             msg = '3pseat I\'m sorry {0.author.mention}, your time as come. RIP.'.format(message)
             await message.channel.send(msg)
             if message.author.guild_permissions.administrator:
-                msg = '3pseat Failed to kick {0.author.mention}, damn you.'.format(message)
+                msg = '3pseat Failed to kick {0.author.mention}. Your cognizance is highly acknowledged..'.format(message)
                 await message.channel.send(msg)
             else:
                 await message.guild.kick(message.author)
