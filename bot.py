@@ -8,21 +8,15 @@ import re
 import discord
 import emoji
 
-from utils import Bans
+from bans import Bans
 from discord.ext import	commands
 from dotenv import load_dotenv
 
-# TODO
-# - fix url being allowed
-# - create 3pseatBans.json if it does not exist
-# - add minecraft command be configuarble
-# - config json that knows master player
-# - games to play
-# - Meme of the day command
 
 EMOJI_RE = r'<:\w*:\d*>'
 URL_RE = (r'((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.'
           '([a-zA-Z]){2,6}([a-zA-Z0-9\.\&\/\?\:@\-_=#])*')
+
 
 class Bot(commands.AutoShardedBot):
     def __init__(self, config):
@@ -74,6 +68,11 @@ class Bot(commands.AutoShardedBot):
         else:
             self.logger.error("Unknown logging level \'{}\'".format(level))
 
+    def get_user(self, guild, name):
+        name = name.split('#')
+        return discord.utils.get(guild.members, name=name[0],
+                                 discriminator=name[1])
+
     def _should_ignore_type(self, message):
         if (message.type is discord.MessageType.pins_add or
             message.type is discord.MessageType.new_member):
@@ -97,7 +96,7 @@ class Bot(commands.AutoShardedBot):
         if text == '' and message.attachments:
             return True
         # Check if single link
-        if re.match(URL_RE, text):
+        if re.match(URL_RE, text) and len(message.content.split(' ')) == 1:
             return True
         if self._should_ignore_type(message):
             return True
@@ -119,6 +118,7 @@ class Bot(commands.AutoShardedBot):
                                     keyword, self.user.mention))
 
     async def send_message(self, channel, message, react_emoji=None):
+        self.log(message, guild_name=channel.guild.name)
         msg = self.message_prefix[0] + " " + message
         msg = await channel.send(msg)
         if react_emoji is not None:
@@ -134,29 +134,20 @@ class Bot(commands.AutoShardedBot):
         count = self.db.up(message.guild.name, message.author.name)
         if count >= self.max_offenses:
             self.db.clear(message.guild.name, message.author.name)
-            msg = 'I\'m sorry {}, your time as come. RIP.'.format(
+            msg = 'I\'m sorry {}, your time as come. RIP.\n'.format(
                   message.author.mention)
-            await self.send_message(message.channel, msg)
             if message.author.guild_permissions.administrator:
-                msg = ('Failed to kick {}. Your cognizance is highly '
-                       'acknowledged.'.format(message.author.mention))
-                await self.send_message(message.channel, msg,
-                                        react_emoji='\U0001F9E0')
+                msg += ('Failed to kick {}. Your cognizance is highly '
+                        'acknowledged.'.format(message.author.mention))
             else:
                 await message.guild.kick(message.author)
-                msg = 'Press F to pay respects.'
-                await self.send_message(message.channel, msg, 
-                                        react_emoji='\U0001F1EB')
-            self.log(message.author.name + ' made a fatal mistake',
-                     guild_name=message.guild.name)
+                msg += 'Press F to pay respects.'
+            await self.send_message(message.channel, msg, 
+                                    react_emoji='\U0001F1EB')
         else:
-            msg = '{}! You\'ve disturbed the spirits'.format(
-                  message.author.mention)
-            msg = msg + ' ('+ str(count) + '/' + str(self.max_offenses) + ')'
+            msg = '{}! You\'ve disturbed the spirits ({}/{})'.format(
+                  message.author.mention, count, self.max_offenses)
             await self.send_message(message.channel, msg)
-            self.log(message.author.name + ' made a mistake (' + 
-                     str(count) + '/' + str(self.max_offenses) + ')',
-                     guild_name=message.guild.name)
 
     async def on_message(self, message):
         if message.author.bot or self._should_ignore_type(message):
@@ -170,8 +161,6 @@ class Bot(commands.AutoShardedBot):
         msg = '{}, what did you do to your message? It was: \"{}\"'.format(
               message.author.mention, message.clean_content)
         await self.send_message(message.channel, msg)
-        self.log(message.author.name + ' modified their message',
-                 guild_name=message.guild.name)
 
     async def on_message_delete(self, message):
         if message.author.bot or self._should_ignore_type(message):
@@ -197,3 +186,4 @@ class Bot(commands.AutoShardedBot):
     
     def run(self):
         super().run(self.token, reconnect=True)
+

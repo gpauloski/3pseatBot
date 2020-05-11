@@ -30,10 +30,6 @@ def init_logger(log_dir=None, filename=None):
  
         logger = logging.getLogger()
 
-        # Disable default handlers
-        #if logger.handlers:
-        #    logger.handlers = []
-
         stream_handler = logging.StreamHandler(sys.stdout)
         format_str = "%(asctime)s.%(msecs)03d [%(levelname)-7.7s]  %(message)s"
         format_date = "%Y-%m-%d %H:%M:%S"
@@ -46,8 +42,6 @@ def init_logger(log_dir=None, filename=None):
         logger.addHandler(file_handler)
 
         yield
-    #except Exception as e:
-    #    print("Error initializing logger\n{}".format(e))
     finally:
         for handle in logger.handlers:
             handle.close()

@@ -1,5 +1,5 @@
 .DS_Store
-3pseatBans.json
+*.json
 logs/*
 
 # Byte-compiled / optimized / DLL files
