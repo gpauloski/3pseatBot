@@ -1,6 +1,7 @@
 import json
 import os
 import traceback
+import random
 import sys
 import discord
 
@@ -47,15 +48,35 @@ class Games(commands.Cog):
         self.save_config()
         return removed
 
+    async def _warn_if_no_games(self, ctx):
+        if len(self.config[ctx.guild.name]) == 0:
+            await self.bot.send_message(ctx.channel, 
+                    'There are no games to play. Add more with '
+                    '{}add.'.format(self.bot.command_prefix))
+            return True
+        return False
+
     @commands.command(name='games', pass_context=True,
                       brief='List games to play')
     async def _games(self, ctx):
         self._handle_missing_key(ctx.guild.name)
-        msg = 'Games to play:\n'
+        if await self._warn_if_no_games(ctx):
+            return
+        msg = 'Games to play:\n```'
         for i, game in enumerate(self.config[ctx.guild.name]):
             msg += '({}) {}\n'.format(i, game)
-        msg.rstrip()  # remove last new line
+        msg += '```'
         await self.bot.send_message(ctx.channel, msg)
+
+    @commands.command(name='roll', pass_context=True,
+                      brief='Pick a random game')
+    async def _roll(self, ctx):
+        self._handle_missing_key(ctx.guild.name)
+        if await self._warn_if_no_games(ctx):
+            return
+        games = self.config[ctx.guild.name]
+        await self.bot.send_message(ctx.channel, 
+                'You should play {}'.format(random.choice(games)))
 
     @commands.command(name='add', pass_context=True,
                       brief='Add game to list')
@@ -72,17 +93,9 @@ class Games(commands.Cog):
             removed_game = self._remove(ctx.guild.name, int(index))
             if removed_game is None:
                 await self.bot.send_message(ctx.channel, 'Index out of range')
-            await self.bot.send_message(ctx.channel,
-                    'removed {}'.format(removed_game))
-
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
-        if (isinstance(error, commands.MissingRequiredArgument) or
-            isinstance(error, commands.TooManyArguments)):
-            await self.bot.send_message(ctx.channel,
-                    "Incorrect number of arguments in command.")
-        traceback.print_exception(type(error), error, error.__traceback__, 
-                                  file=sys.stderr)
+            else:
+                await self.bot.send_message(ctx.channel,
+                        'removed {}'.format(removed_game))
 
 
 class Minecraft(commands.Cog):
@@ -144,14 +157,6 @@ class Minecraft(commands.Cog):
             await self.bot.send_message(ctx.channel,
                     'Updated IP to {}.'.format(ip))
 
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
-        if isinstance(error, commands.MissingRequiredArgument):
-            await self.bot.send_message(ctx.channel,
-                    "Missing required argument in command.")
-        traceback.print_exception(type(error), error, error.__traceback__, 
-                                  file=sys.stderr)
-
 
 class General(commands.Cog):
     def __init__(self, bot):
@@ -166,7 +171,7 @@ class General(commands.Cog):
 
     @commands.command(name='list', pass_context=True, brief='List the strikes')
     async def _list(self, ctx):
-        msg = '{}, here are the strikes:'.format(
+        msg = '{}, here are the strikes:```'.format(
               ctx.message.author.mention)
         serverCount = 0
         for user in self.bot.db.get_table(ctx.message.guild.name):
@@ -175,7 +180,7 @@ class General(commands.Cog):
                       user['name'], user['count'], self.bot.max_offenses)
             else:
                 serverCount = user['count']
-            msg = msg + '\nTotal offenses to date: {}'.format(serverCount)
+        msg = msg + '```\nTotal offenses to date: {}'.format(serverCount)
         await self.bot.send_message(ctx.channel, msg)
 
     @commands.command(name='source', pass_context=True, 
@@ -194,6 +199,21 @@ class General(commands.Cog):
             await self.bot.send_message(ctx.channel, msg)
         else:
             await ctx.guild.kick(user)
+
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, error):
+        if (isinstance(error, commands.MissingRequiredArgument) or
+            isinstance(error, commands.TooManyArguments)):
+            await self.bot.send_message(ctx.channel,
+                    "Incorrect number of arguments in command.")
+        elif isinstance(error, commands.CommandNotFound):
+            await self.bot.handle_mistake(ctx.message)
+        elif isinstance(error, commands.BadArgument):
+            await self.bot.send_message(ctx.channel,
+                    "Invalid argument to command.")
+        else:
+            traceback.print_exception(type(error), error, error.__traceback__,
+                                      file=sys.stderr)
 
 def setup(bot):
     bot.add_cog(General(bot))

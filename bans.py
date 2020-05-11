@@ -27,8 +27,8 @@ class Bans:
         val_user = self.check(guild, name) + 1
         db.update({'count': val_user}, self._user.name == name)
         # Add 1 to guild count
-        val_server = self.check(guild, 'guild') + 1
-        db.update({'count': val_server}, self._user.name == 'guild')
+        val_server = self.check(guild, 'server') + 1
+        db.update({'count': val_server}, self._user.name == 'server')
         return val_user
 
     def clear(self, guild, name):

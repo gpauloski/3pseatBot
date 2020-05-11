@@ -12,7 +12,6 @@ from bans import Bans
 from discord.ext import	commands
 from dotenv import load_dotenv
 
-
 EMOJI_RE = r'<:\w*:\d*>'
 URL_RE = (r'((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.'
           '([a-zA-Z]){2,6}([a-zA-Z0-9\.\&\/\?\:@\-_=#])*')
@@ -79,7 +78,7 @@ class Bot(commands.AutoShardedBot):
             return True
         return False
 
-    def _should_not_process(self, message):
+    def _message_is_ok(self, message):
         text = message.content.strip()
 
         # Check if starts with 3pseat, 3pfeet, etc
@@ -102,6 +101,25 @@ class Bot(commands.AutoShardedBot):
             return True
 
         return False
+
+    async def handle_mistake(self, message):
+        count = self.db.up(message.guild.name, message.author.name)
+        if count >= self.max_offenses:
+            self.db.clear(message.guild.name, message.author.name)
+            msg = 'I\'m sorry {}, your time as come. RIP.\n'.format(
+                  message.author.mention)
+            if message.author.guild_permissions.administrator:
+                msg += ('Failed to kick {}. Your cognizance is highly '
+                        'acknowledged.'.format(message.author.mention))
+            else:
+                await message.guild.kick(message.author)
+                msg += 'Press F to pay respects.'
+            await self.send_message(message.channel, msg, 
+                                    react_emoji='\U0001F1EB')
+        else:
+            msg = '{}! You\'ve disturbed the spirits ({}/{})'.format(
+                  message.author.mention, count, self.max_offenses)
+            await self.send_message(message.channel, msg)
 
     async def _troll_reply(self, message):
         text = message.content.lower()
@@ -128,26 +146,10 @@ class Bot(commands.AutoShardedBot):
     async def process_message(self, message):
         await self._troll_reply(message)
 
-        if self._should_not_process(message):
+        if self._message_is_ok(message):
             return
 
-        count = self.db.up(message.guild.name, message.author.name)
-        if count >= self.max_offenses:
-            self.db.clear(message.guild.name, message.author.name)
-            msg = 'I\'m sorry {}, your time as come. RIP.\n'.format(
-                  message.author.mention)
-            if message.author.guild_permissions.administrator:
-                msg += ('Failed to kick {}. Your cognizance is highly '
-                        'acknowledged.'.format(message.author.mention))
-            else:
-                await message.guild.kick(message.author)
-                msg += 'Press F to pay respects.'
-            await self.send_message(message.channel, msg, 
-                                    react_emoji='\U0001F1EB')
-        else:
-            msg = '{}! You\'ve disturbed the spirits ({}/{})'.format(
-                  message.author.mention, count, self.max_offenses)
-            await self.send_message(message.channel, msg)
+        await self.handle_mistake(message)
 
     async def on_message(self, message):
         if message.author.bot or self._should_ignore_type(message):
