@@ -12,6 +12,7 @@ from bans import Bans
 from discord.ext import	commands
 from dotenv import load_dotenv
 
+F_EMOJI = '\U0001F1EB'
 EMOJI_RE = r'<:\w*:\d*>'
 URL_RE = (r'((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.'
           '([a-zA-Z]){2,6}([a-zA-Z0-9\.\&\/\?\:@\-_=#])*')
@@ -19,9 +20,9 @@ URL_RE = (r'((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.'
 
 class Bot(commands.AutoShardedBot):
     def __init__(self, config):
-        self.command_prefix = "?"
-        self.message_prefix = ["3pseat"]
-        self.whitelist_prefix = ["!"]
+        self.command_prefix = '?'
+        self.message_prefix = ['3pseat']
+        self.whitelist_prefix = ['!']
         self.whitelist_guilds = []
         self.max_offenses = 3
         self.admins = []
@@ -33,10 +34,9 @@ class Bot(commands.AutoShardedBot):
         try:
             load_dotenv()
         except Exception as e:
-            self.logger.warning("Error loading '.env' file.\n"
-                                "{}\n".format(e))
+            self.logger.warning('Error loading .env file.\n{}\n'.format(e))
 
-        self.token = os.getenv("TOKEN")
+        self.token = os.getenv('TOKEN')
 
         self.db = Bans()
 
@@ -45,32 +45,74 @@ class Bot(commands.AutoShardedBot):
     def _parse_config(self, config_file):
         config = configparser.ConfigParser(allow_no_value=True)
         config.read(config_file)
-        self.command_prefix = config.get("Default", "command_prefix")
-        self.message_prefix = json.loads(config.get("Default", "message_prefix"))
-        self.whitelist_prefix = json.loads(config.get("Default", "whitelist_prefix"))
-        self.whitelist_guilds = json.loads(config.get("Default", "whitelist_guilds"))
-        self.max_offenses = config.getint("Default", "max_offenses")
-        self.admins = json.loads(config.get("Default", "admins"))
-        self.playing_title = config.get("Default", "playing_title")
+        self.command_prefix = config.get('Default', 'command_prefix')
+        self.message_prefix = json.loads(config.get('Default', 'message_prefix'))
+        self.whitelist_prefix = json.loads(config.get('Default', 'whitelist_prefix'))
+        self.whitelist_guilds = json.loads(config.get('Default', 'whitelist_guilds'))
+        self.max_offenses = config.getint('Default', 'max_offenses')
+        self.admins = json.loads(config.get('Default', 'admins'))
+        self.playing_title = config.get('Default', 'playing_title')
 
-    def log(self, log_msg, level="info", guild_name=None):
+    def log(self, log_msg, level='info', guild_name=None):
         if guild_name is not None:
-            log_msg = guild_name + ": " + log_msg
-        if level == "info":
+            log_msg = guild_name + ': ' + log_msg
+        if level == 'info':
             self.logger.info(log_msg)
-        elif level == "warning":
+        elif level == 'warning':
             self.logger.warning(log_msg)
-        elif level == "debug":
+        elif level == 'debug':
             self.logger.debug(log_msg)
-        elif level == "error":
+        elif level == 'error':
             self.logger.error(log_msg)
         else:
-            self.logger.error("Unknown logging level \'{}\'".format(level))
+            self.logger.error('Unknown logging level \'{}\''.format(level))
+
+    async def send_message(self, channel, message, react_emoji=None):
+        self.log(message, guild_name=channel.guild.name)
+        msg = self.message_prefix[0] + ' ' + message
+        msg = await channel.send(msg)
+        if react_emoji is not None:
+            await msg.add_reaction(react_emoji)
+        return msg
 
     def get_user(self, guild, name):
         name = name.split('#')
         return discord.utils.get(guild.members, name=name[0],
                                  discriminator=name[1])
+
+    def is_admin(self, guild, user):
+        for admin in self.admins:
+            admin_user = self.get_user(guild, admin)
+            if user == admin_user:
+                return True
+        return False
+
+    async def kick_player(self, guild, channel, user):
+        self.db.clear(guild.name, user.name)
+        msg = 'I\'m sorry {}, your time as come. RIP.\n'.format(user.mention)
+        if user.guild_permissions.administrator:
+            msg += ('Failed to kick {}. Your cognizance is highly '
+                    'acknowledged.'.format(user.mention))
+        else:
+            await guild.kick(user)
+            msg += 'Press F to pay respects.'
+        await self.send_message(channel, msg, react_emoji=F_EMOJI)
+
+    async def add_strike(self, guild, channel, user):
+        count = self.db.up(guild.name, user.name)
+        if count >= self.max_offenses:
+            await self.kick_player(guild, channel, user)
+        return count
+
+    def remove_strike(self, guild, channel, user):
+        return self.db.down(guild.name, user.name)
+
+    async def handle_mistake(self, message):
+        count = await self.add_strike(message.guild, message.channel, message.author)
+        if count < self.max_offenses:
+            msg = '{}! You\'ve disturbed the spirits ({}/{})'.format(
+                  message.author.mention, count, self.max_offenses)
+            await self.send_message(message.channel, msg)
 
     def _should_ignore_type(self, message):
         if (message.type is discord.MessageType.pins_add or
@@ -102,25 +144,6 @@ class Bot(commands.AutoShardedBot):
 
         return False
 
-    async def handle_mistake(self, message):
-        count = self.db.up(message.guild.name, message.author.name)
-        if count >= self.max_offenses:
-            self.db.clear(message.guild.name, message.author.name)
-            msg = 'I\'m sorry {}, your time as come. RIP.\n'.format(
-                  message.author.mention)
-            if message.author.guild_permissions.administrator:
-                msg += ('Failed to kick {}. Your cognizance is highly '
-                        'acknowledged.'.format(message.author.mention))
-            else:
-                await message.guild.kick(message.author)
-                msg += 'Press F to pay respects.'
-            await self.send_message(message.channel, msg, 
-                                    react_emoji='\U0001F1EB')
-        else:
-            msg = '{}! You\'ve disturbed the spirits ({}/{})'.format(
-                  message.author.mention, count, self.max_offenses)
-            await self.send_message(message.channel, msg)
-
     async def _troll_reply(self, message):
         text = message.content.lower()
         regex = r'(i\'?m)|(i am)'
@@ -134,14 +157,6 @@ class Bot(commands.AutoShardedBot):
                 return
             await self.send_message(message.channel, 'Hi {}, I\'m {}!'.format(
                                     keyword, self.user.mention))
-
-    async def send_message(self, channel, message, react_emoji=None):
-        self.log(message, guild_name=channel.guild.name)
-        msg = self.message_prefix[0] + " " + message
-        msg = await channel.send(msg)
-        if react_emoji is not None:
-            await msg.add_reaction(react_emoji)
-        return msg
 
     async def process_message(self, message):
         await self._troll_reply(message)
@@ -184,7 +199,7 @@ class Bot(commands.AutoShardedBot):
                                        name=self.playing_title))
         self.logger.info('Logged in as {} (ID={})'.format(self.user.name, self.user.id))
 
-        self.load_extension("bot_extension")
+        self.load_extension('bot_extension')
     
     def run(self):
         super().run(self.token, reconnect=True)

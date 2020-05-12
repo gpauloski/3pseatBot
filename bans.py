@@ -13,7 +13,7 @@ class Bans:
     def get_table(self, guild):
         return self._db.table(guild)
 
-    def check(self, guild, name):
+    def get_value(self, guild, name):
         db = self.get_table(guild)
         if not db.search(self._user.name.matches(name)):
             db.insert({'name': name, 'count': 0})
@@ -21,17 +21,25 @@ class Bans:
         user = result.pop(0)
         return user['count']
 
-    def up(self, guild, name):
+    def set_value(self, guild, name, value):
         db = self.get_table(guild)
-        # Add 1 to user count
-        val_user = self.check(guild, name) + 1
-        db.update({'count': val_user}, self._user.name == name)
-        # Add 1 to guild count
-        val_server = self.check(guild, 'server') + 1
-        db.update({'count': val_server}, self._user.name == 'server')
-        return val_user
+        db.update({'count': value}, self._user.name == name) 
+
+    def add_to_value(self, guild, name, value):
+        cur_val = self.get_value(guild, name)
+        val = max(0, cur_val + value)
+        self.set_value(guild, name, val)
+        return val
+
+    def up(self, guild, name):
+        val = self.add_to_value(guild, name, 1)
+        self.add_to_value(guild, 'server', 1)
+        return val
+    
+    def down(self, guild, name):
+        val = self.add_to_value(guild, name, -1)
+        self.add_to_value(guild, 'server', -1)
+        return val
 
     def clear(self, guild, name):
-        db = self.get_table(guild)
-        self.check(guild, name)
-        db.update({'count': 0}, self._user.name == name)
+        self.set_value(guild, name, 0)

@@ -23,13 +23,6 @@ class Games(commands.Cog):
         with open(self.config_file, 'w') as f:
             json.dump(self.config, f)
 
-    def _is_admin(self, ctx):
-        for admin in self.bot.admins:
-            admin_user = self.bot.get_user(ctx.guild, admin)
-            if ctx.message.author == admin_user:
-                return True
-        return False
-
     def _handle_missing_key(self, guild):
         if guild not in self.config:
             self.config[guild] = []
@@ -81,7 +74,7 @@ class Games(commands.Cog):
     @commands.command(name='add', pass_context=True,
                       brief='Add game to list')
     async def _add_game(self, ctx, name):
-        if self._is_admin(ctx):
+        if self.bot.is_admin(ctx.guild, ctx.message.author):
             self._add(ctx.guild.name, name)
             await self.bot.send_message(ctx.channel,
                     'added {}'.format(name))
@@ -89,7 +82,7 @@ class Games(commands.Cog):
     @commands.command(name='remove', pass_context=True,
                       brief='Remove game by index')
     async def _remove_game(self, ctx, index):
-        if self._is_admin(ctx):
+        if self.bot.is_admin(ctx.guild, ctx.message.author):
             removed_game = self._remove(ctx.guild.name, int(index))
             if removed_game is None:
                 await self.bot.send_message(ctx.channel, 'Index out of range')
@@ -114,13 +107,6 @@ class Minecraft(commands.Cog):
         with open(self.config_file, 'w') as f:
             json.dump(self.config, f)
 
-    def _is_admin(self, ctx):
-        for admin in self.bot.admins:
-            admin_user = self.bot.get_user(ctx.guild, admin)
-            if ctx.message.author == admin_user:
-                return True
-        return False
-
     async def _is_allowed_in_guild(self, ctx):
         if ctx.message.guild.name not in self.bot.whitelist_guilds:
             await self.bot.send_message(ctx.channel, 
@@ -142,7 +128,8 @@ class Minecraft(commands.Cog):
     @commands.command(name='mcname', pass_context=True,
                       brief='Update Minecraft Server name')
     async def _change_name(self, ctx, name):
-        if (await self._is_allowed_in_guild(ctx)) and self._is_admin(ctx):
+        if (await self._is_allowed_in_guild(ctx) and 
+            self.bot.is_admin(ctx.guild, ctx.message.author)):
             self.config['name'] = name
             self.save_config()
             await self.bot.send_message(ctx.channel,
@@ -151,7 +138,8 @@ class Minecraft(commands.Cog):
     @commands.command(name='mcip', pass_context=True,
                       brief='Update Minecraft Server IP')
     async def _change_ip(self, ctx, ip):
-        if (await self._is_allowed_in_guild(ctx)) and self._is_admin(ctx):
+        if (await self._is_allowed_in_guild(ctx) and 
+            self.bot.is_admin(ctx.guild, ctx.message.author)):
             self.config['ip'] = ip
             self.save_config()
             await self.bot.send_message(ctx.channel,
@@ -191,14 +179,28 @@ class General(commands.Cog):
         await self.bot.send_message(ctx.channel, msg)
 
     @commands.command(name='yeet', pass_context=True, brief='Yeet tha boi')
-    async def _yeet(self, ctx, user: discord.User):
-        await ctx.channel.send('3pseat yeeting {}'.format(user))
+    async def _yeet(self, ctx, user: discord.Member):
         if not ctx.message.author.guild_permissions.administrator:
             msg = '{}, you do not have yeet (admin) power.'.format(
                   ctx.message.author.mention)
             await self.bot.send_message(ctx.channel, msg)
+        elif user.bot:
+            msg = '{}, you cannot yeet a bot.'.format(
+                  ctx.message.author.mention)
+            await self.bot.send_message(ctx.channel, msg)
         else:
-            await ctx.guild.kick(user)
+            await self.bot.kick_player(ctx.guild, ctx.channel, user)
+
+    @commands.command(name='addstrike', pass_context=True, brief='Add strike')
+    async def _add_strike(self, ctx, user: discord.Member):
+        if self.bot.is_admin(ctx.guild, ctx.message.author):
+            await self.bot.add_strike(ctx.guild, ctx.channel, user)
+
+    @commands.command(name='removestrike', pass_context=True, 
+                      brief='Remove strike')
+    async def _remove_strike(self, ctx, user: discord.Member):
+        if self.bot.is_admin(ctx.guild, ctx.message.author):
+            self.bot.remove_strike(ctx.guild, ctx.channel, user)
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
