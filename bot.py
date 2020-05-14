@@ -146,17 +146,12 @@ class Bot(commands.AutoShardedBot):
 
     async def _troll_reply(self, message):
         text = message.content.lower()
-        regex = r'(i\'?m)|(i am)'
-        if re.search(regex, text):
-            tokens = text.split(' ')
-            keyword = None
-            for i, t in enumerate(tokens):
-                if re.search(regex, t) and i < len(tokens) - 1:
-                    keyword = tokens[i + 1]
-            if keyword is None:
-                return
-            await self.send_message(message.channel, 'Hi {}, I\'m {}!'.format(
-                                    keyword, self.user.mention))
+        regex = r'(^| |\n)((i\'?m)|(i am)) (\w+)'
+        search = re.findall(regex, text)
+        if len(search) > 0:
+            search = search[0]
+            await self.send_message(message.channel,
+                    'Hi {}, I\'m {}!'.format(search[4], self.user.mention))
 
     async def process_message(self, message):
         await self._troll_reply(message)
