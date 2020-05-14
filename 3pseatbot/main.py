@@ -12,8 +12,8 @@ def parse_args():
                                                  " little of use.")
     parser.add_argument("--logdir", default="logs", 
                         help="Logging directory (Default='logs')")
-    parser.add_argument("--config", default="config.cfg", 
-                        help="Bot config file (Default='config.cfg'")
+    parser.add_argument("--config", default="data/config.cfg", 
+                        help="Bot config file (Default='data/config.cfg'")
 
     args = parser.parse_args()
     return args

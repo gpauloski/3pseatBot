@@ -6,11 +6,6 @@
 
 ### TODO
 
-- [ ] What are the odds
-- [ ] Should I snowball
-- [ ] Pog command
-- [ ] Refactor cogs to individual files
-- [ ] Move Bot files to `bot/`
-- [ ] Auto PM kicked users with invite code
+- [ ] Add range and user num to ?odds
 - [ ] Music integration
 - [ ] Google Assistant integration (dialogflow)

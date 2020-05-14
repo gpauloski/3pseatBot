@@ -14,7 +14,7 @@ docker-stop:
 	docker stop $(APP_NAME) || true
 
 dev-start:
-	python main.py
+	cd 3pseatbot; python main.py
 
 requirements:
 	pip freeze > requirements.txt

@@ -4,7 +4,7 @@ from tinydb import TinyDB, Query
 
 class Bans:
     def __init__(self):
-        self.bans_file = 'bans.json'
+        self.bans_file = 'data/bans.json'
         if not os.path.exists(self.bans_file):
             open(self.bans_file, 'a').close()
         self._db = TinyDB(self.bans_file)

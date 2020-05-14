@@ -12,6 +12,7 @@ from bans import Bans
 from discord.ext import	commands
 from dotenv import load_dotenv
 
+EXTENSIONS = ['cogs.general', 'cogs.games', 'cogs.minecraft', 'cogs.memes']
 F_EMOJI = '\U0001F1EB'
 EMOJI_RE = r'<:\w*:\d*>'
 URL_RE = (r'((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.'
@@ -32,9 +33,9 @@ class Bot(commands.AutoShardedBot):
         self._parse_config(config)
 
         try:
-            load_dotenv()
+            load_dotenv(dotenv_path='data/.env')
         except Exception as e:
-            self.logger.warning('Error loading .env file.\n{}\n'.format(e))
+            self.logger.warning('Error loading data/.env file.\n{}\n'.format(e))
 
         self.token = os.getenv('TOKEN')
 
@@ -96,6 +97,9 @@ class Bot(commands.AutoShardedBot):
         else:
             await guild.kick(user)
             msg += 'Press F to pay respects.'
+            link = await channel.create_invite(max_uses=1)
+            await self.send_message(user, 'Sorry we had to kick you. '
+                    'Here is a link to rejoin: {}'.format(link))
         await self.send_message(channel, msg, react_emoji=F_EMOJI)
 
     async def add_strike(self, guild, channel, user):
@@ -144,17 +148,10 @@ class Bot(commands.AutoShardedBot):
 
         return False
 
-    async def _troll_reply(self, message):
-        text = message.content.lower()
-        regex = r'(^| |\n)((i\'?m)|(i am)) (\w+)'
-        search = re.findall(regex, text)
-        if len(search) > 0:
-            search = search[0]
-            await self.send_message(message.channel,
-                    'Hi {}, I\'m {}!'.format(search[4], self.user.mention))
-
     async def process_message(self, message):
-        await self._troll_reply(message)
+        cog = self.get_cog('Memes')
+        if cog is not None:
+            await cog.troll_reply(message)
 
         if self._message_is_ok(message):
             return
@@ -162,7 +159,8 @@ class Bot(commands.AutoShardedBot):
         await self.handle_mistake(message)
 
     async def on_message(self, message):
-        if message.author.bot or self._should_ignore_type(message):
+        if (message.author.bot or self._should_ignore_type(message) or
+            message.guild is None):
             return
         if not message.content.startswith(self.command_prefix):
             await self.process_message(message)
@@ -194,7 +192,8 @@ class Bot(commands.AutoShardedBot):
                                        name=self.playing_title))
         self.logger.info('Logged in as {} (ID={})'.format(self.user.name, self.user.id))
 
-        self.load_extension('bot_extension')
+        for ext in EXTENSIONS:
+            self.load_extension(ext)
     
     def run(self):
         super().run(self.token, reconnect=True)
