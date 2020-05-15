@@ -40,7 +40,7 @@ class Games(commands.Cog):
 
     async def _warn_if_no_games(self, ctx):
         if len(self.config[ctx.guild.name]) == 0:
-            await self.bot.send_message(ctx.channel, 
+            await self.bot.send_server_message(ctx.channel, 
                     'There are no games to play. Add more with '
                     '{}add.'.format(self.bot.command_prefix))
             return True
@@ -56,7 +56,7 @@ class Games(commands.Cog):
         for i, game in enumerate(self.config[ctx.guild.name]):
             msg += '({}) {}\n'.format(i, game)
         msg += '```'
-        await self.bot.send_message(ctx.channel, msg)
+        await self.bot.send_server_message(ctx.channel, msg)
 
     @commands.command(name='roll', pass_context=True,
                       brief='Pick a random game')
@@ -65,7 +65,7 @@ class Games(commands.Cog):
         if await self._warn_if_no_games(ctx):
             return
         games = self.config[ctx.guild.name]
-        await self.bot.send_message(ctx.channel, 
+        await self.bot.send_server_message(ctx.channel, 
                 'You should play {}'.format(random.choice(games)))
 
     @commands.command(name='add', pass_context=True,
@@ -73,7 +73,7 @@ class Games(commands.Cog):
     async def _add_game(self, ctx, name):
         if self.bot.is_admin(ctx.guild, ctx.message.author):
             self._add(ctx.guild.name, name)
-            await self.bot.send_message(ctx.channel,
+            await self.bot.send_server_message(ctx.channel,
                     'added {}'.format(name))
 
     @commands.command(name='remove', pass_context=True,
@@ -82,9 +82,9 @@ class Games(commands.Cog):
         if self.bot.is_admin(ctx.guild, ctx.message.author):
             removed_game = self._remove(ctx.guild.name, int(index))
             if removed_game is None:
-                await self.bot.send_message(ctx.channel, 'Index out of range')
+                await self.bot.send_server_message(ctx.channel, 'Index out of range')
             else:
-                await self.bot.send_message(ctx.channel,
+                await self.bot.send_server_message(ctx.channel,
                         'removed {}'.format(removed_game))
 
 def setup(bot):

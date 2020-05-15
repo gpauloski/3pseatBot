@@ -1,6 +1,6 @@
 FROM arm32v7/python
 
-WORKDIR /bot/3pseatbot
+WORKDIR /bot/3pseatBot
 
 RUN apt-get update && apt-get install -y vim
 RUN pip install discord.py

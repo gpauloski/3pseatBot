@@ -15,7 +15,7 @@ class General(commands.Cog):
     async def _threepseat(self, ctx):
         msg = '{}, you must start all messages with {}'.format(
               ctx.message.author.mention, self.bot.message_prefix[0])
-        await self.bot.send_message(ctx.channel, msg)
+        await self.bot.send_server_message(ctx.channel, msg)
 
     @commands.command(name='list', pass_context=True, brief='List the strikes')
     async def _list(self, ctx):
@@ -29,25 +29,25 @@ class General(commands.Cog):
             else:
                 serverCount = user['count']
         msg = msg + '```\nTotal offenses to date: {}'.format(serverCount)
-        await self.bot.send_message(ctx.channel, msg)
+        await self.bot.send_server_message(ctx.channel, msg)
 
     @commands.command(name='source', pass_context=True,
                       brief='3pseatBot source code')
     async def _3pseat(self, ctx):
         msg = ('3pseatBot\'s source code can be found here: '
                'https://github.com/gpauloski/3pseatBot')
-        await self.bot.send_message(ctx.channel, msg)
+        await self.bot.send_server_message(ctx.channel, msg)
 
     @commands.command(name='yeet', pass_context=True, brief='Yeet tha boi')
     async def _yeet(self, ctx, user: discord.Member):
         if not ctx.message.author.guild_permissions.administrator:
             msg = '{}, you do not have yeet (admin) power.'.format(
                   ctx.message.author.mention)
-            await self.bot.send_message(ctx.channel, msg)
+            await self.bot.send_server_message(ctx.channel, msg)
         elif user.bot:
             msg = '{}, you cannot yeet a bot.'.format(
                   ctx.message.author.mention)
-            await self.bot.send_message(ctx.channel, msg)
+            await self.bot.send_server_message(ctx.channel, msg)
         else:
             await self.bot.kick_player(ctx.guild, ctx.channel, user)
 
@@ -66,12 +66,12 @@ class General(commands.Cog):
     async def on_command_error(self, ctx, error):
         if (isinstance(error, commands.MissingRequiredArgument) or
             isinstance(error, commands.TooManyArguments)):
-            await self.bot.send_message(ctx.channel,
+            await self.bot.send_server_message(ctx.channel,
                     "Incorrect number of arguments in command.")
         elif isinstance(error, commands.CommandNotFound):
             await self.bot.handle_mistake(ctx.message)
         elif isinstance(error, commands.BadArgument):
-            await self.bot.send_message(ctx.channel,
+            await self.bot.send_server_message(ctx.channel,
                     "Invalid argument to command.")
         else:
             traceback.print_exception(type(error), error, error.__traceback__,

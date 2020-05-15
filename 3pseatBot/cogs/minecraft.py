@@ -21,7 +21,7 @@ class Minecraft(commands.Cog):
 
     async def _is_allowed_in_guild(self, ctx):
         if ctx.message.guild.name not in self.bot.whitelist_guilds:
-            await self.bot.send_message(ctx.channel, 
+            await self.bot.send_server_message(ctx.channel, 
                     'This command is not authorized on this server')
             return False
         return True
@@ -35,7 +35,7 @@ class Minecraft(commands.Cog):
                    '(1) Join the server using IP: {}\n'
                    '(2) Message {} for whitelist'.format(
                    self.config['name'], self.config['ip'], admin.mention))
-            await self.bot.send_message(ctx.channel, msg)
+            await self.bot.send_server_message(ctx.channel, msg)
 
     @commands.command(name='mcname', pass_context=True,
                       brief='Update Minecraft Server name')
@@ -44,7 +44,7 @@ class Minecraft(commands.Cog):
             self.bot.is_admin(ctx.guild, ctx.message.author)):
             self.config['name'] = name
             self.save_config()
-            await self.bot.send_message(ctx.channel,
+            await self.bot.send_server_message(ctx.channel,
                     'Updated name to {}.'.format(name))
 
     @commands.command(name='mcip', pass_context=True,
@@ -54,7 +54,7 @@ class Minecraft(commands.Cog):
             self.bot.is_admin(ctx.guild, ctx.message.author)):
             self.config['ip'] = ip
             self.save_config()
-            await self.bot.send_message(ctx.channel,
+            await self.bot.send_server_message(ctx.channel,
                     'Updated IP to {}.'.format(ip))
 
 def setup(bot):

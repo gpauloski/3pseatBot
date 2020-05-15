@@ -6,6 +6,7 @@
 
 ### TODO
 
+- [x] Reply to DMs
 - [ ] Add range and user num to ?odds
 - [ ] Music integration
 - [ ] Google Assistant integration (dialogflow)

@@ -54,9 +54,11 @@ class Bot(commands.AutoShardedBot):
         self.admins = json.loads(config.get('Default', 'admins'))
         self.playing_title = config.get('Default', 'playing_title')
 
-    def log(self, log_msg, level='info', guild_name=None):
+    def log(self, log_msg, level='info', guild_name=None, user_name=None):
         if guild_name is not None:
             log_msg = guild_name + ': ' + log_msg
+        elif user_name is not None:
+            log_msg = user_name + ': ' + log_msg
         if level == 'info':
             self.logger.info(log_msg)
         elif level == 'warning':
@@ -68,7 +70,13 @@ class Bot(commands.AutoShardedBot):
         else:
             self.logger.error('Unknown logging level \'{}\''.format(level))
 
-    async def send_message(self, channel, message, react_emoji=None):
+    async def send_direct_message(self, user, message):
+        self.log(message, user_name=user.name)
+        channel = await user.create_dm()
+        msg = await channel.send(message)
+        return msg
+
+    async def send_server_message(self, channel, message, react_emoji=None):
         self.log(message, guild_name=channel.guild.name)
         msg = self.message_prefix[0] + ' ' + message
         msg = await channel.send(msg)
@@ -98,9 +106,9 @@ class Bot(commands.AutoShardedBot):
             await guild.kick(user)
             msg += 'Press F to pay respects.'
             link = await channel.create_invite(max_uses=1)
-            await self.send_message(user, 'Sorry we had to kick you. '
+            await self.send_direct_message(user, 'Sorry we had to kick you. '
                     'Here is a link to rejoin: {}'.format(link))
-        await self.send_message(channel, msg, react_emoji=F_EMOJI)
+        await self.send_server_message(channel, msg, react_emoji=F_EMOJI)
 
     async def add_strike(self, guild, channel, user):
         count = self.db.up(guild.name, user.name)
@@ -116,7 +124,7 @@ class Bot(commands.AutoShardedBot):
         if count < self.max_offenses:
             msg = '{}! You\'ve disturbed the spirits ({}/{})'.format(
                   message.author.mention, count, self.max_offenses)
-            await self.send_message(message.channel, msg)
+            await self.send_server_message(message.channel, msg)
 
     def _should_ignore_type(self, message):
         if (message.type is discord.MessageType.pins_add or
@@ -148,7 +156,7 @@ class Bot(commands.AutoShardedBot):
 
         return False
 
-    async def process_message(self, message):
+    async def process_server_message(self, message):
         cog = self.get_cog('Memes')
         if cog is not None:
             await cog.troll_reply(message)
@@ -158,19 +166,25 @@ class Bot(commands.AutoShardedBot):
 
         await self.handle_mistake(message)
 
+    async def process_direct_message(self, message):
+        await self.send_direct_message(message.author, 'Hi there, I cannot '
+                'reply to direct messages.')
+
     async def on_message(self, message):
-        if (message.author.bot or self._should_ignore_type(message) or
-            message.guild is None):
+        if message.author.bot or self._should_ignore_type(message):
+            return
+        if message.guild is None:
+            await self.process_direct_message(message)
             return
         if not message.content.startswith(self.command_prefix):
-            await self.process_message(message)
+            await self.process_server_message(message)
             return
         await self.process_commands(message)
 
     async def _message_modified(self, message):
         msg = '{}, what did you do to your message? It was: \"{}\"'.format(
               message.author.mention, message.clean_content)
-        await self.send_message(message.channel, msg)
+        await self.send_server_message(message.channel, msg)
 
     async def on_message_delete(self, message):
         if message.author.bot or self._should_ignore_type(message):
