@@ -3,17 +3,21 @@ import random
 
 from discord.ext import commands
 
+POG_RE = r'(^|)p+\s*o+\s*g+\s*g*\s*e*\s*r*\s*s*(c\s*h\s*a\s*m\s*p\s*)?( |$)'
+POG_EMOTES = ['\U0001F1F5', '\U0001F1F4', '\U0001F1EC']
+DAD_RE = r'(^| |\n)((i\'?m)|(i am)) (\w+)'
+
 class Memes(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     async def troll_reply(self, message):
         text = message.content.lower()
-        if re.search(r'(^| )p+o+g+( |$)', text):
-            await self.bot.send_server_message(message.channel, 'poggers')
+        if re.search(POG_RE, text):
+            await self.bot.send_server_message(message.channel, 'poggers', 
+                    POG_EMOTES)
 
-        regex = r'(^| |\n)((i\'?m)|(i am)) (\w+)'
-        search = re.findall(regex, text)
+        search = re.findall(DAD_RE, text)
         if len(search) > 0:
             search = search[0]
             await self.bot.send_server_message(message.channel,

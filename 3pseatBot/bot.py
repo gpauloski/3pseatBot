@@ -81,7 +81,11 @@ class Bot(commands.AutoShardedBot):
         msg = self.message_prefix[0] + ' ' + message
         msg = await channel.send(msg)
         if react_emoji is not None:
-            await msg.add_reaction(react_emoji)
+            if isinstance(react_emoji, str):
+                await msg.add_reaction(react_emoji)
+            elif isinstance(react_emoji, list):
+                for e in react_emoji:
+                    await msg.add_reaction(e)
         return msg
 
     def get_user(self, guild, name):
