@@ -137,7 +137,7 @@ class Bot(commands.AutoShardedBot):
         return False
 
     def _message_is_ok(self, message):
-        text = message.content.strip()
+        text = message.content.strip().lower()
 
         # Check if starts with 3pseat, 3pfeet, etc
         for keyword in self.message_prefix + self.whitelist_prefix:

@@ -8,10 +8,12 @@ docker-interactive:
 		-w /bot -it --name=$(APP_NAME) $(APP_NAME)
 
 docker-start:
-	docker run --rm -v $(shell pwd):/bot -d --name=$(APP_NAME) $(APP_NAME)
+	docker run -v $(shell pwd):/bot -d --restart=unless-stopped \
+		--name=$(APP_NAME) $(APP_NAME)
 
 docker-stop:
-	docker stop $(APP_NAME) || true
+	docker stop $(APP_NAME) || true;
+	docker rm $(APP_NAME) || true
 
 dev-start:
 	cd 3pseatBot; python main.py
