@@ -100,7 +100,7 @@ class Bot(commands.AutoShardedBot):
                 return True
         return False
 
-    async def send_invite_after_kick(self, channel, user):
+    async def send_invite_kick(self, channel, user):
         try:
             link = await channel.create_invite(max_uses=1)
             await self.send_direct_message(user, 'Sorry we had to kick you. '
@@ -117,9 +117,9 @@ class Bot(commands.AutoShardedBot):
                     'acknowledged.'.format(user.mention))
         else:
             try:
+                await self.send_invite_kick(channel, user)
                 await guild.kick(user)
                 msg += 'Press F to pay respects.'
-                await self.send_invite_after_kick(channel, user)
             except Exception as e: 
                 self.logger.warning('Failed to kick {}. Caught exception: '
                                     '{}'.format(user, e))
