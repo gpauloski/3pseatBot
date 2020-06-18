@@ -100,35 +100,49 @@ class Bot(commands.AutoShardedBot):
                 return True
         return False
 
+    async def send_invite_after_kick(self, channel, user):
+        try:
+            link = await channel.create_invite(max_uses=1)
+            await self.send_direct_message(user, 'Sorry we had to kick you. '
+                    'Here is a link to rejoin: {}'.format(link))
+        except Exception as e:
+            self.logger.warning('Failed to send rejoin message to {}.'
+                    'Caught exception: {}'.format(user, e))
+
     async def kick_player(self, guild, channel, user):
-        self.db.clear(guild.name, user.name)
-        msg = 'I\'m sorry {}, your time as come. RIP.\n'.format(user.mention)
+        msg = ('That\'s {} strikes, {}. I\'m sorry but your time as come. '
+               'RIP.\n'.format(self.max_offenses, user.mention))
         if user.guild_permissions.administrator:
             msg += ('Failed to kick {}. Your cognizance is highly '
                     'acknowledged.'.format(user.mention))
         else:
-            await guild.kick(user)
-            msg += 'Press F to pay respects.'
-            link = await channel.create_invite(max_uses=1)
-            await self.send_direct_message(user, 'Sorry we had to kick you. '
-                    'Here is a link to rejoin: {}'.format(link))
+            try:
+                await guild.kick(user)
+                msg += 'Press F to pay respects.'
+                await self.send_invite_after_kick(channel, user)
+            except Exception as e: 
+                self.logger.warning('Failed to kick {}. Caught exception: '
+                                    '{}'.format(user, e))
         await self.send_server_message(channel, msg, react_emoji=F_EMOJI)
 
-    async def add_strike(self, guild, channel, user):
-        count = self.db.up(guild.name, user.name)
-        if count >= self.max_offenses:
-            await self.kick_player(guild, channel, user)
-        return count
+    def add_strike(self, guild, user):
+        return self.db.up(guild.name, user.name)
 
-    def remove_strike(self, guild, channel, user):
+    def remove_strike(self, guild, user):
         return self.db.down(guild.name, user.name)
 
+    def clear_strikes(self, guild, user):
+        self.db.clear(guild.name, user.name)
+
     async def handle_mistake(self, message):
-        count = await self.add_strike(message.guild, message.channel, message.author)
+        count = self.add_strike(message.guild, message.author)
         if count < self.max_offenses:
             msg = '{}! You\'ve disturbed the spirits ({}/{})'.format(
-                  message.author.mention, count, self.max_offenses)
+                    message.author.mention, count, self.max_offenses)
             await self.send_server_message(message.channel, msg)
+        else:
+            self.clear_strikes(message.guild, message.author)
+            await self.kick_player(message.guild, message.channel, message.author)
 
     def _should_ignore_type(self, message):
         if (message.type is discord.MessageType.pins_add or
@@ -155,6 +169,7 @@ class Bot(commands.AutoShardedBot):
         # Check if single link
         if re.match(URL_RE, text) and len(message.content.split(' ')) == 1:
             return True
+        # Check if server message (e.g. when user joins channel announcement)
         if self._should_ignore_type(message):
             return True
 
@@ -165,10 +180,8 @@ class Bot(commands.AutoShardedBot):
         if cog is not None:
             await cog.troll_reply(message)
 
-        if self._message_is_ok(message):
-            return
-
-        await self.handle_mistake(message)
+        if not self._message_is_ok(message):
+            await self.handle_mistake(message)
 
     async def process_direct_message(self, message):
         await self.send_direct_message(message.author, 'Hi there, I cannot '

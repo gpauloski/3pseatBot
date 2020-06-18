@@ -39,5 +39,12 @@ class Memes(commands.Cog):
         rand = random.randint(1, num)
         await self.bot.send_server_message(ctx.channel, '{}'.format(rand))
 
+    @commands.command(name='flip', pass_context=True,
+            brief='Flip a coin')
+    async def _flip(self, ctx):
+        rand = random.randint(1, 2)
+        msg = 'heads' if rand == 1 else 'tails'
+        await self.bot.send_server_message(ctx.channel, '{}'.format(msg))
+
 def setup(bot):
     bot.add_cog(Memes(bot))
