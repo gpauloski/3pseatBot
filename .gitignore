@@ -1,6 +1,7 @@
 .DS_Store
 *.json
 logs/*
+3pseatBot/data/sounds/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -12,7 +12,8 @@ from bans import Bans
 from discord.ext import	commands
 from dotenv import load_dotenv
 
-EXTENSIONS = ['cogs.general', 'cogs.games', 'cogs.minecraft', 'cogs.memes']
+EXTENSIONS = ['cogs.general', 'cogs.games', 'cogs.minecraft', 'cogs.memes',
+              'cogs.voice']
 F_EMOJI = '\U0001F1EB'
 EMOJI_RE = r'<:\w*:\d*>'
 URL_RE = (r'((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.'

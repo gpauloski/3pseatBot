@@ -7,7 +7,10 @@
 ### TODO
 
 - [x] Reply to DMs
-- [ ] Start docker on RPi restart
+- [x] Start docker on RPi restart
 - [ ] Add range and user num to ?odds
 - [ ] Music integration
 - [ ] Google Assistant integration (dialogflow)
+- [ ] Add documentation
+  - [ ] Setup guide (discord bot api + docker)
+  - [ ] Docstrings in code
