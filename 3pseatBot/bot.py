@@ -4,10 +4,9 @@ import json
 import inspect
 import os
 import re
-
 import discord
-import emoji
 
+from utils import is_emoji
 from bans import Bans
 from discord.ext import	commands
 from dotenv import load_dotenv
@@ -15,7 +14,6 @@ from dotenv import load_dotenv
 EXTENSIONS = ['cogs.general', 'cogs.games', 'cogs.minecraft', 'cogs.memes',
               'cogs.voice']
 F_EMOJI = '\U0001F1EB'
-EMOJI_RE = r'<:\w*:\d*>'
 URL_RE = (r'((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.'
           '([a-zA-Z]){2,6}([a-zA-Z0-9\.\&\/\?\:@\-_=#])*')
 
@@ -158,13 +156,10 @@ class Bot(commands.AutoShardedBot):
         for keyword in self.message_prefix + self.whitelist_prefix:
             if text.startswith(keyword):
                 return True
-        # Check if custom emoji
-        if re.match(EMOJI_RE, text):
+        # Check if just emoji
+        if is_emoji(text):
             return True
-        # Check if regular emoji
-        if text in emoji.UNICODE_EMOJI:
-            return True
-        # Check if single image
+        # Check if just images
         if text == '' and message.attachments:
             return True
         # Check if single link
