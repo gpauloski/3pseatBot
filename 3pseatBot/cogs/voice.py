@@ -1,6 +1,7 @@
 import json
 import os
 import discord
+import youtube_dl
 
 from discord.ext import commands, tasks
 
@@ -28,7 +29,7 @@ class Voice(commands.Cog):
 
         await channel.connect()
 
-    @commands.command(name='volume', pass_context=True, brief='Set 3pseatBot volume')
+    @commands.command(name='volume', pass_context=True, brief='Set 3pseatBot volume: ?volume [0-100]')
     async def _volume(self, ctx, volume: int):
         if ctx.voice_client is None:
             return await self.bot.send_server_message(ctx.channel,
@@ -43,7 +44,7 @@ class Voice(commands.Cog):
         if ctx.voice_client is not None:
             await ctx.voice_client.disconnect()
 
-    @commands.command(name='play', pass_context=True, brief='Play a sound')
+    @commands.command(name='play', pass_context=True, brief='Play a sound: ?play {name}')
     async def _play(self, ctx, sound: str):
         sounds = self.get_sounds()
         try:
@@ -54,6 +55,39 @@ class Voice(commands.Cog):
             return
         source = discord.FFmpegPCMAudio(source)
         ctx.voice_client.play(source, after=None)
+
+    @commands.command(name='addsound', pass_context=True, brief='Add a sound: ?addsound {name} {url}')
+    async def _addsound(self, ctx, name: str, url: str):
+        if name in self.get_sounds().keys():
+            await self.bot.send_server_message(ctx.channel, 'a sound named `{}` already exists. '
+                    'Please choose a different name.'.format(name))
+            return
+
+        path = os.path.join(self.sounds_path, name)
+        ydl_opts = {
+            'outtmpl': path + '.%(ext)s',
+            'format': 'worst',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '128',
+            }],
+            'logger': self.bot.logger,
+            'max_filesize': '8.0m',
+        }
+
+        try:
+            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+        except Exception as e:
+            self.bot.log('Caught error downloading sound:\n{}'.format(e))
+
+        if os.path.exists(path + '.mp3'):
+            await self.bot.send_server_message(ctx.channel, 'added sound `{}`.'.format(name))
+        else:
+            await self.bot.send_server_message(ctx.channel, 'error downloading audio. '
+                    'Is the link is wrong or the video too long?'.format(name))
+
 
     @commands.command(name='sounds', pass_context=True, brief='List sounds')
     async def _sounds(self, ctx):

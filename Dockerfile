@@ -9,5 +9,6 @@ RUN pip install discord.py
 RUN pip install tinydb
 RUN pip install python-dotenv
 RUN pip install emoji
+RUN pip install youtube-dl
 
 CMD ["python", "main.py"]

@@ -102,3 +102,12 @@ Adds soundbites for voice channels. Adds the commands:
 - `?play [sound]`: play the sound. Will join the voice channel the user is in if the bot has not already joined.
 
 To add sounds, add mp3 files to the directory `3pseatBot/data/sounds/`. The command for the sound will be its filename, e.g. `horn.mp3` can be played with `?play horn`.
+
+## TODO
+
+- [ ] Freedom mode command
+  - disables all rule checking for defined period of time
+  - requires admin permissions
+- [x] Command to add custom sound
+  - ex: `?addsound {name} {youtube_url}`
+  - needs to check if name is already used, if video is not too long
