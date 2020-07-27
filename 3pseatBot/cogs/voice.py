@@ -5,6 +5,8 @@ import youtube_dl
 
 from discord.ext import commands, tasks
 
+MAX_SOUND_LENGTH_SECONDS = 30
+
 class Voice(commands.Cog):
     """
 
@@ -73,11 +75,16 @@ class Voice(commands.Cog):
                 'preferredquality': '128',
             }],
             'logger': self.bot.logger,
-            'max_filesize': '8.0m',
+            'socket_timeout': 30,
         }
 
         try:
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                metadata = ydl.extract_info(url, download=False, process=False)
+                if int(metadata['duration']) > MAX_SOUND_LENGTH_SECONDS:
+                    await self.bot.send_server_message(ctx.channel, 'video is too long. '
+                            'Max length = {}s'.format(MAX_SOUND_LENGTH_SECONDS))
+                    return
                 ydl.download([url])
         except Exception as e:
             self.bot.log('Caught error downloading sound:\n{}'.format(e))
@@ -85,8 +92,7 @@ class Voice(commands.Cog):
         if os.path.exists(path + '.mp3'):
             await self.bot.send_server_message(ctx.channel, 'added sound `{}`.'.format(name))
         else:
-            await self.bot.send_server_message(ctx.channel, 'error downloading audio. '
-                    'Is the link is wrong or the video too long?'.format(name))
+            await self.bot.send_server_message(ctx.channel, 'error downloading audio.'.format(name))
 
 
     @commands.command(name='sounds', pass_context=True, brief='List sounds')
