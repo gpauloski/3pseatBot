@@ -22,14 +22,17 @@ class Voice(commands.Cog):
 
     @commands.command(name='join', pass_context=True, brief='Join voice channel')
     async def _join(self, ctx):
+        """Ensure bot is connected to same voice channel as user. Returns True on success."""
         if ctx.author.voice is None or ctx.author.voice.channel is None:
-            return await self.bot.send_server_message(ctx.channel, 
+            await self.bot.send_server_message(ctx.channel, 
                     '{}, you must be in a voice channel'.format(ctx.author.mention))
+            return False
         channel = ctx.author.voice.channel
         if ctx.voice_client is not None:
-            return await ctx.voice_client.move_to(channel)
-
-        await channel.connect()
+            await ctx.voice_client.move_to(channel)
+        else:
+            await channel.connect()
+        return True
 
     @commands.command(name='volume', pass_context=True, brief='Set 3pseatBot volume: ?volume [0-100]')
     async def _volume(self, ctx, volume: int):
@@ -48,6 +51,10 @@ class Voice(commands.Cog):
 
     @commands.command(name='play', pass_context=True, brief='Play a sound: ?play {name}')
     async def _play(self, ctx, sound: str):
+        if not await self._join(ctx):
+            return
+        if ctx.voice_client.is_playing():
+            ctx.voice_client.stop()
         sounds = self.get_sounds()
         try:
             source = sounds[sound]
@@ -109,17 +116,6 @@ class Voice(commands.Cog):
                 sounds[os.path.splitext(filename)[0]] = os.path.join(
                         self.sounds_path, filename)
         return sounds
-
-    @_play.before_invoke
-    async def ensure_voice(self, ctx):
-        if ctx.voice_client is None:
-            if ctx.author.voice:
-                await ctx.author.voice.channel.connect()
-            else:
-                await self.bot.send_server_message(ctx.channel, 
-                        'You are not connected to a voice channel.')
-        elif ctx.voice_client.is_playing():
-            ctx.voice_client.stop()
 
     @tasks.loop(seconds=30.0)
     async def leave_on_empty(self):
