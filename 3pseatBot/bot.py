@@ -165,6 +165,8 @@ class Bot(commands.AutoShardedBot):
         # Check if single link
         if re.match(URL_RE, text) and len(message.content.split(' ')) == 1:
             return True
+        if text.startswith('>'):
+            return True
         # Check if server message (e.g. when user joins channel announcement)
         if self._should_ignore_type(message):
             return True
