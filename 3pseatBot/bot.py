@@ -165,7 +165,11 @@ class Bot(commands.AutoShardedBot):
         # Check if single link
         if re.match(URL_RE, text) and len(message.content.split(' ')) == 1:
             return True
+        # Check if quoted message
         if text.startswith('>'):
+            return True
+        # Check if code
+        if text.startswith('```'):
             return True
         # Check if server message (e.g. when user joins channel announcement)
         if self._should_ignore_type(message):
