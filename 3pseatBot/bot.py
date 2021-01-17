@@ -102,7 +102,7 @@ class Bot(commands.AutoShardedBot):
         return False
 
     def is_booster(self, guild, user):
-        if guild.premium_subscriber_role in user.roles:
+        if user in guild.premium_subscribers:
             return True
         return False
 
