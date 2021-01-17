@@ -93,10 +93,17 @@ class Bot(commands.AutoShardedBot):
                                  discriminator=name[1])
 
     def is_admin(self, guild, user):
-        for admin in self.admins:
-            admin_user = self.get_user(guild, admin)
-            if user == admin_user:
-                return True
+        if str(user) in self.admins:
+            return True
+        #for admin in self.admins:
+        #    #admin_user = self.get_user(guild, admin)
+        #    #if user == admin_user:
+        #    #    return True
+        return False
+
+    def is_booster(self, guild, user):
+        if guild.premium_subscriber_role in user.roles:
+            return True
         return False
 
     async def send_invite_kick(self, channel, user):
@@ -116,8 +123,8 @@ class Bot(commands.AutoShardedBot):
                     'acknowledged.'.format(user.mention))
         else:
             try:
-                await self.send_invite_kick(channel, user)
                 await guild.kick(user)
+                await self.send_invite_kick(channel, user)
                 msg += 'Press F to pay respects.'
             except Exception as e: 
                 self.logger.warning('Failed to kick {}. Caught exception: '
@@ -133,8 +140,7 @@ class Bot(commands.AutoShardedBot):
     def clear_strikes(self, guild, user):
         self.db.clear(guild.name, user.name)
 
-    async def handle_mistake(self, message):
-        count = self.add_strike(message.guild, message.author)
+    async def handle_mistake(self, message, count):
         if count < self.max_offenses:
             msg = '{}! You\'ve disturbed the spirits ({}/{})'.format(
                     message.author.mention, count, self.max_offenses)
@@ -182,8 +188,12 @@ class Bot(commands.AutoShardedBot):
         if cog is not None:
             await cog.troll_reply(message)
 
+        if self.is_booster(message.guild, message.author):
+            return
+
         if not self._message_is_ok(message):
-            await self.handle_mistake(message)
+            count = self.add_strike(message.guild, message.author)
+            await self.handle_mistake(message, count)
 
     async def process_direct_message(self, message):
         await self.send_direct_message(message.author, 'Hi there, I cannot '

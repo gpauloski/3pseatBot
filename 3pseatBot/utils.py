@@ -1,7 +1,7 @@
 import emoji
 import re
 
-EMOJI_RE = r'<:\w*:\d*>'
+EMOJI_RE = r'<.*:\w*:\d*>'
 
 def is_emoji(text):
     """Returns True if string is just whitespace and Discord emojis"""

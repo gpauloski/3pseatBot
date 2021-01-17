@@ -54,13 +54,27 @@ class General(commands.Cog):
     @commands.command(name='addstrike', pass_context=True, brief='Add strike')
     async def _add_strike(self, ctx, user: discord.Member):
         if self.bot.is_admin(ctx.guild, ctx.message.author):
-            await self.bot.add_strike(ctx.guild, ctx.channel, user)
+            count = self.bot.add_strike(ctx.guild, user)
+            await self.bot.send_server_message(ctx.channel, 
+                    'added strike to {}. New strike count is {}.'.format(
+                    user.mention, count))
+            await self.bot.handle_mistake(ctx.message, count)
+        else:
+            await self.bot.send_server_message(ctx.channel,
+                    'you lack permission')
 
     @commands.command(name='removestrike', pass_context=True,
                       brief='Remove strike')
     async def _remove_strike(self, ctx, user: discord.Member):
         if self.bot.is_admin(ctx.guild, ctx.message.author):
-            self.bot.remove_strike(ctx.guild, ctx.channel, user)
+            count = self.bot.remove_strike(ctx.guild, user)
+            await self.bot.send_server_message(ctx.channel, 
+                    'removed strike from {}. New strike count is {}.'.format(
+                    user.mention, count))
+            await self.bot.handle_mistake(ctx.message, count)
+        else:
+            await self.bot.send_server_message(ctx.channel,
+                    'you lack permission')
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
