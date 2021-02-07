@@ -102,7 +102,7 @@ class Bot(commands.AutoShardedBot):
         return False
 
     def is_booster(self, guild, user):
-        if user in guild.premium_subscribers:
+        if guild.premium_subscriber_role in user.roles:
             return True
         return False
 
@@ -140,14 +140,14 @@ class Bot(commands.AutoShardedBot):
     def clear_strikes(self, guild, user):
         self.db.clear(guild.name, user.name)
 
-    async def handle_mistake(self, message, count):
+    async def handle_mistake(self, message, count, user):
         if count < self.max_offenses:
             msg = '{}! You\'ve disturbed the spirits ({}/{})'.format(
-                    message.author.mention, count, self.max_offenses)
+                    user.mention, count, self.max_offenses)
             await self.send_server_message(message.channel, msg)
         else:
-            self.clear_strikes(message.guild, message.author)
-            await self.kick_player(message.guild, message.channel, message.author)
+            self.clear_strikes(message.guild, user)
+            await self.kick_player(message.guild, message.channel, user)
 
     def _should_ignore_type(self, message):
         if (message.type is discord.MessageType.pins_add or
@@ -193,7 +193,7 @@ class Bot(commands.AutoShardedBot):
 
         if not self._message_is_ok(message):
             count = self.add_strike(message.guild, message.author)
-            await self.handle_mistake(message, count)
+            await self.handle_mistake(message, count, message.author)
 
     async def process_direct_message(self, message):
         await self.send_direct_message(message.author, 'Hi there, I cannot '

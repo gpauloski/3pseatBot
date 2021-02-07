@@ -58,7 +58,7 @@ class General(commands.Cog):
             await self.bot.send_server_message(ctx.channel, 
                     'added strike to {}. New strike count is {}.'.format(
                     user.mention, count))
-            await self.bot.handle_mistake(ctx.message, count)
+            await self.bot.handle_mistake(ctx.message, count, user)
         else:
             await self.bot.send_server_message(ctx.channel,
                     'you lack permission')
@@ -71,7 +71,7 @@ class General(commands.Cog):
             await self.bot.send_server_message(ctx.channel, 
                     'removed strike from {}. New strike count is {}.'.format(
                     user.mention, count))
-            await self.bot.handle_mistake(ctx.message, count)
+            await self.bot.handle_mistake(ctx.message, count, user)
         else:
             await self.bot.send_server_message(ctx.channel,
                     'you lack permission')
