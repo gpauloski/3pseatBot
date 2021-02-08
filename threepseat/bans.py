@@ -3,10 +3,12 @@ import os
 from tinydb import TinyDB, Query
 
 class Bans:
-    def __init__(self):
-        self.bans_file = 'data/bans.json'
+    def __init__(self, bans_file):
+        self.bans_file = bans_file
+        if not os.path.exists(os.path.dirname(bans_file)):
+            os.makedirs(os.path.dirname(bans_file))
         if not os.path.exists(self.bans_file):
-            open(self.bans_file, 'a').close()
+            open(self.bans_file, 'w').close()
         self._db = TinyDB(self.bans_file)
         self._user = Query()
 

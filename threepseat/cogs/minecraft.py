@@ -56,6 +56,3 @@ class Minecraft(commands.Cog):
             self.save_config()
             await self.bot.send_server_message(ctx.channel,
                     'Updated IP to {}.'.format(ip))
-
-def setup(bot):
-    bot.add_cog(Minecraft(bot))

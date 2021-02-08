@@ -4,6 +4,27 @@
 
 3pseatBot is a discord bot that does random things and has no real purpose except for being a fun side project. 3pseatBot's main job is to enforce that messages in a server start with a certain keyword, and if you forget to use the keyword too many times, you will get kicked (don't worry the bot will send you an invite link to rejoin if you get kicked). 3pseatBot has a lot more functionality now so see the Cogs section below for more information.
 
+## Get Started
+
+1. **Clone and Install**
+   ```
+   $ git clone https://github.com/gpauloski/3pseatBot
+   $ cd 3pseatBot
+   $ pip install -e .  # Note: -e allows for local development
+   ```
+2. **Configure**
+   Set the token:
+   ```
+   $ echo "TOKEN=1234567898abc" > .env
+   ```
+   If you do not have a token, create a New Application [here](https://discord.com/developers/applications/). The token is found in the 'bot' tab of the application.
+
+   Configure the rest of the settings in `config.json`.
+3. **Start**
+   ```
+   $ python run.py --config config.json
+   ```
+
 ## Usage Instructions
 
 The included Dockerfile is designed to run on a Raspberry Pi. For use on other architectures, change the `FROM` line in the Dockerfile to a Python3 base image that works on your system.
@@ -16,7 +37,7 @@ The included Dockerfile is designed to run on a Raspberry Pi. For use on other a
 
    Set the bot's API token:
    ```
-   $ echo "TOKEN=1234567898abc" > 3pseatBot/data/.env
+   $ echo "TOKEN=1234567898abc" > .env
    ```
    If you do not have a token, create a New Application [here](https://discord.com/developers/applications/). The token is found in the 'bot' tab of the application.
    

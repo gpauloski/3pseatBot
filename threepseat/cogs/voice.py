@@ -122,7 +122,3 @@ class Voice(commands.Cog):
         if len(self.bot.voice_clients) > 0:
             if len(self.bot.voice_clients[0].channel.members) <= 1:
                 await self.bot.voice_clients[0].disconnect()
-
-def setup(bot):
-    bot.add_cog(Voice(bot))
-

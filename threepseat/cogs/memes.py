@@ -46,5 +46,11 @@ class Memes(commands.Cog):
         msg = 'heads' if rand == 1 else 'tails'
         await self.bot.send_server_message(ctx.channel, '{}'.format(msg))
 
-def setup(bot):
-    bot.add_cog(Memes(bot))
+    async def process_guild_message(self, message):
+        cog = self.get_cog('Memes')
+        if cog is not None:
+            await cog.troll_reply(message)
+    async def process_guild_message(self, message):
+        cog = self.get_cog('Memes')
+        if cog is not None:
+            await cog.troll_reply(message)
