@@ -1,5 +1,7 @@
 # 3pseatBot
 
+[![Documentation Status](https://readthedocs.org/projects/3pseatbot/badge/?version=latest)](https://3pseatbot.readthedocs.io/en/latest/?badge=latest)
+
 ## What is 3pseatBot?
 
 3pseatBot is a discord bot that does random things and has no real purpose except for being a fun side project. 3pseatBot's main job is to enforce that messages in a server start with a certain keyword, and if you forget to use the keyword too many times, you will get kicked (don't worry the bot will send you an invite link to rejoin if you get kicked). 3pseatBot has a lot more functionality now so see the Cogs section below for more information.
