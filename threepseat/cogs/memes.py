@@ -22,7 +22,8 @@ class Memes(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         """Called when message is created and sent"""
-        await self.replies(message)
+        if not message.author.bot:
+            await self.replies(message)
 
 
     @commands.command(pass_context=True, brief='should I snowball?')
