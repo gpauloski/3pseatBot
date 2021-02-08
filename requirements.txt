@@ -1,13 +1,6 @@
-aiohttp
-async-timeout
-attrs
-chardet
 discord.py
 emoji
-idna
-multidict
 pynacl
 python-dotenv
 tinydb
-websockets
-yarl
+youtube_dl

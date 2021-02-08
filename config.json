@@ -1,0 +1,33 @@
+{
+	"command_prefix": "?",
+	"bot_admins": ["Atomos#2059"],
+	"playing_title": "3pseat Simulator 2020",
+	"use_extensions": ["games", "general", "memes", "minecraft", "rules", "voice"],
+	"extension_configs": {
+		"games": {
+			"games_file": "data/games.json"
+		},
+		"general": {},
+		"memes": {
+			"dad_reply": true,
+			"pog_reply": true
+		},
+		"minecraft": {
+			"mc_file": "data/mc.json"
+		},
+		"rules": {
+			"database_path": "data/bans.json",
+			"message_prefix": ["3pseat", "3pfeet", "3ppie"],
+			"whitelist_prefix": ["!"],
+			"max_offenses": 3,
+			"allow_deletes": false,
+			"allow_edits": false,
+			"allow_wrong_commands": false,
+			"booster_exception": true,
+			"invite_after_kick": true
+		},
+		"voice": {
+			"sounds_dir": "data/sounds"
+		}
+	}
+}
