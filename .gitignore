@@ -1,6 +1,4 @@
 .DS_Store
-*.json
-*.cfg
 logs/*
 data/*
 

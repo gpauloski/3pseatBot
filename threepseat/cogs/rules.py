@@ -136,7 +136,7 @@ class Rules(commands.Cog):
     async def strikes(self, ctx: commands.Context) -> None:
         """Command to list strikes in guild"""
         if ctx.invoked_subcommand is None:
-            self.list(ctx)
+            await self.list(ctx)
 
 
     @strikes.command(pass_context=True, brief='add strike to user')

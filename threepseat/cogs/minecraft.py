@@ -28,7 +28,6 @@ class Minecraft(commands.Cog):
         self.mc_file = mc_file
 
         if os.path.exists(self.mc_file):
-            print('here')
             with open(self.mc_file) as f:
                 self.mc_dict = keys_to_int(json.load(f))
 

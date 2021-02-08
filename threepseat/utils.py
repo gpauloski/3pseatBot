@@ -16,7 +16,7 @@ def is_emoji(text: str) -> bool:
     # remove unicode emojis from text
     text = emoji.get_emoji_regexp().sub(r'', text)
     # remove discord emojis from text
-    text = re.sub(DISCORD_EMOJI_RE, '', text)
+    text = re.sub(DISCORD_EMOTE_RE, '', text)
     
     # at this point, the string has all emojis removed so if the string
     # is just whitespace then we know it was only emojis

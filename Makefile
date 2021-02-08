@@ -1,6 +1,6 @@
-APP_NAME=3pseatBot
+APP_NAME=discord_bot
 
-RUN_CMD="python run.py --config config.json"
+RUN_CMD="python --version ; pip install -e . ; python run.py --config config.json"
 
 docker-build:
 	docker image build -t $(APP_NAME) .
@@ -11,11 +11,11 @@ docker-interactive:
 
 docker-start:
 	docker run -v $(shell pwd):/bot -d --restart=unless-stopped \
-		--name=$(APP_NAME) $(APP_NAME) $(RUN_CMD)
+		-w /bot --name=$(APP_NAME) $(APP_NAME) /bin/bash -c $(RUN_CMD)
 
 docker-stop:
 	docker stop $(APP_NAME) || true;
 	docker rm $(APP_NAME) || true
 
 dev-start:
-	$(RUN_CMD)
+	eval $(RUN_CMD)
