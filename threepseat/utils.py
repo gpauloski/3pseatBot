@@ -4,9 +4,9 @@ import logging
 import re
 
 from discord.ext import commands
-from typing import Optional
+from typing import Any, Dict, Optional
 
-from threepseat.constants import DISCORD_EMOJI_RE, URL_RE
+from threepseat.constants import DISCORD_EMOTE_RE, URL_RE
 
 logger = logging.getLogger()
 
@@ -73,3 +73,7 @@ def log(msg: str, level: str = 'info',
         self.logger.error(log_msg)
     else:
         raise ValueError('Unknown logging level "{}".format(level))')
+
+def keys_to_int(d: Dict[Any, Any]) -> Dict[int, Any]:
+    """Converts str keys of dict to int"""
+    return {int(k): v for k, v in d.items()}

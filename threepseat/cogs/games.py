@@ -28,7 +28,7 @@ class Games(commands.Cog):
     @commands.group(pass_context=True, brief='?help games for more info')
     async def games(self, ctx: commands.Context) -> None:
         if ctx.invoked_subcommand is None:
-            self.list(ctx)
+            await self.list(ctx)
 
 
     @games.command(pass_context=True, brief='list available games')
@@ -103,4 +103,4 @@ class Games(commands.Cog):
 
     def save_config(self) -> None:
         with open(self.games_file, 'w') as f:
-            json.dump(self.games_dict, f)
+            json.dump(self.games_dict, f, indent=4, sort_keys=True)

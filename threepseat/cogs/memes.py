@@ -1,56 +1,65 @@
-import re
+import discord
 import random
+import re
 
 from discord.ext import commands
 
-#POG_RE = r'(^| |\'|")p+\s*o+\s*g+\s*g*\s*e*\s*r*\s*s*(c\s*h\s*a\s*m\s*p\s*)?(.| |$|\'|")'
-POG_RE = r'(p+\s*)+(o+\s*)+(g+\s*)+'
-#POG_EMOTE_RE = r'<:pog(gers*)?:\d*>'
-POG_EMOTE_RE = r'<:.*pog.*:\d*>'
-POG_EMOTES = ['\U0001F1F5', '\U0001F1F4', '\U0001F1EC']
-DAD_RE = r'(^| |\n)((i\'?m)|(i am)) (\w+)'
+from threepseat.constants import POG_RE, POG_EMOTE_RE, POG_EMOTES, DAD_RE
+
 
 class Memes(commands.Cog):
-    def __init__(self, bot):
+    """Extension for Memes"""
+    def __init__(self,
+                 bot: commands.bot,
+                 pog_reply: bool = False,
+                 dad_reply: bool = False
+        ) -> None:
         self.bot = bot
+        self.pog_reply = pog_reply
+        self.dad_reply = dad_reply
 
-    async def troll_reply(self, message):
-        text = message.content.lower()
-        if re.search(POG_RE, text) or re.search(POG_EMOTE_RE, text):
-            await self.bot.send_server_message(message.channel, 'poggers', 
-                    POG_EMOTES)
 
-        search = re.findall(DAD_RE, text)
-        if len(search) > 0:
-            search = search[0]
-            await self.bot.send_server_message(message.channel,
-                    'Hi {}, I\'m {}!'.format(search[4], self.bot.user.mention))
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message) -> None:
+        """Called when message is created and sent"""
+        await self.replies(message)
 
-    @commands.command(name='snowball', pass_context=True,
-            brief='Should I snowball?')
-    async def _snowball(self, ctx):
+
+    @commands.command(pass_context=True, brief='should I snowball?')
+    async def snowball(self, ctx: commands.Context) -> None:
+        """Command for taking a snowball"""
         msg = '{}, you should always take the snowball'.format(
               ctx.message.author.mention)
-        await self.bot.send_server_message(ctx.channel, msg)
+        await self.bot.message_guild(msg, ctx.channel)
 
-    @commands.command(name='odds', pass_context=True,
-            brief='What are the odds? [max_num]')
-    async def _odds(self, ctx, num: int):
+
+    @commands.command(pass_context=True, brief='what are the odds? [max_num]')
+    async def odds(self, ctx: commands.Context, num: int) -> None:
+        """Command that returns random int in [1, num]"""
         rand = random.randint(1, num)
-        await self.bot.send_server_message(ctx.channel, '{}'.format(rand))
+        await self.bot.message_guild('{}'.format(rand), ctx.channel)
 
-    @commands.command(name='flip', pass_context=True,
-            brief='Flip a coin')
-    async def _flip(self, ctx):
+
+    @commands.command(pass_context=True, brief='Flip a coin')
+    async def flip(self, ctx: commands.Context) -> None:
+        """Command that flips a coin"""
         rand = random.randint(1, 2)
         msg = 'heads' if rand == 1 else 'tails'
-        await self.bot.send_server_message(ctx.channel, '{}'.format(msg))
+        await self.bot.message_guild('{}'.format(msg), ctx.channel)
 
-    async def process_guild_message(self, message):
-        cog = self.get_cog('Memes')
-        if cog is not None:
-            await cog.troll_reply(message)
-    async def process_guild_message(self, message):
-        cog = self.get_cog('Memes')
-        if cog is not None:
-            await cog.troll_reply(message)
+
+    async def replies(self, message: discord.Message) -> None:
+        """Process and handle meme replies to messages"""
+        if self.pog_reply:
+            text = message.content.lower()
+            if re.search(POG_RE, text) or re.search(POG_EMOTE_RE, text):
+                await self.bot.message_guild('poggers', message.channel,
+                        POG_EMOTES)
+
+        if self.dad_reply:
+            search = re.findall(DAD_RE, text)
+            if len(search) > 0:
+                search = search[0]
+                await self.bot.message_guild(
+                        'Hi {}, I\'m {}!'.format(search[4], self.bot.user.mention),
+                        message.channel)

@@ -4,7 +4,7 @@ import logging
 from discord.ext import commands
 from typing import Union, Optional, List
 
-from threepseat.constants import F_EMOJI
+from threepseat.constants import F_EMOTE
 from threepseat.bans import Bans
 from threepseat.utils import is_admin, is_emoji, is_booster, is_url
 
@@ -316,7 +316,7 @@ class Rules(commands.Cog):
 
         if message is not None:
             message += 'Press F to pay respects.'
-            await self.bot.message_guild(message, channel, react=F_EMOJI)
+            await self.bot.message_guild(message, channel, react=F_EMOTE)
         return True
 
 

@@ -24,6 +24,11 @@
    ```
    $ python run.py --config config.json
    ```
+4. **Install YoutubeDL dependencies**
+   For downloading audio clips from YouTube, ffmpeg is required.
+   ```
+   $ sudo apt install ffmpeg
+   ```
 
 ## Usage Instructions
 
