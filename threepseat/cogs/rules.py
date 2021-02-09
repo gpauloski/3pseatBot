@@ -4,12 +4,13 @@ import logging
 from discord.ext import commands
 from typing import Union, Optional, List
 
-from threepseat import Bot
-from threepseat.constants import F_EMOTE
-from threepseat.bans import Bans
-from threepseat.utils import is_admin, is_emoji, is_booster, is_url
+from threepseat.bot import Bot
+from threepseat.utils import Bans, is_admin, is_emoji, is_booster, is_url
+
 
 logger = logging.getLogger()
+
+F_EMOTE = '\U0001F1EB'
 
 
 class Rules(commands.Cog):

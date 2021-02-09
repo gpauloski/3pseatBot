@@ -1,58 +1,38 @@
-threepseat.cogs package
-=======================
+threepseat.cogs
+===============
 
-threepseat.cogs.games module
-----------------------------
+threepseat.cogs.Games
+---------------------
 
-.. automodule:: threepseat.cogs.games
+.. autoclass:: threepseat.cogs.Games
    :members:
-   :undoc-members:
-   :show-inheritance:
 
-threepseat.cogs.general module
-------------------------------
+threepseat.cogs.General
+-----------------------
 
-.. automodule:: threepseat.cogs.general
+.. autoclass:: threepseat.cogs.General
    :members:
-   :undoc-members:
-   :show-inheritance:
 
-threepseat.cogs.memes module
-----------------------------
+threepseat.cogs.Memes
+---------------------
 
-.. automodule:: threepseat.cogs.memes
+.. autoclass:: threepseat.cogs.Memes
    :members:
-   :undoc-members:
-   :show-inheritance:
 
-threepseat.cogs.minecraft module
---------------------------------
+threepseat.cogs.Minecraft
+-------------------------
 
-.. automodule:: threepseat.cogs.minecraft
+.. autoclass:: threepseat.cogs.Minecraft
    :members:
-   :undoc-members:
-   :show-inheritance:
 
-threepseat.cogs.rules module
-----------------------------
+threepseat.cogs.Rules
+---------------------
 
-.. automodule:: threepseat.cogs.rules
+.. autoclass:: threepseat.cogs.Rules
    :members:
-   :undoc-members:
-   :show-inheritance:
 
-threepseat.cogs.voice module
-----------------------------
+threepseat.cogs.Voice
+---------------------
 
-.. automodule:: threepseat.cogs.voice
+.. autoclass:: threepseat.cogs.Voice
    :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: threepseat.cogs
-   :members:
-   :undoc-members:
-   :show-inheritance:

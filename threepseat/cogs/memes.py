@@ -4,8 +4,13 @@ import re
 
 from discord.ext import commands
 
-from threepseat import Bot
-from threepseat.constants import POG_RE, POG_EMOTE_RE, POG_EMOTES, DAD_RE
+from threepseat.bot import Bot
+
+
+POG_EMOTES = ['\U0001F1F5', '\U0001F1F4', '\U0001F1EC']
+POG_RE = r'(p+\s*)+(o+\s*)+(g+\s*)+'
+POG_EMOTE_RE = r'<:.*pog.*:\d*>'
+DAD_RE = r'(^| |\n)((i\'?m)|(i am)) (\w+)'
 
 
 class Memes(commands.Cog):

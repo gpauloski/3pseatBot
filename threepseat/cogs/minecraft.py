@@ -5,7 +5,7 @@ import os
 from discord.ext import commands
 from typing import Any, Dict, Optional
 
-from threepseat import Bot
+from threepseat.bot import Bot
 from threepseat.utils import is_admin, keys_to_int
 
 

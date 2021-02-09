@@ -5,7 +5,7 @@ import sys
 
 from discord.ext import commands
 
-from threepseat import Bot
+from threepseat.bot import Bot
 
 
 class General(commands.Cog):

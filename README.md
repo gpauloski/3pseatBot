@@ -62,9 +62,8 @@ The included Dockerfile is designed to run on a Raspberry Pi. For use on other a
 ## TODO
 
 - [ ] Finish cogs documentation
-- [ ] Refactor bans.py
+- [ ] Refactor bans.py: make it into general "Database" class that can be used by Minecraft and Games as well.
 - [ ] Finish docmentation for bans.py, bot.py, and utils.py
-- [ ] Move run.py into the threepseat dir. Maybe create an executable?
 - [ ] Create get started documentation
 - [ ] Create develop documentation
 - [ ] Create hosting documentation

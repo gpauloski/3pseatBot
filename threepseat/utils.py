@@ -1,14 +1,19 @@
 import discord
 import emoji
 import logging
+import os
 import re
 
 from discord.ext import commands
+from tinydb import TinyDB, Query
 from typing import Any, Dict, Optional
 
-from threepseat.constants import DISCORD_EMOTE_RE, URL_RE
 
 logger = logging.getLogger()
+
+URL_RE = (r'((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.'
+          '([a-zA-Z]){2,6}([a-zA-Z0-9\.\&\/\?\:@\-_=#])*')
+DISCORD_EMOTE_RE = r'<.*:\w*:\d*>'
 
 
 def is_emoji(text: str) -> bool:
@@ -77,3 +82,47 @@ def log(msg: str, level: str = 'info',
 def keys_to_int(d: Dict[Any, Any]) -> Dict[int, Any]:
     """Converts str keys of dict to int"""
     return {int(k): v for k, v in d.items()}
+
+class Bans:
+    def __init__(self, bans_file):
+        self.bans_file = bans_file
+        if not os.path.exists(os.path.dirname(bans_file)):
+            os.makedirs(os.path.dirname(bans_file))
+        if not os.path.exists(self.bans_file):
+            open(self.bans_file, 'w').close()
+        self._db = TinyDB(self.bans_file)
+        self._user = Query()
+
+    def get_table(self, guild):
+        return self._db.table(guild)
+
+    def get_value(self, guild, name):
+        db = self.get_table(guild)
+        if not db.search(self._user.name.matches(name)):
+            db.insert({'name': name, 'count': 0})
+        result = db.search(self._user.name == name)
+        user = result.pop(0)
+        return user['count']
+
+    def set_value(self, guild, name, value):
+        db = self.get_table(guild)
+        db.update({'count': value}, self._user.name == name) 
+
+    def add_to_value(self, guild, name, value):
+        cur_val = self.get_value(guild, name)
+        val = max(0, cur_val + value)
+        self.set_value(guild, name, val)
+        return val
+
+    def up(self, guild, name):
+        val = self.add_to_value(guild, name, 1)
+        self.add_to_value(guild, 'server', 1)
+        return val
+    
+    def down(self, guild, name):
+        val = self.add_to_value(guild, name, -1)
+        self.add_to_value(guild, 'server', -1)
+        return val
+
+    def clear(self, guild, name):
+        self.set_value(guild, name, 0)

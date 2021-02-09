@@ -5,7 +5,7 @@ import random
 from discord.ext import commands
 from typing import Callable, Any
 
-from threepseat import Bot
+from threepseat.bot import Bot
 from threepseat.utils import is_admin
 
 

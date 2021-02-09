@@ -7,7 +7,7 @@ import youtube_dl
 from discord.ext import commands, tasks
 from typing import Dict
 
-from threepseat import Bot
+from threepseat.bot import Bot
 
 
 logger = logging.getLogger()

@@ -7,7 +7,8 @@ import sys
 
 from dotenv import load_dotenv
 from typing import Optional
-from threepseat import Bot
+
+from threepseat.bot import Bot
 
 
 def parse_args() -> argparse.Namespace:

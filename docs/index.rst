@@ -7,14 +7,13 @@ Welcome to 3pseatBot's documentation!
 =====================================
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 4
    :caption: Contents:
 
    getstarted
    hosting
    develop
-   source/threepseat
-   source/threepseat.cogs
+   source/modules
 
 
 Indices and tables

@@ -16,4 +16,4 @@ EXTENSIONS = {
 }
 """Maps extension names to the classes"""
 
-__all__ = ['EXTENSIONS']
+__all__ = ['EXTENSIONS', 'Games', 'General', 'Memes', 'Minecraft', 'Rules', 'Voice']
