@@ -120,16 +120,16 @@ class Bot(commands.Bot):
         logger.info('Logged in as {} (ID={})'.format(
                 self.user.name, self.user.id))
 
-        # Generally avoid imports here but if we import this 
-        # at the module level, we will get a circular import error
-        # with the type hinting
-        from threepseat.cogs import EXTENSIONS
+        # # Generally avoid imports here but if we import this 
+        # # at the module level, we will get a circular import error
+        # # with the type hinting
+        # from threepseat.cogs import EXTENSIONS
 
         # Load extensions/cogs
         for ext in self.use_extensions:
-            if ext in EXTENSIONS:
+            if ext in threepseat.cogs.EXTENSIONS:
                 # Load a cog we know
-                _class = EXTENSIONS[ext]
+                _class = threepseat.cogs.EXTENSIONS[ext]
 
                 if ext in self.extension_configs:
                     config = self.extension_configs[ext]
