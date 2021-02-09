@@ -20,6 +20,7 @@
 project = '3pseatBot'
 copyright = '2021, Greg Pauloski'
 author = 'Greg Pauloski'
+release = '1.0.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -28,7 +29,11 @@ author = 'Greg Pauloski'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+	'sphinx.ext.autodoc',
+	'sphinx.ext.napoleon'
 ]
+
+autosummary_generate = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -44,9 +49,24 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+
+# -- Path Setup --------------------------------------------------------------
+
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../threepseat'))
+
+def skip(app, what, name, obj, would_skip, options):
+    if name == "__init__":
+        return False
+    return would_skip
+
+def setup(app):
+    app.connect("autodoc-skip-member", skip)

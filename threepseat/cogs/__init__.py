@@ -5,6 +5,7 @@ from threepseat.cogs.minecraft import Minecraft
 from threepseat.cogs.rules import Rules
 from threepseat.cogs.voice import Voice
 
+
 EXTENSIONS = {
 	'games': Games,
 	'general': General,
@@ -13,5 +14,6 @@ EXTENSIONS = {
 	'rules': Rules,
 	'voice': Voice
 }
+"""Maps extension names to the classes"""
 
 __all__ = ['EXTENSIONS']

@@ -58,3 +58,16 @@ The included Dockerfile is designed to run on a Raspberry Pi. For use on other a
    $ make docker-start  # this will automatically run the image on startup
    $ make docker-stop
    ```
+
+## TODO
+
+- [ ] Finish cogs documentation
+- [ ] Refactor bans.py
+- [ ] Finish docmentation for bans.py, bot.py, and utils.py
+- [ ] Move run.py into the threepseat dir. Maybe create an executable?
+- [ ] Create get started documentation
+- [ ] Create develop documentation
+- [ ] Create hosting documentation
+- [ ] Update this README to link to relevant stuff on readthedocs
+- [ ] Change Games cog to work similar to Minecraft cog where data is local to a guild
+- [ ] GitHub CI, linting

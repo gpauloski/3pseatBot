@@ -4,6 +4,7 @@ import logging
 from discord.ext import commands
 from typing import Union, Optional, List
 
+from threepseat import Bot
 from threepseat.constants import F_EMOTE
 from threepseat.bans import Bans
 from threepseat.utils import is_admin, is_emoji, is_booster, is_url
@@ -12,9 +13,21 @@ logger = logging.getLogger()
 
 
 class Rules(commands.Cog):
-    """Extension for enforcing guild rules"""
+    """Extension for enforcing guild rules
+
+    This cog enforces a long running meme on our Discord server that
+    all messages have to start with '3pseat'. This cog enforces a more
+    general version of that concept and tracks the number of infractions
+    a user has. If they get too many, they will be kicked.
+
+    Adds the following commands:
+      - `?strikes`: aliases `?strikes list`
+      - `?strikes list`: list strike count for members
+      - `?strikes add @member`: add strike to member
+      - `?strikes remove @member`: remove strike from member
+    """
     def __init__(self,
-                 bot: commands.Bot,
+                 bot: Bot,
                  database_path: str,
                  message_prefix: Optional[Union[str, List[str]]] = None,
                  whitelist_prefix: Union[str, List[str]] = [],
@@ -25,25 +38,24 @@ class Rules(commands.Cog):
                  booster_exception: bool = True,
                  invite_after_kick: bool = True
         ) -> None:
-        """Create Rules cog
-
+        """
         Args:
-            bot: bot object this cog is attached to
-            database_path: path to file storing database of strikes
-            message_prefix: valid prefixes for messages. If None, no
+            bot (Bot): bot object this cog is attached to
+            database_path (str): path to file storing database of strikes
+            message_prefix (str, list[str]): valid prefixes for messages. If None, no
                 message prefix checking is done.
-            whitelist_prefix: messages starting with these prefixes will
+            whitelist_prefix (str, list[str]): messages starting with these prefixes will
                 be ignored. Useful for ignoring the command prefixes of
                 other bots.
-            max_offenses: maximum strikes before being kicked
-            allow_deletes: if false, the bot will notify the channel if
+            max_offenses (int): maximum strikes before being kicked
+            allow_deletes (bool): if false, the bot will notify the channel if
                 a message is deleted
-            allow_edits: if false, the bot will notify the channel if 
+            allow_edits (bool): if false, the bot will notify the channel if 
                 a message is edited
-            allow_wrong_commands: if false, members will be given a strike
+            allow_wrong_commands (bool): if false, members will be given a strike
                 for trying to use invalid commands
-            booster_exception: boosters are exempt from rules
-            invite_after_kick: send invite link if member is kicked
+            booster_exception (bool): boosters are exempt from rules
+            invite_after_kick (bool): send invite link if member is kicked
         """
         self.bot = bot
         if isinstance(message_prefix, str):
@@ -81,7 +93,7 @@ class Rules(commands.Cog):
             return
 
         if not self.is_verified(message):
-            await self._add_strike(message.author, message.channel, 
+            await self.add_strike(message.author, message.channel, 
                     message.guild)
 
 
@@ -115,7 +127,7 @@ class Rules(commands.Cog):
 
         # confirm new message still passes rules
         if not self.is_verified(after):
-            await self._add_strike(after.author, after.channel, 
+            await self.add_strike(after.author, after.channel, 
                     after.guild)
 
 
@@ -127,21 +139,14 @@ class Rules(commands.Cog):
         """Called when a command is invalid"""
         if (isinstance(error, commands.CommandNotFound) and
                 not self.allow_wrong_commands):
-            await self._add_strike(ctx.message.author, ctx.channel, ctx.guild)
+            await self.add_strike(ctx.message.author, ctx.channel, ctx.guild)
 
-
-    @commands.group(pass_context=True, brief='?help strikes for more info', 
-                    description='Manage strikes. By default, '
-                                'lists all strikes in the guild.')
-    async def strikes(self, ctx: commands.Context) -> None:
-        """Command to list strikes in guild"""
-        if ctx.invoked_subcommand is None:
-            await self.list(ctx)
-
-
-    @strikes.command(pass_context=True, brief='add strike to user')
     async def list(self, ctx: commands.Context) -> None:
-        """Command to list strikes for the guild""" 
+        """List strikes for members in `ctx.guild`
+
+        Args:
+            ctx (Context): context from command call
+        """ 
         msg = '{}, here are the strikes:```'.format(
                 ctx.message.author.mention)
         serverCount = 0
@@ -154,34 +159,32 @@ class Rules(commands.Cog):
         msg = msg + '```Total offenses to date: {}'.format(serverCount)
         await self.bot.message_guild(msg, ctx.channel)
 
+    async def add(self, ctx: commands.Context, member: discord.Member) -> None:
+        """Adds a strike to `member`
 
-    @strikes.command(pass_context=True, brief='add strike to user')
-    async def add(self, 
-                  ctx: commands.Context,
-                  member: discord.Member
-        ) -> None:
-        """Command to add a strike to a user
+        Requires `ctx.message.author` to be a bot admin (not guild admin).
 
-        Requires being a bot admin
-        """
+        Args:
+            ctx (Context): context from command call
+            member (Member): member to add strike to 
+        """ 
         if self.bot.is_bot_admin(ctx.message.author):
             await self._add_strike(member, ctx.channel, ctx.guild)
         else:
             await self.bot.message_server('you lack permission, {}'.format(
                     ctx.message.author.mention))
 
+    async def remove(self, ctx: commands.Context, member: discord.Member) -> None:
+        """Removes a strike from `member`
 
-    @strikes.command(pass_context=True, brief='remove strike from user')
-    async def remove(self, 
-                     ctx: commands.Context,
-                     member: discord.Member
-        ) -> None:
-        """Command to remove a strike to a user
+        Requires `ctx.message.author` to be a bot admin (not guild admin).
 
-        Requires being a bot admin
-        """
+        Args:
+            ctx (Context): context from command call
+            member (Member): member to remove strike from
+        """ 
         if self.bot.is_bot_admin(ctx.message.author):
-            self._remove_strike(member, ctx.guild)
+            self.remove_strike(member, ctx.guild)
             count = self.db.get_value(ctx.guild.name, member.name)
             await self.bot.message_guild(
                     'removed strike for {}. New strike count is {}.'.format(
@@ -191,9 +194,20 @@ class Rules(commands.Cog):
             await self.bot.message_server('you lack permission, {}'.format(
                     ctx.message.author.mention))
 
-
     def should_ignore(self, message: discord.Message) -> bool:
-        """Returns true if the message should be ignored for rules"""
+        """Returns true if the message should be ignored
+
+        Many types of messages are exempt from the message prefix rules
+        including: pin messages, member join messages, guild boosters
+        if `booster_exception`, messages that start with `whitelist_prefix`,
+        and bot commands.
+
+        Args:
+            message (Message): message to parse
+
+        Returns:
+            `bool`
+        """
         if message.type is discord.MessageType.pins_add:
             return True
         if message.type is discord.MessageType.new_member:
@@ -208,9 +222,19 @@ class Rules(commands.Cog):
             return True
         return False
 
-
     def is_verified(self, message: discord.Message) -> bool:
-        """Verifies a message passes the rules"""
+        """Verifies a message passes the rules
+
+        A message is verified if it: start with `message_prefix`, is
+        just emojis, is a single attachment with no text, is a single
+        url with no text, is quoted, or is code.
+
+        Args:
+            message (Message): message to parse
+
+        Returns:
+            `bool`
+        """
         text = message.content.strip().lower()
 
         # Check if starts with 3pseat, 3pfeet, etc
@@ -236,7 +260,6 @@ class Rules(commands.Cog):
 
         return False
 
-
     async def check_strikes(self,
                             member: discord.Member, 
                             channel: discord.TextChannel,
@@ -249,8 +272,14 @@ class Rules(commands.Cog):
         the user and send them a invite link if
         `self.invite_after_kick`.
 
-        Warning: in general, this function should only be called
-            by `self._add_strike()`.
+        Warning: 
+            In general, this function should only be called
+            by `add_strike()`.
+
+        Args:
+            member (Member): member to check strikes of
+            channel (Channel): channel to send message in
+            guild (Guild): guild to kick user from if needed
         """
         count = self.db.get_value(guild.name, member.name)
 
@@ -259,7 +288,7 @@ class Rules(commands.Cog):
                   member.mention, count, self.max_offenses)
             await self.bot.message_guild(msg, channel)
         else:
-            self._clear_strikes(member, guild)
+            self.clear_strikes(member, guild)
             msg = ('That\'s {} strikes, {}. I\'m sorry but your time as come. '
                    'RIP.\n'.format(self.max_offenses, member.mention))
             success = await self.kick(member, channel, guild, msg)
@@ -268,13 +297,18 @@ class Rules(commands.Cog):
                        '{link}')
                 await self.invite(member, channel, msg)
 
-
     async def invite(self,
                      user: Union[discord.User, discord.Member], 
                      channel: discord.TextChannel,
                      message: str
         ) -> None:
-        """Send guild invite link to user"""
+        """Send guild invite link to user
+
+        Args:
+            user (Member, User): user to direct message link
+            channel (Channel): channel to create invite for
+            message (str): optional message to include with invite link
+        """
         try:
             link = await channel.create_invite(max_uses=1)
             msg = message.format(link=link)
@@ -283,21 +317,23 @@ class Rules(commands.Cog):
             logger.warning('Failed to send rejoin message to {}.'
                     'Caught exception: {}'.format(user, e))
 
-
     async def kick(self,
                    member: discord.Member, 
                    channel: discord.TextChannel,
                    guild: discord.Guild,
                    message: str = None
         ) -> bool:
-        """Kick user from guild
+        """Kick member from guild
 
         Args:
-            member: member to kick
-            channel: channel to send notification messages to
-            guild: guild member belongs to to be kicked from
-            message: optional message to sent to channel when
+            member (Member): member to kick
+            channel (Channel): channel to send notification messages to
+            guild (Guild): guild member belongs to to be kicked from
+            message (str): optional message to sent to channel when
                 the member is kicked
+
+        Returns:
+            `True` if kick was successful
         """
         if is_admin(member):
             if message is None:
@@ -319,28 +355,54 @@ class Rules(commands.Cog):
             await self.bot.message_guild(message, channel, react=F_EMOTE)
         return True
 
-
-    async def _add_strike(self,
-                    member: discord.Member, 
-                    channel: discord.TextChannel,
-                    guild: discord.Guild
+    async def add_strike(self,
+                         member: discord.Member, 
+                         channel: discord.TextChannel,
+                         guild: discord.Guild
         ) -> None:
-        """Add a strike to the `member` of `guild`"""
+        """Add a strike to the `member` of `guild` in the database
+        
+        Calls `check_strikes()`
+
+        Args:
+            member (Member): member
+            channel (Channel): channel to send message in
+            guild (Guild): guild
+        """
         self.db.up(guild.name, member.name)
         await self.check_strikes(member, channel, guild)
 
-
-    def _remove_strike(self,
-                       member: discord.Member, 
-                       guild: discord.Guild
-        ) -> None:
-        """Remove a strike from the `member` of `guild`"""
+    def remove_strike(self, member: discord.Member, guild: discord.Guild) -> None:
+        """Remove a strike from the `member` of `guild` in the database
+        
+        Args:
+            member (Member): member
+            guild (Guild): guild
+        """
         self.db.down(guild.name, member.name)
 
+    def clear_strikes(self, member: discord.Member, guild: discord.Guild) -> None:
+        """Reset strikes for the `member` of `guild` in the database
 
-    def _clear_strikes(self,
-                       member: discord.Member, 
-                       guild: discord.Guild
-        ) -> None:
-        """Reset strikes for the `member` of `guild`"""
+        Args:
+            member (Member): member
+            guild (Guild): guild
+        """
         self.db.clear(guild.name, member.name)
+
+    @commands.group(name='strikes', pass_context=True, brief='?help strikes for more info')
+    async def _strikes(self, ctx: commands.Context) -> None:
+        if ctx.invoked_subcommand is None:
+            await self.list(ctx)
+
+    @_strikes.command(name='list', pass_context=True, brief='add strike to user')
+    async def _list(self, ctx: commands.Context) -> None:
+        await self.list(ctx)
+
+    @_strikes.command(name='add', pass_context=True, brief='add strike to user')
+    async def _add(self, ctx: commands.Context, member: discord.Member) -> None:
+        await self.add(ctx, member)
+
+    @_strikes.command(name='remove', pass_context=True, brief='remove strike from user')
+    async def _remove(self, ctx: commands.Context, member: discord.Member) -> None:
+        await self.remove(ctx, memeber)

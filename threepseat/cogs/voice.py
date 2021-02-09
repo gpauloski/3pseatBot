@@ -7,6 +7,8 @@ import youtube_dl
 from discord.ext import commands, tasks
 from typing import Dict
 
+from threepseat import Bot
+
 
 logger = logging.getLogger()
 
@@ -14,29 +16,42 @@ MAX_SOUND_LENGTH_SECONDS = 30
 
 
 class Voice(commands.Cog):
-    """
+    """Extension for playing sound clips in voice channels
 
     Based on https://github.com/Rapptz/discord.py/blob/master/examples/basic_voice.py
+
+    Adds the following commands:
+      - `?join`: have bot join voice channel of user
+      - `?leave`: have bot leave voice channel of user
+      - `?volume [0-100]`: set volume
+      - `?sounds`: aliases `?sounds list`
+      - `?sounds play [name]`: play sound with name
+      - `?sounds list`: list available sounds
+      - `?sounds add [name] [youtube_url]`: download youtube audio and saves a sound with name
     """
-    def __init__(self,
-                 bot: commands.Bot,
-                 sounds_dir: str) -> None:
+    def __init__(self, bot: Bot, sounds_dir: str) -> None:
+        """
+        Args:
+            bot (Bot): bot that loaded this cog
+            sounds_dir (str): directory to store audio files in
+        """
         self.bot = bot
         self.sounds_dir = sounds_dir
 
         if not os.path.exists(self.sounds_dir):
             os.makedirs(self.sounds_dir)
 
-        self.leave_on_empty.start()
+        self._leave_on_empty.start()
 
-
-    def is_connected(self, ctx: commands.Context) -> bool:
-        return ctx.voice_client is None
-
-
-    @commands.command(pass_context=True, brief='join voice channel')
     async def join(self, ctx: commands.Context) -> bool:
-        """Ensure bot is connected to same voice channel as user. Returns True on success."""
+        """Join `ctx.author.voice.channel` if it exists
+
+        Args:
+            ctx (Context): context from command call
+
+        Returns:
+            `True` on successful join
+        """
         if ctx.author.voice is None or ctx.author.voice.channel is None:
             await self.bot.message_guild( 
                     '{}, you must be in a voice channel'.format(ctx.author.mention),
@@ -50,9 +65,25 @@ class Voice(commands.Cog):
             await channel.connect()
         return True
 
+    async def leave(self, ctx: commands.Context) -> None:
+        """Leave voice channel
 
-    @commands.command(pass_context=True, brief='set bot volume [0-100]')
+        Args:
+            ctx (Context): context from command call
+        """        
+        if ctx.voice_client is not None:
+            await ctx.voice_client.disconnect()
+
     async def volume(self, ctx: commands.Context, volume: int) -> None:
+        """Set volume of audio source
+
+        Warning:
+            the volume is set on a per source basis so if nothing
+            is playing, the volume cannot be set
+
+        Args:
+            ctx (Context): context from command call
+        """
         if ctx.voice_client is None:
             await self.bot.message_guild(
                     'not connected to a voice channel.',
@@ -62,15 +93,13 @@ class Voice(commands.Cog):
             await self.bot.message_guild(
                     'changed volume to {}%'.format(volume), ctx.channel)
 
-
-    @commands.command(pass_context=True, brief='leave voice channel')
-    async def leave(self, ctx: commands.Context) -> None:
-        if ctx.voice_client is not None:
-            await ctx.voice_client.disconnect()
-
-
-    @commands.command(pass_context=True, brief='play a sound: [name]')
     async def play(self, ctx: commands.Context, sound: str) -> None:
+        """Play the sound for `ctx.message.author`
+
+        Args:
+            ctx (Context): context from command call
+            sound (str): name of sound to play
+        """
         if not await self.join(ctx):
             return
         if ctx.voice_client.is_playing():
@@ -87,23 +116,25 @@ class Voice(commands.Cog):
         voice_client.play(source, after=None)
         voice_client.source = discord.PCMVolumeTransformer(voice_client.source, 1)
 
-
-    @commands.group(pass_context=True, brief='?help sounds for more info')
-    async def sounds(self, ctx: commands.Context) -> None:
-        if ctx.invoked_subcommand is None:
-            await self.list(ctx)
-
-
-    @sounds.command(pass_context=True, brief='list sounds')
     async def list(self, ctx: commands.Context) -> None:
+        """List available sounds in `ctx.channel`
+
+        Args:
+            ctx (Context): context from command call
+        """
         _sounds = self.get_sounds()
         _sounds = ' '.join(sorted(_sounds.keys()))
         await self.bot.message_guild( 
                 'the available sounds are: {}'.format(_sounds), ctx.channel)
 
-
-    @sounds.command(pass_context=True, brief='add a sound: [name] [url]')
     async def add(self, ctx: commands.Context, name: str, url: str) -> None:
+        """Download audio from youtube video
+
+        Args:
+            ctx (Context): context from command call
+            sound (str): name for the sound
+            url (str)L youtube url to download
+        """
         if name in self.get_sounds().keys():
             await self.bot.message_guild(
                     'a sound named `{}` already exists. '
@@ -143,8 +174,12 @@ class Voice(commands.Cog):
             await self.bot.message_guild('error downloading audio.'.format(name),
                     ctx.channel)
 
+    def is_connected(self, ctx: commands.Context) -> bool:
+        """Returns True is bot is connect to a voice channel"""
+        return ctx.voice_client is None
 
     def get_sounds(self) -> Dict[str, str]:
+        """Returns dict of sound names and filepaths"""
         sounds = {}
         for filename in os.listdir(self.sounds_dir):
             if filename.endswith('.mp3') or filename.endswith('.mp4'):
@@ -154,8 +189,37 @@ class Voice(commands.Cog):
 
 
     @tasks.loop(seconds=30.0)
-    async def leave_on_empty(self) -> None:
+    async def _leave_on_empty(self) -> None:
         """Task that periodically checks if connected channels are empty and leaves"""
         for client in self.bot.voice_clients:
             if len(client.channel.members) <= 1:
                 await client.disconnect()
+
+    @commands.command(name='join', pass_context=True, brief='join voice channel')
+    async def _join(self, ctx: commands.Context) -> bool:
+        await self.join(ctx)
+
+    @commands.command(name='leave', pass_context=True, brief='leave voice channel')
+    async def _leave(self, ctx: commands.Context) -> None:
+        await self.leave(ctx)
+
+    @commands.command(name='volume', pass_context=True, brief='set bot volume [0-100]')
+    async def _volume(self, ctx: commands.Context, volume: int) -> None:
+        await self.volume(ctx, volume)
+
+    @commands.group(name='sounds', pass_context=True, brief='?help sounds for more info')
+    async def _sounds(self, ctx: commands.Context) -> None:
+        if ctx.invoked_subcommand is None:
+            await self.list(ctx)
+
+    @_sounds.command(name='play', pass_context=True, brief='play a sound: [name]')
+    async def _play(self, ctx: commands.Context, sound: str) -> None:
+        await self.play(ctx, sound)
+
+    @_sounds.command(name='list', pass_context=True, brief='list sounds')
+    async def _list(self, ctx: commands.Context) -> None:
+        await self.list(ctx)
+
+    @_sounds.command(name='add', pass_context=True, brief='add a sound: [name] [url]')
+    async def _add(self, ctx: commands.Context, name: str, url: str) -> None:
+        await self.add(ctx, name, url)

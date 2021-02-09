@@ -4,53 +4,72 @@ import re
 
 from discord.ext import commands
 
+from threepseat import Bot
 from threepseat.constants import POG_RE, POG_EMOTE_RE, POG_EMOTES, DAD_RE
 
 
 class Memes(commands.Cog):
-    """Extension for Memes"""
+    """Extension for Memes
+
+    Adds the following commands:
+      - `?flip`: flips a coin
+      - `?odds [num]`: give random integer in [1, number]
+      - `?snowball`: should you take the snowball?
+    """
     def __init__(self,
-                 bot: commands.bot,
+                 bot: Bot,
                  pog_reply: bool = False,
                  dad_reply: bool = False
         ) -> None:
+        """
+        Args:
+            bot (Bot): bot that loaded this cog
+            pog_reply (bool): if `True`, any message with some variation of
+                pog in it will be replied to by the bot
+            dad_reply (bool): if `True`, and message with "I'm {}..." will
+                be replied to by the bot.
+        """        
         self.bot = bot
         self.pog_reply = pog_reply
         self.dad_reply = dad_reply
 
-
-    @commands.Cog.listener()
-    async def on_message(self, message: discord.Message) -> None:
-        """Called when message is created and sent"""
-        if not message.author.bot:
-            await self.replies(message)
-
-
-    @commands.command(pass_context=True, brief='should I snowball?')
-    async def snowball(self, ctx: commands.Context) -> None:
-        """Command for taking a snowball"""
-        msg = '{}, you should always take the snowball'.format(
-              ctx.message.author.mention)
-        await self.bot.message_guild(msg, ctx.channel)
-
-
-    @commands.command(pass_context=True, brief='what are the odds? [max_num]')
-    async def odds(self, ctx: commands.Context, num: int) -> None:
-        """Command that returns random int in [1, num]"""
-        rand = random.randint(1, num)
-        await self.bot.message_guild('{}'.format(rand), ctx.channel)
-
-
-    @commands.command(pass_context=True, brief='Flip a coin')
     async def flip(self, ctx: commands.Context) -> None:
-        """Command that flips a coin"""
+        """Message `ctx.channel` with coin flip
+
+        Args:
+            ctx (Context): context from command call
+        """
         rand = random.randint(1, 2)
         msg = 'heads' if rand == 1 else 'tails'
         await self.bot.message_guild('{}'.format(msg), ctx.channel)
 
+    async def odds(self, ctx: commands.Context, num: int) -> None:
+        """Message `ctx.channel` with random int in [1, `num`]
 
-    async def replies(self, message: discord.Message) -> None:
-        """Process and handle meme replies to messages"""
+        Args:
+            ctx (Context): context from command call
+        """
+        rand = random.randint(1, num)
+        await self.bot.message_guild('{}'.format(rand), ctx.channel)
+
+    async def snowball(self, ctx: commands.Context) -> None:
+        """Message `ctx.channel` to tell `ctx.message.author` if they should take the snowball
+
+        Hint: you should always take the snowball
+
+        Args:
+            ctx (Context): context from command call
+        """
+        msg = '{}, you should always take the snowball'.format(
+              ctx.message.author.mention)
+        await self.bot.message_guild(msg, ctx.channel)
+
+    async def meme_reply(self, message: discord.Message) -> None:
+        """Helper method for handling pog and dad joke replies
+
+        Args:
+            message (Message): message to parse
+        """
         if self.pog_reply:
             text = message.content.lower()
             if re.search(POG_RE, text) or re.search(POG_EMOTE_RE, text):
@@ -64,3 +83,24 @@ class Memes(commands.Cog):
                 await self.bot.message_guild(
                         'Hi {}, I\'m {}!'.format(search[4], self.bot.user.mention),
                         message.channel)
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message) -> None:
+        """Called when message is created and sent
+
+        Calls `meme_reply()`.
+        """
+        if not message.author.bot:
+            await self.meme_reply(message)
+
+    @commands.command(name='flip', pass_context=True, brief='flip a coin')
+    async def _flip(self, ctx: commands.Context) -> None:
+        await self.flip(ctx)
+
+    @commands.command(name='odds', pass_context=True, brief='what are the odds? [max_num]')
+    async def _odds(self, ctx: commands.Context, num: int) -> None:
+        await self.odds(ctx, num)
+
+    @commands.command(name='snowball', pass_context=True, brief='should I snowball?')
+    async def _snowball(self, ctx: commands.Context) -> None:
+        await self.snowball(ctx)
