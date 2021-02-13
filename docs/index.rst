@@ -6,6 +6,10 @@
 Welcome to 3pseatBot's documentation!
 =====================================
 
+3pseatBot started as a bot that enforced the arbitrary rule on a Discord server that all messages start with "3pseat".
+3pseatBot has since developed into a multipurpose bot with useful features and not-so-useful features.
+3pseatBot includes a number of cogs (extensions) that extend the base functionality of a bot and support for adding your own cogs.
+
 .. toctree::
    :maxdepth: 4
    :caption: Contents:
@@ -17,7 +21,7 @@ Welcome to 3pseatBot's documentation!
 
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`

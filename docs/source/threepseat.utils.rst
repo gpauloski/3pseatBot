@@ -9,14 +9,12 @@ threepseat.utils
 
 .. autofunction:: threepseat.utils.is_url
 
-.. autofunction:: threepseat.utils.get_member
-
 .. autofunction:: threepseat.utils.log
 
 .. autofunction:: threepseat.utils.keys_to_int
 
-threepseat.utils.Bans
----------------------
+threepseat.utils.GuildDatabase
+------------------------------
 
-.. autoclass:: threepseat.utils.Bans
+.. autoclass:: threepseat.utils.GuildDatabase
    :members:
