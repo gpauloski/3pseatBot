@@ -2,5 +2,4 @@ discord.py
 emoji
 pynacl
 python-dotenv
-tinydb
 youtube_dl

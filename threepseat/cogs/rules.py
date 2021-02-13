@@ -5,7 +5,8 @@ from discord.ext import commands
 from typing import Union, Optional, List
 
 from threepseat.bot import Bot
-from threepseat.utils import Bans, is_admin, is_emoji, is_booster, is_url
+from threepseat.utils import is_admin, is_emoji, is_booster, is_url
+from threepseat.utils import GuildDatabase
 
 
 logger = logging.getLogger()
@@ -75,8 +76,7 @@ class Rules(commands.Cog):
         if self.message_prefix is not None:
             self.bot.guild_message_prefix = self.message_prefix[0]
 
-        # TODO
-        self.db = Bans(database_path)
+        self.db = GuildDatabase(database_path)
 
 
     @commands.Cog.listener()
@@ -94,8 +94,7 @@ class Rules(commands.Cog):
             return
 
         if not self.is_verified(message):
-            await self.add_strike(message.author, message.channel, 
-                    message.guild)
+            await self.add_strike(message.author, message.channel)
 
 
     @commands.Cog.listener()
@@ -128,8 +127,7 @@ class Rules(commands.Cog):
 
         # confirm new message still passes rules
         if not self.is_verified(after):
-            await self.add_strike(after.author, after.channel, 
-                    after.guild)
+            await self.add_strike(after.author, after.channel)
 
 
     @commands.Cog.listener()
@@ -140,7 +138,7 @@ class Rules(commands.Cog):
         """Called when a command is invalid"""
         if (isinstance(error, commands.CommandNotFound) and
                 not self.allow_wrong_commands):
-            await self.add_strike(ctx.message.author, ctx.channel, ctx.guild)
+            await self.add_strike(ctx.message.author, ctx.channel)
 
     async def list(self, ctx: commands.Context) -> None:
         """List strikes for members in `ctx.guild`
@@ -148,16 +146,23 @@ class Rules(commands.Cog):
         Args:
             ctx (Context): context from command call
         """ 
-        msg = '{}, here are the strikes:```'.format(
+        msg = '{}, here are the strikes:'.format(
                 ctx.message.author.mention)
         serverCount = 0
-        for user in self.db.get_table(ctx.guild.name):
-            if user['name'] != 'server':
-                msg = msg + '\n{}: {}/{}'.format(
-                      user['name'], user['count'], self.max_offenses)
-            else:
-                serverCount = user['count']
-        msg = msg + '```Total offenses to date: {}'.format(serverCount)
+        strikes = self.db.table(ctx.guild)
+        if len(strikes) > 0:
+            msg += '```'
+            for uid in strikes:
+                if int(uid) != ctx.guild.id:
+                    msg = msg + '\n{}: {}/{}'.format(
+                          self.bot.get_user(int(uid)).name,
+                          strikes[uid], self.max_offenses)
+                else:
+                    serverCount = strikes[uid]
+            msg += '```'
+        else:
+            msg +=' there are none!\n'
+        msg += 'Total offenses to date: {}'.format(serverCount)
         await self.bot.message_guild(msg, ctx.channel)
 
     async def add(self, ctx: commands.Context, member: discord.Member) -> None:
@@ -185,11 +190,10 @@ class Rules(commands.Cog):
             member (Member): member to remove strike from
         """ 
         if self.bot.is_bot_admin(ctx.message.author):
-            self.remove_strike(member, ctx.guild)
-            count = self.db.get_value(ctx.guild.name, member.name)
+            self.remove_strike(member)
             await self.bot.message_guild(
                     'removed strike for {}. New strike count is {}.'.format(
-                    member.mention, count),
+                    member.mention, self.get_strikes(member)),
                     ctx.message.channel)
         else:
             await self.bot.message_server('you lack permission, {}'.format(
@@ -282,14 +286,14 @@ class Rules(commands.Cog):
             channel (Channel): channel to send message in
             guild (Guild): guild to kick user from if needed
         """
-        count = self.db.get_value(guild.name, member.name)
+        count = self.get_strikes(member)
 
         if count < self.max_offenses:
             msg = '{}! You\'ve disturbed the spirits ({}/{})'.format(
                   member.mention, count, self.max_offenses)
             await self.bot.message_guild(msg, channel)
         else:
-            self.clear_strikes(member, guild)
+            self.clear_strikes(member)
             msg = ('That\'s {} strikes, {}. I\'m sorry but your time as come. '
                    'RIP.\n'.format(self.max_offenses, member.mention))
             success = await self.kick(member, channel, guild, msg)
@@ -358,8 +362,7 @@ class Rules(commands.Cog):
 
     async def add_strike(self,
                          member: discord.Member, 
-                         channel: discord.TextChannel,
-                         guild: discord.Guild
+                         channel: discord.TextChannel
         ) -> None:
         """Add a strike to the `member` of `guild` in the database
         
@@ -368,28 +371,40 @@ class Rules(commands.Cog):
         Args:
             member (Member): member
             channel (Channel): channel to send message in
-            guild (Guild): guild
         """
-        self.db.up(guild.name, member.name)
-        await self.check_strikes(member, channel, guild)
+        count = self.get_strikes(member)
+        self.db.set(member.guild, str(member.id), count + 1)
+        server_count = self.get_global_strikes(member.guild)
+        self.db.set(member.guild, str(member.guild.id), server_count + 1)
+        await self.check_strikes(member, channel, member.guild)
 
-    def remove_strike(self, member: discord.Member, guild: discord.Guild) -> None:
-        """Remove a strike from the `member` of `guild` in the database
-        
-        Args:
-            member (Member): member
-            guild (Guild): guild
-        """
-        self.db.down(guild.name, member.name)
+    def clear_strikes(self, member: discord.Member) -> None:
+        """Reset strikes for the `member` in the database"""
+        self.db.set(member.guild, str(member.id), 0)
 
-    def clear_strikes(self, member: discord.Member, guild: discord.Guild) -> None:
-        """Reset strikes for the `member` of `guild` in the database
+    def get_strikes(self, member: discord.Member) -> int:
+        """Get strike count for `member`"""
+        value = self.db.value(member.guild, str(member.id))
+        if value is None:
+            return 0
+        return value
 
-        Args:
-            member (Member): member
-            guild (Guild): guild
-        """
-        self.db.clear(guild.name, member.name)
+    def get_global_strikes(self, guild: discord.Guild) -> int:
+        """Get global strike count for guild"""
+        value = self.db.value(guild, str(guild.id))
+        if value is None:
+            return 0
+        return value
+
+    def remove_strike(self, member: discord.Member) -> None:
+        """Remove a strike from the `member` in the database"""
+        count = self.get_strikes(member)
+        if count > 0:
+            self.db.set(member.guild, str(member.id), count - 1)
+        server_count = self.get_global_strikes(member.guild)
+        if server_count > 0:
+            self.db.set(member.guild, str(member.guild.id), server_count + 1)
+
 
     @commands.group(name='strikes', pass_context=True, brief='?help strikes for more info')
     async def _strikes(self, ctx: commands.Context) -> None:
@@ -406,4 +421,4 @@ class Rules(commands.Cog):
 
     @_strikes.command(name='remove', pass_context=True, brief='remove strike from user')
     async def _remove(self, ctx: commands.Context, member: discord.Member) -> None:
-        await self.remove(ctx, memeber)
+        await self.remove(ctx, member)

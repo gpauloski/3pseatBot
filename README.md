@@ -61,12 +61,13 @@ The included Dockerfile is designed to run on a Raspberry Pi. For use on other a
 
 ## TODO
 
-- [ ] Finish cogs documentation
-- [ ] Refactor bans.py: make it into general "Database" class that can be used by Minecraft and Games as well.
-- [ ] Finish docmentation for bans.py, bot.py, and utils.py
+- [x] Finish cogs documentation
+- [x] Refactor bans.py: make it into general "Database" class that can be used by Minecraft and Games as well.
+- [x] Finish docmentation for bans.py, bot.py, and utils.py
+- [x] Bot admins to id
 - [ ] Create get started documentation
 - [ ] Create develop documentation
 - [ ] Create hosting documentation
 - [ ] Update this README to link to relevant stuff on readthedocs
-- [ ] Change Games cog to work similar to Minecraft cog where data is local to a guild
+- [x] Change Games cog to work similar to Minecraft cog where data is local to a guild
 - [ ] GitHub CI, linting

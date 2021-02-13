@@ -1,11 +1,11 @@
 import discord
 import emoji
+import json
 import logging
 import os
 import re
 
 from discord.ext import commands
-from tinydb import TinyDB, Query
 from typing import Any, Dict, Optional
 
 
@@ -17,41 +17,36 @@ DISCORD_EMOTE_RE = r'<.*:\w*:\d*>'
 
 
 def is_emoji(text: str) -> bool:
-    """Returns True if string is just whitespace and unicode/Discord emojis"""
-    # remove unicode emojis from text
-    text = emoji.get_emoji_regexp().sub(r'', text)
-    # remove discord emojis from text
-    text = re.sub(DISCORD_EMOTE_RE, '', text)
-    
+    """Is string whitespace and unicode/Discord emojis
+
+    Args:
+        text (str)
+
+    Returns:
+        True if `test` is only some combination of unicode emojis,
+        Discord emotes, and whitespace.
+    """
+    text = emoji.get_emoji_regexp().sub(r'', text)  # remove unicode emojis
+    text = re.sub(DISCORD_EMOTE_RE, '', text) # remove discord emojis
     # at this point, the string has all emojis removed so if the string
     # is just whitespace then we know it was only emojis
     return text.strip() == ''
 
+
 def is_admin(member: discord.Member) -> bool:
-    """Returns true if guild member is an admin"""
+    """Returns true if guild member is an admin of the guild"""
     return member.guild_permissions.administrator
+
 
 def is_booster(member: discord.Member) -> bool:
     """Returns true is member is a booster for the guild"""
     return member.guild.premium_subscriber_role in member.roles
 
+
 def is_url(text: str) -> bool:
     """Returns true if text is a single url"""
     return re.match(URL_RE, text) and len(text.split(' ')) == 1
 
-def get_member(user: str, guild: discord.Guild) -> discord.Member:
-    """Get Member object from name
-
-    Args:
-        name (str): name with format "name#number"
-        guild (discord.Guild): guild to get user membership of
-
-    Returns:
-        Member
-    """
-    name = name.split('#')
-    return discord.utils.get(
-            guild.members, name=name[0], discriminator=name[1])
 
 def log(msg: str, level: str = 'info', 
         context: Optional[commands.Context] = None):
@@ -79,50 +74,91 @@ def log(msg: str, level: str = 'info',
     else:
         raise ValueError('Unknown logging level "{}".format(level))')
 
+
 def keys_to_int(d: Dict[Any, Any]) -> Dict[int, Any]:
     """Converts str keys of dict to int"""
     return {int(k): v for k, v in d.items()}
 
-class Bans:
-    def __init__(self, bans_file):
-        self.bans_file = bans_file
-        if not os.path.exists(os.path.dirname(bans_file)):
-            os.makedirs(os.path.dirname(bans_file))
-        if not os.path.exists(self.bans_file):
-            open(self.bans_file, 'w').close()
-        self._db = TinyDB(self.bans_file)
-        self._user = Query()
 
-    def get_table(self, guild):
-        return self._db.table(guild)
+class GuildDatabase:
+    """Database abstraction for guild
 
-    def get_value(self, guild, name):
-        db = self.get_table(guild)
-        if not db.search(self._user.name.matches(name)):
-            db.insert({'name': name, 'count': 0})
-        result = db.search(self._user.name == name)
-        user = result.pop(0)
-        return user['count']
+    'Tables' are created on a per guild basis, indexed by guild ID.
+    Each table contains a set of key: values.
+    """
+    def __init__(self, db_file: str) -> None:
+        """
+        Args:
+            db_file (str): file to save database to
+        """
+        self.db_file = db_file
+        if not os.path.exists(os.path.dirname(self.db_file)):
+            os.makedirs(os.path.dirname(self.db_file))
+        if os.path.exists(self.db_file):
+            with open(self.db_file) as f:
+                self.db = keys_to_int(json.load(f))
+        else:
+            self.db = {}
 
-    def set_value(self, guild, name, value):
-        db = self.get_table(guild)
-        db.update({'count': value}, self._user.name == name) 
+    def clear(self, guild: discord.Guild, key: str) -> None:
+        """Clear value corresponding to key in guild table"""
+        tb = self.table(guild)
+        if key in tb:
+            del tb[key]
+        self.save()
 
-    def add_to_value(self, guild, name, value):
-        cur_val = self.get_value(guild, name)
-        val = max(0, cur_val + value)
-        self.set_value(guild, name, val)
-        return val
+    def drop_table(self, guild: discord.Guild) -> None:
+        """Drops guild table from database"""
+        if guild.id in self.db:
+            del db[guild.id]
+        self.save()
 
-    def up(self, guild, name):
-        val = self.add_to_value(guild, name, 1)
-        self.add_to_value(guild, 'server', 1)
-        return val
-    
-    def down(self, guild, name):
-        val = self.add_to_value(guild, name, -1)
-        self.add_to_value(guild, 'server', -1)
-        return val
+    def save(self) -> None:
+        """Save in memory database to file"""
+        with open(self.db_file, 'w') as f:
+            json.dump(self.db, f, indent=4, sort_keys=True)        
 
-    def clear(self, guild, name):
-        self.set_value(guild, name, 0)
+    def set(self, guild: discord.Guild, key: str, value: Any) -> None:
+        """Sets value for key in guild table
+
+        Args:
+            guild (discord.Guild): guild to get table for
+            key (str): key to search table for
+            value: any jsonable object
+        """
+        tb = self.table(guild)
+        tb[key] = value
+        self.save()
+
+    def table(self, guild: discord.Guild) -> Dict:
+        """Get table for guild
+
+        Tables are indexed by guild ID. Makes the table if it does not exist.
+        Tables have columns ['key', 'value'].
+
+        Args:
+            guild (discord.Guild)
+
+        Returns:
+            `dict`
+        """
+        if guild.id not in self.db:
+            self.db[guild.id] = {}
+            self.save()
+        return self.db[guild.id]
+
+    def value(self, guild: discord.Guild, key: str) -> Optional[Any]:
+        """Get value for key in guild table
+
+        Args:
+            guild (discord.Guild): guild to get table for
+            key (str): key to search table for
+
+        Returns:
+            `None` if key does not exist in table else the value for
+            `key` in the `guild` table.
+        """
+        tb = self.table(guild)
+        if key in tb:
+            return tb[key]
+        return None

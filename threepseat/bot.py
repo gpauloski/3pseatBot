@@ -10,20 +10,41 @@ logger = logging.getLogger()
 
 
 class Bot(commands.Bot):
-    """
+    """3pseatBot
 
+    This class manages cogs/extensions and implements some minimal
+    functionality needed by the cogs.
     """
     def __init__(self,
                  token: str,
                  *,
                  command_prefix: str = '!',
                  ignore_prefix: List[str] = [],
-                 bot_admins: List[str] = [],
+                 bot_admins: List[int] = [],
                  playing_title: Optional[str] = None,
                  use_extensions: List[str] = [],
-                 extension_configs: Dict[str, dict],
+                 extension_configs: Dict[str, Dict],
         ) -> None:
         """
+        Args:
+            token (int): Discord bot token needed for authentication
+            command_prefix (str): prefix for all bot commands (including
+                extensions).
+            ignore_prefix (list[str]): list of message prefixes to ignore.
+                It is reccomended this include the command_prefixes for other
+                bot in a guild so that 3pseatBot ignores their commands.
+            bot_admins (list[int]): list of Discord user IDs for admins of
+                this bot. Note that bot admins are different from Discord
+                admins.
+            playing_title (str): if not None, the game displayed as what the
+                bot is playing.
+            use_extensions (list[str]): list of extension names to load
+            extension_configs (dict[str, dict]): dict containing arguments
+                to cogs where the keys to the dict are cog names. For example,
+                if the cog 'games' is loaded, then `**extension_configs[games]`
+                will be passed to the `Games` constructor. Note that a config
+                does not have to be provided (i.e. default values will be used
+                if a config is not present for a loaded cog).
         """
         self.token = token
         self.command_prefix = command_prefix
@@ -34,11 +55,15 @@ class Bot(commands.Bot):
         self.extension_configs = extension_configs 
         self.guild_message_prefix = ''
 
-        super().__init__(command_prefix=self.command_prefix)
+        intents = discord.Intents.default()
+        intents.members = True
+
+        super().__init__(command_prefix=self.command_prefix, intents=intents)
 
 
     def is_bot_admin(self, user: Union[discord.User, discord.Member]) -> bool:
-        return str(user) in self.bot_admins
+        """Is user an admin of this bot"""
+        return user.id in self.bot_admins
 
 
     async def message_user(self, 
@@ -113,6 +138,7 @@ class Bot(commands.Bot):
 
 
     async def on_ready(self):
+        """Called when the bot has successfully connected to Discord"""
         if self.playing_title is not None:
             await self.change_presence(
                     activity=discord.Game(name=self.playing_title))
@@ -143,6 +169,8 @@ class Bot(commands.Bot):
                     raise e
 
             logger.info('Loaded extension: {}'.format(ext))
+        await self.wait_until_ready()
+        logger.info('Bot is ready!')
     
 
     def run(self):

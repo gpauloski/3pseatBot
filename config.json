@@ -1,6 +1,6 @@
 {
 	"command_prefix": "?",
-	"bot_admins": ["Atomos#2059"],
+	"bot_admins": [91344591814393856],
 	"playing_title": "3pseat Simulator 2020",
 	"use_extensions": ["games", "general", "memes", "minecraft", "rules", "voice"],
 	"extension_configs": {
