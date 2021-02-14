@@ -20,8 +20,8 @@
 			"message_prefix": ["3pseat", "3pfeet", "3ppie"],
 			"whitelist_prefix": ["!"],
 			"max_offenses": 3,
-			"allow_deletes": false,
-			"allow_edits": false,
+			"allow_deletes": true,
+			"allow_edits": true,
 			"allow_wrong_commands": false,
 			"booster_exception": true,
 			"invite_after_kick": true
