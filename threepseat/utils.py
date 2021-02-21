@@ -48,7 +48,7 @@ def is_url(text: str) -> bool:
     return re.match(URL_RE, text) and len(text.split(' ')) == 1
 
 
-def log(msg: str, level: str = 'info', 
+def log(msg: str, level: str = 'info',
         context: Optional[commands.Context] = None):
     """Logs message with additional context
 
@@ -116,7 +116,7 @@ class GuildDatabase:
     def save(self) -> None:
         """Save in memory database to file"""
         with open(self.db_file, 'w') as f:
-            json.dump(self.db, f, indent=4, sort_keys=True)        
+            json.dump(self.db, f, indent=4, sort_keys=True)
 
     def set(self, guild: discord.Guild, key: str, value: Any) -> None:
         """Sets value for key in guild table
@@ -146,6 +146,10 @@ class GuildDatabase:
             self.db[guild.id] = {}
             self.save()
         return self.db[guild.id]
+
+    def tables(self) -> Dict[int, Dict]:
+        """Get all tables in database"""
+        return self.db
 
     def value(self, guild: discord.Guild, key: str) -> Optional[Any]:
         """Get value for key in guild table

@@ -38,6 +38,12 @@ class Commands(commands.Cog):
         self.everyone_permission = everyone_permission
         self.db = GuildDatabase(commands_file)
 
+        # Register all commands on startup
+        tables = self.db.tables()
+        for table in tables.values():
+            for name, text in table.items():
+                self.bot.add_command(self.make_command(name, text))
+
     def has_permission(self, member: discord.Member) -> bool:
         """Does a member have permission to edit commands"""
         if self.everyone_permission:
@@ -63,13 +69,12 @@ class Commands(commands.Cog):
                 ctx.channel)
             return
 
+        # Save to database
         self._set_command(ctx.guild, name, text)
-
-        # If the rules cogs is laoded, we want the rules cog to ignore
-        # this command and let this cog handle the CommandNotFound error
-        rules_cog = self.bot.get_cog('Rules')
-        if rules_cog is not None:
-            rules_cog.whitelist_prefix.append(self.bot.command_prefix + name)
+        # Remove first in case this command already exists
+        self.bot.remove_command(name)
+        # Register with bot
+        self.bot.add_command(self.make_command(name, text))
 
         await self.bot.message_guild(
                 'added command {}{}'.format(self.bot.command_prefix, name),
@@ -91,15 +96,26 @@ class Commands(commands.Cog):
                 ctx.channel)
             return
 
+        # Remove from bot
+        self.bot.remove_command(name)
+        # Remove from database
         self._remove_command(ctx.guild, name)
-
-        rules_cog = self.bot.get_cog('Rules')
-        if rules_cog is not None:
-            rules_cog.whitelist_prefix.remove(self.bot.command_prefix + name)
 
         await self.bot.message_guild(
                 'removed command {}{}'.format(self.bot.command_prefix, name),
                 ctx.channel)
+
+    def make_command(self, name: str, text: str) -> commands.Command:
+        async def _command(_ctx: commands.Context):
+            _text = self._get_command(_ctx.guild, name)
+            if _text is None:
+                self.bot.message_guild(
+                    'this command is not available in this guild',
+                    _ctx.channel)
+            else:
+                await self.bot.message_guild(_text, _ctx.channel)
+
+        return commands.Command(_command, name=name, cog=self)
 
     def _get_command(self, guild: discord.Guild, name: str) -> Optional[str]:
         """Get command text from database"""
@@ -112,38 +128,6 @@ class Commands(commands.Cog):
     def _set_command(self, guild: discord.Guild, name: str, text: str) -> None:
         """Set command in dataset"""
         self.db.set(guild, name, text)
-
-    @commands.Cog.listener()
-    async def on_command_error(self,
-                               ctx: commands.Context,
-                               error: commands.CommandError
-        ) -> None:
-        """Catch CommandNotFound and check if user command
-
-        Instead of registering custom commands to the cog with
-        the command decorator, we instead catch all CommandNotFound
-        errors and check if the attempted invoke command is one that
-        has been added to the guild.
-
-        Warning:
-            Other cogs that listen to `on_command_error` will
-            still capture the CommandNotFound error.
-
-        Args:
-            ctx (Context): context from command call
-            error (CommandError): error raised by the API
-        """
-        if isinstance(error, commands.CommandNotFound):
-            command_text = self._get_command(ctx.guild, ctx.invoked_with)
-            if command_text is not None:
-                if len(ctx.message.content.split(' ')) > 1:
-                    await self.bot.message_guild(
-                            'unknown additional arguments to {}{}'.format(
-                                self.bot.command_prefix, ctx.invoked_with),
-                            ctx.channel)
-                    return
-                else:
-                    await self.bot.message_guild(command_text, ctx.channel)
 
     @commands.group(name='commands', pass_context=True, brief='?help commands for more info')
     async def _commands(self, ctx: commands.Context) -> None:
