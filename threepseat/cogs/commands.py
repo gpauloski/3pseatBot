@@ -109,7 +109,7 @@ class Commands(commands.Cog):
         async def _command(_ctx: commands.Context):
             _text = self._get_command(_ctx.guild, name)
             if _text is None:
-                self.bot.message_guild(
+                await self.bot.message_guild(
                     'this command is not available in this guild',
                     _ctx.channel)
             else:
