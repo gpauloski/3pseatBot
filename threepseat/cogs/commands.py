@@ -1,10 +1,7 @@
 import discord
-import json
-import os
-import random
 
 from discord.ext import commands
-from typing import Any, Callable, List, Optional
+from typing import List, Optional
 
 from threepseat.bot import Bot
 from threepseat.utils import is_admin, GuildDatabase
@@ -14,8 +11,8 @@ class Commands(commands.Cog):
     """Extension for custom commands.
 
     Adds the following commands:
-      - `?command add [name] [command text]
-      - `?command remove [name]
+      - `?command add [name] [command text]`
+      - `?command remove [name]`
     """
     def __init__(self,
                  bot: Bot,
