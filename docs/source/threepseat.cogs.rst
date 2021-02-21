@@ -1,6 +1,12 @@
 threepseat.cogs
 ===============
 
+threepseat.cogs.Commands
+------------------------
+
+.. autoclass:: threepseat.cogs.Commands
+   :members:
+
 threepseat.cogs.Games
 ---------------------
 
@@ -26,7 +32,7 @@ threepseat.cogs.Minecraft
    :members:
 
 threepseat.cogs.Poll
----------------------
+--------------------
 
 .. autoclass:: threepseat.cogs.Poll
    :members:
