@@ -110,7 +110,7 @@ class GuildDatabase:
     def drop_table(self, guild: discord.Guild) -> None:
         """Drops guild table from database"""
         if guild.id in self.db:
-            del db[guild.id]
+            del self.db[guild.id]
         self.save()
 
     def save(self) -> None:
