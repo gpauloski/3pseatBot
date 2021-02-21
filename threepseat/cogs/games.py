@@ -27,7 +27,7 @@ class Games(commands.Cog):
             games_file (str): path to store database
         """
         self.bot = bot
-        self.db = GuildDatabase(games_file)  
+        self.db = GuildDatabase(games_file)
 
     async def list(self, ctx: commands.Context) -> None:
         """Message `ctx.channel` with list of games for guild
@@ -53,7 +53,7 @@ class Games(commands.Cog):
         if await self.is_empty(ctx):
             return
         games = self._get_games(ctx.guild)
-        await self.bot.message_guild( 
+        await self.bot.message_guild(
                 'you should play {}'.format(random.choice(games)),
                 ctx.channel)
 
@@ -114,7 +114,7 @@ class Games(commands.Cog):
             `True` if the guild has no games else `False`
         """
         if len(self._get_games(ctx.guild)) == 0:
-            await self.bot.message_guild( 
+            await self.bot.message_guild(
                     'There are no games to play. Add more with '
                     '{}games add [title]'.format(self.bot.command_prefix),
                     ctx.channel)

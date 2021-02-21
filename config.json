@@ -2,7 +2,7 @@
 	"command_prefix": "?",
 	"bot_admins": [91344591814393856],
 	"playing_title": "3pseat Simulator 2020",
-	"use_extensions": ["games", "general", "memes", "minecraft", "rules", "voice"],
+	"use_extensions": ["games", "general", "memes", "minecraft", "poll", "rules", "voice"],
 	"extension_configs": {
 		"games": {
 			"games_file": "data/games.json"
@@ -14,6 +14,11 @@
 		},
 		"minecraft": {
 			"mc_file": "data/mc.json"
+		},
+		"poll": {
+            "guild_admin_permission": true,
+            "bot_admin_permission": true,
+            "everyone_permission": true
 		},
 		"rules": {
 			"database_path": "data/bans.json",

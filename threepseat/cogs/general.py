@@ -29,7 +29,7 @@ class General(commands.Cog):
         """Message `ctx.channel` with link to source code
 
         Args:
-            ctx (Context): context from command call       
+            ctx (Context): context from command call
         """
         msg = ('3pseatBot\'s source code can be found here: '
                'https://github.com/gpauloski/3pseatBot')
@@ -42,7 +42,7 @@ class General(commands.Cog):
         kick permission in the guild.
 
         Args:
-            ctx (Context): context from command call       
+            ctx (Context): context from command call
         """
         if not ctx.message.author.guild_permissions.administrator:
             msg = '{}, you do not have yeet (admin) power.'.format(
@@ -61,7 +61,7 @@ class General(commands.Cog):
                 await ctx.guild.kick(member)
 
     @commands.Cog.listener()
-    async def on_command_error(self, 
+    async def on_command_error(self,
                                ctx: commands.Context,
                                error: commands.CommandError
         ) -> None:
@@ -71,9 +71,12 @@ class General(commands.Cog):
         `BadArgument` errors.
 
         Args:
-            ctx (Context): context from command call 
+            ctx (Context): context from command call
             error (CommandError): error raised by the API
         """
+        if ctx.command.error is not None:
+            # Ignore commands that have their own error handlers
+            return
         if (isinstance(error, commands.MissingRequiredArgument) or
             isinstance(error, commands.TooManyArguments)):
             await self.bot.message_guild(

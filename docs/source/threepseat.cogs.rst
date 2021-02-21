@@ -25,6 +25,12 @@ threepseat.cogs.Minecraft
 .. autoclass:: threepseat.cogs.Minecraft
    :members:
 
+threepseat.cogs.Poll
+---------------------
+
+.. autoclass:: threepseat.cogs.Poll
+   :members:
+
 threepseat.cogs.Rules
 ---------------------
 
