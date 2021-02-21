@@ -100,7 +100,7 @@ class Rules(commands.Cog):
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message) -> None:
         """Called when message is deleted"""
-        if message.author.bot or self.should_ignore(message):
+        if self.allow_deletes or message.author.bot or self.should_ignore(message):
             return
         msg = '{}, where did your message go? It was: \"{}\"'.format(
               message.author.mention, message.clean_content)
