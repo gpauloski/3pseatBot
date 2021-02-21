@@ -9,23 +9,23 @@ from threepseat.cogs.voice import Voice
 
 
 EXTENSIONS = {
-	'commands': Commands,
-	'games': Games,
-	'general': General,
-	'memes': Memes,
-	'minecraft': Minecraft,
-	'poll': Poll,
-	'rules': Rules,
-	'voice': Voice
+    'commands': Commands,
+    'games': Games,
+    'general': General,
+    'memes': Memes,
+    'minecraft': Minecraft,
+    'poll': Poll,
+    'rules': Rules,
+    'voice': Voice
 }
 """Maps extension names to the classes"""
 
 __all__ = [
-	'EXTENSIONS',
-	'Commands',
-	'Games',
-	'General',
-	'Memes',
+    'EXTENSIONS',
+    'Commands',
+    'Games',
+    'General',
+    'Memes',
     'Minecraft',
     'Poll',
     'Rules',

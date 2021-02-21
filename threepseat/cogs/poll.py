@@ -25,7 +25,7 @@ class Poll(commands.Cog):
     """Extension for starting polls.
 
     Adds the following commands:
-      - `?poll "[question]" "[option 1]" "[option 2]" ... "[option 9]"
+      - `?poll "[question]" "[option 1]" "[option 2]" ... "[option 9]"`
     """
     def __init__(self,
                  bot: Bot,
@@ -55,7 +55,7 @@ class Poll(commands.Cog):
         Args:
             ctx (Context): context from command call
             question (str): question
-            options (*str): up to 9 response options
+            options (list[str]): up to 9 response options
         """
         if not self.has_permission(ctx.message.author):
             await self.bot.message_guild(
