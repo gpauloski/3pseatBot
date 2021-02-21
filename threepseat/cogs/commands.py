@@ -52,6 +52,13 @@ class Commands(commands.Cog):
             return True
         return False
 
+    def is_custom_command(self, cmd: commands.Command) -> bool:
+        if cmd.cog_name == 'custom_commands':
+            return True
+        if 'cog_name' in cmd.__original_kwargs__:
+            return cmd.__original_kwargs__['cog_name'] == 'custom_commands'
+        return False
+
     async def add(self, ctx: commands.Context, name: str, text: str) -> None:
         """Add a new command to the guild
 
@@ -69,10 +76,20 @@ class Commands(commands.Cog):
                 ctx.channel)
             return
 
+        # Check if this is a custom command that can be overwritten if
+        # it exists
+        cmd = self.bot.get_command(name)
+        if cmd is not None:
+            if self.is_custom_command(cmd):
+                self.bot.remove_command(name)
+            else:
+                await self.bot.message_guild(
+                        'this command already exist and cannot be overwritten',
+                        ctx.channel)
+                return
+
         # Save to database
         self._set_command(ctx.guild, name, text)
-        # Remove first in case this command already exists
-        self.bot.remove_command(name)
         # Register with bot
         self.bot.add_command(self.make_command(name, text))
 
@@ -96,14 +113,27 @@ class Commands(commands.Cog):
                 ctx.channel)
             return
 
-        # Remove from bot
-        self.bot.remove_command(name)
-        # Remove from database
-        self._remove_command(ctx.guild, name)
-
-        await self.bot.message_guild(
-                'removed command {}{}'.format(self.bot.command_prefix, name),
-                ctx.channel)
+        cmd = self.bot.get_command(name)
+        if cmd is not None:
+            # Only remove if it is a custom command
+            if self.is_custom_command(cmd):
+                # Remove from bot
+                self.bot.remove_command(name)
+                # Remove from database
+                self._remove_command(ctx.guild, name)
+                await self.bot.message_guild(
+                        'removed command {}{}'.format(
+                            self.bot.command_prefix, name),
+                        ctx.channel)
+            else:
+                await self.bot.message_guild(
+                        'this command cannot be removed',
+                        ctx.channel)
+                return
+        else:
+            await self.bot.message_guild(
+                    'the {} command does not exists'.format(name),
+                    ctx.channel)
 
     def make_command(self, name: str, text: str) -> commands.Command:
         async def _command(_ctx: commands.Context):
@@ -115,7 +145,7 @@ class Commands(commands.Cog):
             else:
                 await self.bot.message_guild(_text, _ctx.channel)
 
-        return commands.Command(_command, name=name, cog=self)
+        return commands.Command(_command, name=name, cog_name='custom_commands')
 
     def _get_command(self, guild: discord.Guild, name: str) -> Optional[str]:
         """Get command text from database"""
