@@ -52,7 +52,7 @@ class Rules(commands.Cog):
             max_offenses (int): maximum strikes before being kicked
             allow_deletes (bool): if false, the bot will notify the channel if
                 a message is deleted
-            allow_edits (bool): if false, the bot will notify the channel if 
+            allow_edits (bool): if false, the bot will notify the channel if
                 a message is edited
             allow_wrong_commands (bool): if false, members will be given a strike
                 for trying to use invalid commands
@@ -89,7 +89,7 @@ class Rules(commands.Cog):
                     'Hi there, I cannot reply to direct messages.',
                     message.author)
             return
-        
+
         if self.should_ignore(message):
             return
 
@@ -108,8 +108,8 @@ class Rules(commands.Cog):
 
 
     @commands.Cog.listener()
-    async def on_message_edit(self, 
-                              before: discord.Message, 
+    async def on_message_edit(self,
+                              before: discord.Message,
                               after: discord.Message
         ) -> None:
         """Called when message is edited"""
@@ -131,13 +131,16 @@ class Rules(commands.Cog):
 
 
     @commands.Cog.listener()
-    async def on_command_error(self, 
+    async def on_command_error(self,
                                ctx: commands.Context,
                                error: commands.CommandError
         ) -> None:
         """Called when a command is invalid"""
         if (isinstance(error, commands.CommandNotFound) and
                 not self.allow_wrong_commands):
+            for prefix in self.whitelist_prefix:
+                if ctx.message.content.startswith(prefix):
+                    return
             await self.add_strike(ctx.message.author, ctx.channel)
 
     async def list(self, ctx: commands.Context) -> None:
@@ -145,7 +148,7 @@ class Rules(commands.Cog):
 
         Args:
             ctx (Context): context from command call
-        """ 
+        """
         msg = '{}, here are the strikes:'.format(
                 ctx.message.author.mention)
         serverCount = 0
@@ -172,8 +175,8 @@ class Rules(commands.Cog):
 
         Args:
             ctx (Context): context from command call
-            member (Member): member to add strike to 
-        """ 
+            member (Member): member to add strike to
+        """
         if self.bot.is_bot_admin(ctx.message.author):
             await self._add_strike(member, ctx.channel, ctx.guild)
         else:
@@ -188,7 +191,7 @@ class Rules(commands.Cog):
         Args:
             ctx (Context): context from command call
             member (Member): member to remove strike from
-        """ 
+        """
         if self.bot.is_bot_admin(ctx.message.author):
             self.remove_strike(member)
             await self.bot.message_guild(
@@ -266,7 +269,7 @@ class Rules(commands.Cog):
         return False
 
     async def check_strikes(self,
-                            member: discord.Member, 
+                            member: discord.Member,
                             channel: discord.TextChannel,
                             guild: discord.Guild
         ) -> None:
@@ -277,7 +280,7 @@ class Rules(commands.Cog):
         the user and send them a invite link if
         `self.invite_after_kick`.
 
-        Warning: 
+        Warning:
             In general, this function should only be called
             by `add_strike()`.
 
@@ -303,7 +306,7 @@ class Rules(commands.Cog):
                 await self.invite(member, channel, msg)
 
     async def invite(self,
-                     user: Union[discord.User, discord.Member], 
+                     user: Union[discord.User, discord.Member],
                      channel: discord.TextChannel,
                      message: str
         ) -> None:
@@ -323,7 +326,7 @@ class Rules(commands.Cog):
                     'Caught exception: {}'.format(user, e))
 
     async def kick(self,
-                   member: discord.Member, 
+                   member: discord.Member,
                    channel: discord.TextChannel,
                    guild: discord.Guild,
                    message: str = None
@@ -347,10 +350,10 @@ class Rules(commands.Cog):
                         'acknowledged.'.format(member.mention))
             await self.bot.message_guild(message, channel)
             return False
-        
+
         try:
             await guild.kick(member)
-        except Exception as e: 
+        except Exception as e:
             logger.warning('Failed to kick {}. Caught exception: '
                            '{}'.format(member, e))
             return False
@@ -361,11 +364,11 @@ class Rules(commands.Cog):
         return True
 
     async def add_strike(self,
-                         member: discord.Member, 
+                         member: discord.Member,
                          channel: discord.TextChannel
         ) -> None:
         """Add a strike to the `member` of `guild` in the database
-        
+
         Calls `check_strikes()`
 
         Args:

@@ -91,6 +91,23 @@ class Poll(commands.Cog):
             return True
         return False
 
+    @commands.Cog.listener()
+    async def on_command_error(self,
+                                ctx: commands.Context,
+                                error: commands.CommandError
+        ) -> None:
+        """Catch unknown errors to see if they are actually a user command
+
+        Args:
+            ctx (Context): context from command call
+            error (CommandError): error raised by the API
+        """
+        if isinstance(error, commands.CommandNotFound):
+            # Ignore commands that have their own error handlers
+            print(ctx.__dict__)
+        else:
+            raise error
+
     @commands.command(name='poll',
                       pass_context=True,
                       brief='Start poll: "question" "option 1" "option 2" ...'

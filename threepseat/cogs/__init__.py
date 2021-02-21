@@ -1,3 +1,4 @@
+from threepseat.cogs.commands import Commands
 from threepseat.cogs.games import Games
 from threepseat.cogs.general import General
 from threepseat.cogs.memes import Memes
@@ -8,6 +9,7 @@ from threepseat.cogs.voice import Voice
 
 
 EXTENSIONS = {
+	'commands': Commands,
 	'games': Games,
 	'general': General,
 	'memes': Memes,
@@ -20,6 +22,7 @@ EXTENSIONS = {
 
 __all__ = [
 	'EXTENSIONS',
+	'Commands',
 	'Games',
 	'General',
 	'Memes',

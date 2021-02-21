@@ -19,7 +19,6 @@ class Bot(commands.Bot):
                  token: str,
                  *,
                  command_prefix: str = '!',
-                 ignore_prefix: List[str] = [],
                  bot_admins: List[int] = [],
                  playing_title: Optional[str] = None,
                  use_extensions: List[str] = [],
@@ -30,9 +29,6 @@ class Bot(commands.Bot):
             token (int): Discord bot token needed for authentication
             command_prefix (str): prefix for all bot commands (including
                 extensions).
-            ignore_prefix (list[str]): list of message prefixes to ignore.
-                It is reccomended this include the command_prefixes for other
-                bot in a guild so that 3pseatBot ignores their commands.
             bot_admins (list[int]): list of Discord user IDs for admins of
                 this bot. Note that bot admins are different from Discord
                 admins.
@@ -48,11 +44,10 @@ class Bot(commands.Bot):
         """
         self.token = token
         self.command_prefix = command_prefix
-        self.ignore_prefix = ignore_prefix
         self.bot_admins = bot_admins
         self.playing_title = playing_title
         self.use_extensions = use_extensions
-        self.extension_configs = extension_configs 
+        self.extension_configs = extension_configs
         self.guild_message_prefix = ''
 
         intents = discord.Intents.default()
@@ -66,7 +61,7 @@ class Bot(commands.Bot):
         return user.id in self.bot_admins
 
 
-    async def message_user(self, 
+    async def message_user(self,
                            message: str,
                            user: Union[discord.User, discord.Member],
                            react: Optional[Union[str, List[str]]] = None
@@ -87,8 +82,8 @@ class Bot(commands.Bot):
         return await self._message(message, channel, react)
 
 
-    async def message_guild(self, 
-                            message: str, 
+    async def message_guild(self,
+                            message: str,
                             channel: discord.TextChannel,
                             react: Optional[Union[str, List[str]]] = None,
                             ignore_prefix: bool = False
@@ -111,9 +106,9 @@ class Bot(commands.Bot):
         return await self._message(message, channel, react)
 
 
-    async def _message(self, 
+    async def _message(self,
                        message: str,
-                       channel: discord.abc.Messageable, 
+                       channel: discord.abc.Messageable,
                        react: Optional[Union[str, List[str]]] = None
         ) -> discord.Message:
         """Send message in channel
@@ -134,7 +129,7 @@ class Bot(commands.Bot):
             elif isinstance(react, list):
                 for r in react:
                     await msg.add_reaction(r)
-        return msg        
+        return msg
 
 
     async def on_ready(self):
@@ -171,7 +166,7 @@ class Bot(commands.Bot):
             logger.info('Loaded extension: {}'.format(ext))
         await self.wait_until_ready()
         logger.info('Bot is ready!')
-    
+
 
     def run(self):
         super().run(self.token, reconnect=True)

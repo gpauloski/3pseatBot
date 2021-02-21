@@ -74,7 +74,7 @@ class General(commands.Cog):
             ctx (Context): context from command call
             error (CommandError): error raised by the API
         """
-        if ctx.command.error is not None:
+        if ctx.command is not None and ctx.command.error is not None:
             # Ignore commands that have their own error handlers
             return
         if (isinstance(error, commands.MissingRequiredArgument) or
