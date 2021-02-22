@@ -1,3 +1,4 @@
+"""3pseatBot base class"""
 import discord
 import logging
 import threepseat
@@ -15,16 +16,18 @@ class Bot(commands.Bot):
     This class manages cogs/extensions and implements some minimal
     functionality needed by the cogs.
     """
-    def __init__(self,
-                 token: str,
-                 *,
-                 command_prefix: str = '!',
-                 bot_admins: List[int] = [],
-                 playing_title: Optional[str] = None,
-                 use_extensions: List[str] = [],
-                 extension_configs: Dict[str, Dict],
-        ) -> None:
-        """
+    def __init__(
+        self,
+        token: str,
+        *,
+        command_prefix: str = '!',
+        bot_admins: List[int] = [],
+        playing_title: Optional[str] = None,
+        use_extensions: List[str] = [],
+        extension_configs: Dict[str, Dict],
+    ) -> None:
+        """Init Bot
+
         Args:
             token (int): Discord bot token needed for authentication
             command_prefix (str): prefix for all bot commands (including
@@ -55,17 +58,16 @@ class Bot(commands.Bot):
 
         super().__init__(command_prefix=self.command_prefix, intents=intents)
 
-
     def is_bot_admin(self, user: Union[discord.User, discord.Member]) -> bool:
         """Is user an admin of this bot"""
         return user.id in self.bot_admins
 
-
-    async def message_user(self,
-                           message: str,
-                           user: Union[discord.User, discord.Member],
-                           react: Optional[Union[str, List[str]]] = None
-        ) -> discord.Message:
+    async def message_user(
+        self,
+        message: str,
+        user: Union[discord.User, discord.Member],
+        react: Optional[Union[str, List[str]]] = None
+    ) -> discord.Message:
         """Message user
 
         Args:
@@ -81,13 +83,13 @@ class Bot(commands.Bot):
         channel = await user.create_dm()
         return await self._message(message, channel, react)
 
-
-    async def message_guild(self,
-                            message: str,
-                            channel: discord.TextChannel,
-                            react: Optional[Union[str, List[str]]] = None,
-                            ignore_prefix: bool = False
-        ) -> discord.Message:
+    async def message_guild(
+        self,
+        message: str,
+        channel: discord.TextChannel,
+        react: Optional[Union[str, List[str]]] = None,
+        ignore_prefix: bool = False
+    ) -> discord.Message:
         """Message Guild Channel
 
         Args:
@@ -102,15 +104,15 @@ class Bot(commands.Bot):
         if not ignore_prefix:
             message = self.guild_message_prefix + ' ' + message
         logger.info('Message guild={}, channel={}: {}'.format(
-                channel.guild, channel, message))
+            channel.guild, channel, message))
         return await self._message(message, channel, react)
 
-
-    async def _message(self,
-                       message: str,
-                       channel: discord.abc.Messageable,
-                       react: Optional[Union[str, List[str]]] = None
-        ) -> discord.Message:
+    async def _message(
+        self,
+        message: str,
+        channel: discord.abc.Messageable,
+        react: Optional[Union[str, List[str]]] = None
+    ) -> discord.Message:
         """Send message in channel
 
         Args:
@@ -131,15 +133,14 @@ class Bot(commands.Bot):
                     await msg.add_reaction(r)
         return msg
 
-
     async def on_ready(self):
         """Called when the bot has successfully connected to Discord"""
         if self.playing_title is not None:
             await self.change_presence(
-                    activity=discord.Game(name=self.playing_title))
+                activity=discord.Game(name=self.playing_title))
 
         logger.info('Logged in as {} (ID={})'.format(
-                self.user.name, self.user.id))
+            self.user.name, self.user.id))
 
         # Load extensions/cogs
         for ext in self.use_extensions:
@@ -167,6 +168,6 @@ class Bot(commands.Bot):
         await self.wait_until_ready()
         logger.info('Bot is ready!')
 
-
     def run(self):
+        """Start the bot"""
         super().run(self.token, reconnect=True)

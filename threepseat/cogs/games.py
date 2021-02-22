@@ -1,10 +1,9 @@
+"""Cog for randomly getting a game to play"""
 import discord
-import json
-import os
 import random
 
 from discord.ext import commands
-from typing import Any, Callable, List, Optional
+from typing import List, Optional
 
 from threepseat.bot import Bot
 from threepseat.utils import is_admin, GuildDatabase
@@ -21,7 +20,8 @@ class Games(commands.Cog):
       - `?games remove [title]`: remove a game from this guild
     """
     def __init__(self, bot: Bot, games_file: str) -> None:
-        """
+        """Init Games
+
         Args:
             bot (Bot): bot that loaded this cog
             games_file (str): path to store database
@@ -54,8 +54,7 @@ class Games(commands.Cog):
             return
         games = self._get_games(ctx.guild)
         await self.bot.message_guild(
-                'you should play {}'.format(random.choice(games)),
-                ctx.channel)
+            'you should play {}'.format(random.choice(games)), ctx.channel)
 
     async def add(self, ctx: commands.Context, name: str) -> None:
         """Add a new game to the guild
@@ -71,13 +70,14 @@ class Games(commands.Cog):
             if name not in games:
                 games.append(name)
                 self._set_games(ctx.guild, games)
-                await self.bot.message_guild('added {}'.format(name), ctx.channel)
+                await self.bot.message_guild(
+                    'added {}'.format(name), ctx.channel)
             else:
-                await self.bot.message_guild('{} already in list'.format(name), ctx.channel)
+                await self.bot.message_guild(
+                    '{} already in list'.format(name), ctx.channel)
         else:
             await self.bot.message_guild(
-                    'you do not have permission for this command',
-                    ctx.channel)
+                'you do not have permission for this command', ctx.channel)
 
     async def remove(self, ctx: commands.Context, name: str) -> None:
         """Remove a game from the guild
@@ -93,13 +93,14 @@ class Games(commands.Cog):
             if name in games:
                 games.remove(name)
                 self._set_games(ctx.guild, games)
-                await self.bot.message_guild('removed {}'.format(name), ctx.channel)
+                await self.bot.message_guild(
+                    'removed {}'.format(name), ctx.channel)
             else:
-                await self.bot.message_guild('{} not in list'.format(name), ctx.channel)
+                await self.bot.message_guild(
+                    '{} not in list'.format(name), ctx.channel)
         else:
             await self.bot.message_guild(
-                    'you do not have permission for this command',
-                    ctx.channel)
+                'you do not have permission for this command', ctx.channel)
 
     async def is_empty(self, ctx: commands.Context) -> bool:
         """Check if games list
@@ -115,9 +116,9 @@ class Games(commands.Cog):
         """
         if len(self._get_games(ctx.guild)) == 0:
             await self.bot.message_guild(
-                    'There are no games to play. Add more with '
-                    '{}games add [title]'.format(self.bot.command_prefix),
-                    ctx.channel)
+                'There are no games to play. Add more with '
+                '{}games add [title]'.format(self.bot.command_prefix),
+                ctx.channel)
             return True
         return False
 

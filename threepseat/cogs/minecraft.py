@@ -1,12 +1,10 @@
+"""Cog for Minecraft server command"""
 import discord
-import json
-import os
 
 from discord.ext import commands
-from typing import Any, Dict, Optional
 
 from threepseat.bot import Bot
-from threepseat.utils import is_admin, keys_to_int, GuildDatabase
+from threepseat.utils import is_admin, GuildDatabase
 
 
 class Minecraft(commands.Cog):
@@ -22,11 +20,12 @@ class Minecraft(commands.Cog):
 
     Attributes:
         mc_dict (dict): dict indexed by guild IDs with values corresponding
-            to dicts of the form: :code:`{name: str, address: str, 
+            to dicts of the form: :code:`{name: str, address: str,
             has_whitelist: bool, admin_id: int}`.
     """
     def __init__(self, bot: Bot, mc_file: str) -> None:
-        """
+        """Init Minecraft
+
         Args:
             bot (Bot): bot that loaded this cog
             mc_file (str): path to store database
@@ -42,9 +41,9 @@ class Minecraft(commands.Cog):
         """
         if not self._server_exists(ctx.guild):
             await self.bot.message_guild(
-                    'there is no minecraft server on this guild. '
-                    'Use `mc set name [name]` and `mc set address [ip]` '
-                    'to set one', ctx.channel)
+                'there is no minecraft server on this guild. '
+                'Use `mc set name [name]` and `mc set address [ip]` '
+                'to set one', ctx.channel)
         else:
             name = self.db.value(ctx.guild, 'name')
             address = self.db.value(ctx.guild, 'address')
@@ -68,8 +67,7 @@ class Minecraft(commands.Cog):
                 'cleared Minecraft server info', ctx.channel)
         else:
             await self.bot.message_guild(
-                    'this command requires admin power',
-                    ctx.channel)
+                'this command requires admin power', ctx.channel)
 
     async def name(self, ctx: commands.Context, name: str) -> None:
         """Change Minecraft server name for the guild
@@ -81,12 +79,10 @@ class Minecraft(commands.Cog):
         if is_admin(ctx.author) or self.bot.is_bot_admin(ctx.author):
             self.db.set(ctx.guild, 'name', name)
             await self.bot.message_guild(
-                    'updated server name to: {}'.format(name),
-                    ctx.channel)
+                'updated server name to: {}'.format(name), ctx.channel)
         else:
             await self.bot.message_guild(
-                    'this command requires admin power',
-                    ctx.channel)
+                'this command requires admin power', ctx.channel)
 
     async def address(self, ctx: commands.Context, address: str) -> None:
         """Change Minecraft server name for the guild
@@ -98,12 +94,10 @@ class Minecraft(commands.Cog):
         if is_admin(ctx.author) or self.bot.is_bot_admin(ctx.author):
             self.db.set(ctx.guild, 'address', address)
             await self.bot.message_guild(
-                    'updated server address to: {}'.format(address),
-                    ctx.channel)
+                'updated server address to: {}'.format(address), ctx.channel)
         else:
             await self.bot.message_guild(
-                    'this command requires admin power',
-                    ctx.channel)
+                'this command requires admin power', ctx.channel)
 
     async def whitelist(self, ctx: commands.Context, has_whitelist: bool) -> None:
         """Change Minecraft server name for the guild
@@ -115,12 +109,11 @@ class Minecraft(commands.Cog):
         if is_admin(ctx.author) or self.bot.is_bot_admin(ctx.author):
             self.db.set(ctx.guild, 'has_whitelist', has_whitelist)
             await self.bot.message_guild(
-                    'updated server whitelist to: {}'.format(has_whitelist),
-                    ctx.channel)
+                'updated server whitelist to: {}'.format(has_whitelist),
+                ctx.channel)
         else:
             await self.bot.message_guild(
-                    'this command requires admin power',
-                    ctx.channel)
+                'this command requires admin power', ctx.channel)
 
     async def admin(self, ctx: commands.Context, member: discord.Member) -> None:
         """Change Minecraft server name for the guild
@@ -135,18 +128,19 @@ class Minecraft(commands.Cog):
         if is_admin(ctx.author) or self.bot.is_bot_admin(ctx.author):
             self.db.set(ctx.guild, 'admin_id', member.id)
             await self.bot.message_guild(
-                    'updated server admin to: {}'.format(member.mention),
-                    ctx.channel)
+                'updated server admin to: {}'.format(member.mention),
+                ctx.channel)
         else:
             await self.bot.message_guild(
-                    'this command requires admin power',
-                    ctx.channel)
+                'this command requires admin power', ctx.channel)
 
     def _server_exists(self, guild: discord.Guild) -> bool:
-        """Return True is we have at least the name and address for the MC
-        server for this guild"""
-        return (self.db.value(guild, 'name') is not None and
-                self.db.value(guild, 'address') is not None)
+        """Check if guild has server info
+
+        The name and address are required for the server to be valid.
+        """
+        return (self.db.value(guild, 'name') is not None
+                and self.db.value(guild, 'address') is not None)
 
     @commands.group(name='mc', pass_context=True, brief='Minecraft server info')
     async def _mc(self, ctx: commands.Context) -> None:

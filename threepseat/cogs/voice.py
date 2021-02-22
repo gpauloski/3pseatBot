@@ -1,5 +1,5 @@
+"""Cog for playing sound clips in voice channels"""
 import discord
-import json
 import logging
 import os
 import youtube_dl
@@ -30,7 +30,8 @@ class Voice(commands.Cog):
       - `?sounds add [name] [youtube_url]`: download youtube audio and saves a sound with name
     """
     def __init__(self, bot: Bot, sounds_dir: str) -> None:
-        """
+        """Init Voice
+
         Args:
             bot (Bot): bot that loaded this cog
             sounds_dir (str): directory to store audio files in
@@ -53,9 +54,9 @@ class Voice(commands.Cog):
             `True` on successful join
         """
         if ctx.author.voice is None or ctx.author.voice.channel is None:
-            await self.bot.message_guild( 
-                    '{}, you must be in a voice channel'.format(ctx.author.mention),
-                    ctx.channel)
+            await self.bot.message_guild(
+                '{}, you must be in a voice channel'.format(ctx.author.mention),
+                ctx.channel)
             return False
 
         channel = ctx.author.voice.channel
@@ -70,7 +71,7 @@ class Voice(commands.Cog):
 
         Args:
             ctx (Context): context from command call
-        """        
+        """
         if ctx.voice_client is not None:
             await ctx.voice_client.disconnect()
 
@@ -83,15 +84,19 @@ class Voice(commands.Cog):
 
         Args:
             ctx (Context): context from command call
+            volume (int): volume value out of 100
         """
+        if volume < 0:
+            volume = 0
+        elif volume > 100:
+            volume = 100
         if ctx.voice_client is None:
             await self.bot.message_guild(
-                    'not connected to a voice channel.',
-                    ctx.channel)
+                'not connected to a voice channel.', ctx.channel)
         elif ctx.voice_client.source is not None:
             ctx.voice_client.source.volume = volume / 100
             await self.bot.message_guild(
-                    'changed volume to {}%'.format(volume), ctx.channel)
+                'changed volume to {}%'.format(volume), ctx.channel)
 
     async def play(self, ctx: commands.Context, sound: str) -> None:
         """Play the sound for `ctx.message.author`
@@ -107,9 +112,9 @@ class Voice(commands.Cog):
         _sounds = self.get_sounds()
         try:
             source = _sounds[sound]
-        except:
-            await self.bot.message_guild( 
-                    'unable to find sound {}'.format(sound), ctx.channel)
+        except KeyError:
+            await self.bot.message_guild(
+                'unable to find sound {}'.format(sound), ctx.channel)
             return
         source = discord.FFmpegPCMAudio(source)
         voice_client = ctx.voice_client
@@ -124,22 +129,22 @@ class Voice(commands.Cog):
         """
         _sounds = self.get_sounds()
         _sounds = ' '.join(sorted(_sounds.keys()))
-        await self.bot.message_guild( 
-                'the available sounds are: {}'.format(_sounds), ctx.channel)
+        await self.bot.message_guild(
+            'the available sounds are: {}'.format(_sounds), ctx.channel)
 
     async def add(self, ctx: commands.Context, name: str, url: str) -> None:
         """Download audio from youtube video
 
         Args:
             ctx (Context): context from command call
-            sound (str): name for the sound
-            url (str)L youtube url to download
+            name (str): name for the sound
+            url (str): youtube url to download
         """
         if name in self.get_sounds().keys():
             await self.bot.message_guild(
-                    'a sound named `{}` already exists. '
-                    'Please choose a different name.'.format(name),
-                    ctx.channel)
+                'a sound named `{}` already exists. '
+                'Please choose a different name.'.format(name),
+                ctx.channel)
             return
 
         path = os.path.join(self.sounds_dir, name)
@@ -159,20 +164,20 @@ class Voice(commands.Cog):
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                 metadata = ydl.extract_info(url, download=False, process=False)
                 if int(metadata['duration']) > MAX_SOUND_LENGTH_SECONDS:
-                    await self.bot.message_guild('video is too long. '
-                            'Max length = {}s'.format(MAX_SOUND_LENGTH_SECONDS),
-                            ctx.channel)
+                    msg = 'video is too long. Max length = {}s'.format(
+                        MAX_SOUND_LENGTH_SECONDS)
+                    await self.bot.message_guild(msg, ctx.channel)
                     return
                 ydl.download([url])
         except Exception as e:
             logger.exception('caught error downloading sound:\n{}'.format(e))
 
         if os.path.exists(path + '.mp3'):
-            await self.bot.message_guild('added sound `{}`.'.format(name),
-                    ctx.channel)
+            await self.bot.message_guild(
+                'added sound `{}`.'.format(name), ctx.channel)
         else:
-            await self.bot.message_guild('error downloading audio.'.format(name),
-                    ctx.channel)
+            await self.bot.message_guild(
+                'error downloading audio.', ctx.channel)
 
     def is_connected(self, ctx: commands.Context) -> bool:
         """Returns True is bot is connect to a voice channel"""
@@ -184,9 +189,8 @@ class Voice(commands.Cog):
         for filename in os.listdir(self.sounds_dir):
             if filename.endswith('.mp3') or filename.endswith('.mp4'):
                 sounds[os.path.splitext(filename)[0]] = os.path.join(
-                        self.sounds_dir, filename)
+                    self.sounds_dir, filename)
         return sounds
-
 
     @tasks.loop(seconds=30.0)
     async def _leave_on_empty(self) -> None:

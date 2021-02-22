@@ -1,7 +1,8 @@
+"""Custom Commands Cog"""
 import discord
 
 from discord.ext import commands
-from typing import List, Optional
+from typing import Optional
 
 from threepseat.bot import Bot
 from threepseat.utils import is_admin, GuildDatabase
@@ -14,14 +15,16 @@ class Commands(commands.Cog):
       - `?command add [name] [command text]`
       - `?command remove [name]`
     """
-    def __init__(self,
-                 bot: Bot,
-                 commands_file: str,
-                 guild_admin_permission: bool = True,
-                 bot_admin_permission: bool = True,
-                 everyone_permission: bool = False
+    def __init__(
+        self,
+        bot: Bot,
+        commands_file: str,
+        guild_admin_permission: bool = True,
+        bot_admin_permission: bool = True,
+        everyone_permission: bool = False
     ) -> None:
-        """
+        """Init Commands
+
         Args:
             bot (Bot): bot that loaded this cog
             commands_file (str): path to store database
@@ -50,6 +53,7 @@ class Commands(commands.Cog):
         return False
 
     def is_custom_command(self, cmd: commands.Command) -> bool:
+        """Check if command was created by this cog"""
         if cmd.cog_name == 'custom_commands':
             return True
         if 'cog_name' in cmd.__original_kwargs__:
@@ -81,8 +85,8 @@ class Commands(commands.Cog):
                 self.bot.remove_command(name)
             else:
                 await self.bot.message_guild(
-                        'this command already exist and cannot be overwritten',
-                        ctx.channel)
+                    'this command already exist and cannot be overwritten',
+                    ctx.channel)
                 return
 
         # Save to database
@@ -91,8 +95,8 @@ class Commands(commands.Cog):
         self.bot.add_command(self.make_command(name, text))
 
         await self.bot.message_guild(
-                'added command {}{}'.format(self.bot.command_prefix, name),
-                ctx.channel)
+            'added command {}{}'.format(self.bot.command_prefix, name),
+            ctx.channel)
 
     async def remove(self, ctx: commands.Context, name: str) -> None:
         """Remove a command from the guild
@@ -118,21 +122,28 @@ class Commands(commands.Cog):
                 self.bot.remove_command(name)
                 # Remove from database
                 self._remove_command(ctx.guild, name)
-                await self.bot.message_guild(
-                        'removed command {}{}'.format(
-                            self.bot.command_prefix, name),
-                        ctx.channel)
+                msg = 'removed command {}{}'.format(self.bot.command_prefix, name)
+                await self.bot.message_guild(msg, ctx.channel)
             else:
                 await self.bot.message_guild(
-                        'this command cannot be removed',
-                        ctx.channel)
+                    'this command cannot be removed',
+                    ctx.channel)
                 return
         else:
             await self.bot.message_guild(
-                    'the {} command does not exists'.format(name),
-                    ctx.channel)
+                'the {} command does not exists'.format(name),
+                ctx.channel)
 
     def make_command(self, name: str, text: str) -> commands.Command:
+        """Create Discord Command
+
+        Args:
+            name (str): name of command
+            text (str): message to return when command is executed
+
+        Returns:
+            Command
+        """
         async def _command(_ctx: commands.Context):
             _text = self._get_command(_ctx.guild, name)
             if _text is None:

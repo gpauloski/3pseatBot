@@ -1,3 +1,4 @@
+"""Utility functions and classes"""
 import discord
 import emoji
 import json
@@ -5,9 +6,7 @@ import logging
 import os
 import re
 
-from discord.ext import commands
 from typing import Any, Dict, Optional
-
 
 logger = logging.getLogger()
 
@@ -26,10 +25,11 @@ def is_emoji(text: str) -> bool:
         True if `test` is only some combination of unicode emojis,
         Discord emotes, and whitespace.
     """
-    text = emoji.get_emoji_regexp().sub(r'', text)  # remove unicode emojis
-    text = re.sub(DISCORD_EMOTE_RE, '', text) # remove discord emojis
-    # at this point, the string has all emojis removed so if the string
-    # is just whitespace then we know it was only emojis
+    text = emoji.get_emoji_regexp().sub(r'', text)
+    # unicode emojis are now removed
+    text = re.sub(DISCORD_EMOTE_RE, '', text)
+    # Discord emojis are now removed so we can just check to see
+    # if whitespace is left
     return text.strip() == ''
 
 
@@ -48,33 +48,6 @@ def is_url(text: str) -> bool:
     return re.match(URL_RE, text) and len(text.split(' ')) == 1
 
 
-def log(msg: str, level: str = 'info',
-        context: Optional[commands.Context] = None):
-    """Logs message with additional context
-
-    Args:
-        msg (str):
-        level (str, optional): logging level (default: 'info')
-        context (discord.ext.commands.Context, optional): context
-            from discord API (default: None)
-    """
-    prefix = ''
-    if context is not None:
-        prefix += '[guild={}, channel={}, user={}]'.format(
-                context.guild, context.channel, context.author)
-
-    if level == 'info':
-        self.logger.info(log_msg)
-    elif level == 'warning':
-        self.logger.warning(log_msg)
-    elif level == 'debug':
-        self.logger.debug(log_msg)
-    elif level == 'error':
-        self.logger.error(log_msg)
-    else:
-        raise ValueError('Unknown logging level "{}".format(level))')
-
-
 def keys_to_int(d: Dict[Any, Any]) -> Dict[int, Any]:
     """Converts str keys of dict to int"""
     return {int(k): v for k, v in d.items()}
@@ -87,7 +60,8 @@ class GuildDatabase:
     Each table contains a set of key: values.
     """
     def __init__(self, db_file: str) -> None:
-        """
+        """Init GuildDatabase
+
         Args:
             db_file (str): file to save database to
         """

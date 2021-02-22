@@ -1,3 +1,4 @@
+"""Cog for enforcing 3pseat rules"""
 import discord
 import logging
 
@@ -28,19 +29,21 @@ class Rules(commands.Cog):
       - `?strikes add @member`: add strike to member
       - `?strikes remove @member`: remove strike from member
     """
-    def __init__(self,
-                 bot: Bot,
-                 database_path: str,
-                 message_prefix: Optional[Union[str, List[str]]] = None,
-                 whitelist_prefix: Union[str, List[str]] = [],
-                 max_offenses: int = 3,
-                 allow_deletes: bool = True,
-                 allow_edits: bool = True,
-                 allow_wrong_commands: bool = True,
-                 booster_exception: bool = True,
-                 invite_after_kick: bool = True
-        ) -> None:
-        """
+    def __init__(
+        self,
+        bot: Bot,
+        database_path: str,
+        message_prefix: Optional[Union[str, List[str]]] = None,
+        whitelist_prefix: Union[str, List[str]] = [],
+        max_offenses: int = 3,
+        allow_deletes: bool = True,
+        allow_edits: bool = True,
+        allow_wrong_commands: bool = True,
+        booster_exception: bool = True,
+        invite_after_kick: bool = True
+    ) -> None:
+        """Init Rules
+
         Args:
             bot (Bot): bot object this cog is attached to
             database_path (str): path to file storing database of strikes
@@ -78,7 +81,6 @@ class Rules(commands.Cog):
 
         self.db = GuildDatabase(database_path)
 
-
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         """Called when message is created and sent"""
@@ -86,8 +88,8 @@ class Rules(commands.Cog):
             return
         if message.guild is None:
             await self.bot.message_user(
-                    'Hi there, I cannot reply to direct messages.',
-                    message.author)
+                'Hi there, I cannot reply to direct messages.',
+                message.author)
             return
 
         if self.should_ignore(message):
@@ -95,7 +97,6 @@ class Rules(commands.Cog):
 
         if not self.is_verified(message):
             await self.add_strike(message.author, message.channel)
-
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message) -> None:
@@ -106,12 +107,12 @@ class Rules(commands.Cog):
               message.author.mention, message.clean_content)
         await self.bot.message_guild(msg, message.channel)
 
-
     @commands.Cog.listener()
-    async def on_message_edit(self,
-                              before: discord.Message,
-                              after: discord.Message
-        ) -> None:
+    async def on_message_edit(
+        self,
+        before: discord.Message,
+        after: discord.Message
+    ) -> None:
         """Called when message is edited"""
         if self.allow_edits or before.author.bot or self.should_ignore(after):
             return
@@ -129,15 +130,17 @@ class Rules(commands.Cog):
         if not self.is_verified(after):
             await self.add_strike(after.author, after.channel)
 
-
     @commands.Cog.listener()
-    async def on_command_error(self,
-                               ctx: commands.Context,
-                               error: commands.CommandError
-        ) -> None:
+    async def on_command_error(
+        self,
+        ctx: commands.Context,
+        error: commands.CommandError
+    ) -> None:
         """Called when a command is invalid"""
-        if (isinstance(error, commands.CommandNotFound) and
-                not self.allow_wrong_commands):
+        if (
+            isinstance(error, commands.CommandNotFound)
+            and not self.allow_wrong_commands
+        ):
             for prefix in self.whitelist_prefix:
                 if ctx.message.content.startswith(prefix):
                     return
@@ -150,7 +153,7 @@ class Rules(commands.Cog):
             ctx (Context): context from command call
         """
         msg = '{}, here are the strikes:'.format(
-                ctx.message.author.mention)
+            ctx.message.author.mention)
         serverCount = 0
         strikes = self.db.table(ctx.guild)
         if len(strikes) > 0:
@@ -158,13 +161,13 @@ class Rules(commands.Cog):
             for uid in strikes:
                 if int(uid) != ctx.guild.id:
                     msg = msg + '\n{}: {}/{}'.format(
-                          self.bot.get_user(int(uid)).name,
-                          strikes[uid], self.max_offenses)
+                        self.bot.get_user(int(uid)).name,
+                        strikes[uid], self.max_offenses)
                 else:
                     serverCount = strikes[uid]
             msg += '```'
         else:
-            msg +=' there are none!\n'
+            msg += ' there are none!\n'
         msg += 'Total offenses to date: {}'.format(serverCount)
         await self.bot.message_guild(msg, ctx.channel)
 
@@ -180,8 +183,9 @@ class Rules(commands.Cog):
         if self.bot.is_bot_admin(ctx.message.author):
             await self._add_strike(member, ctx.channel, ctx.guild)
         else:
-            await self.bot.message_server('you lack permission, {}'.format(
-                    ctx.message.author.mention))
+            await self.bot.message_guild(
+                'you lack permission, {}'.format(ctx.message.author.mention),
+                ctx.channel)
 
     async def remove(self, ctx: commands.Context, member: discord.Member) -> None:
         """Removes a strike from `member`
@@ -194,13 +198,13 @@ class Rules(commands.Cog):
         """
         if self.bot.is_bot_admin(ctx.message.author):
             self.remove_strike(member)
-            await self.bot.message_guild(
-                    'removed strike for {}. New strike count is {}.'.format(
-                    member.mention, self.get_strikes(member)),
-                    ctx.message.channel)
+            msg = 'removed strike for {}. New strike count is {}.'.format(
+                member.mention, self.get_strikes(member))
+            await self.bot.message_guild(msg, ctx.message.channel)
         else:
-            await self.bot.message_server('you lack permission, {}'.format(
-                    ctx.message.author.mention))
+            await self.bot.message_guild(
+                'you lack permission, {}'.format(ctx.message.author.mention),
+                ctx.channel)
 
     def should_ignore(self, message: discord.Message) -> bool:
         """Returns true if the message should be ignored
@@ -268,11 +272,12 @@ class Rules(commands.Cog):
 
         return False
 
-    async def check_strikes(self,
-                            member: discord.Member,
-                            channel: discord.TextChannel,
-                            guild: discord.Guild
-        ) -> None:
+    async def check_strikes(
+        self,
+        member: discord.Member,
+        channel: discord.TextChannel,
+        guild: discord.Guild
+    ) -> None:
         """Handles what to do when user recieves a strike
 
         If the user has fewer that `self.max_offenses` strikes,
@@ -305,11 +310,12 @@ class Rules(commands.Cog):
                        '{link}')
                 await self.invite(member, channel, msg)
 
-    async def invite(self,
-                     user: Union[discord.User, discord.Member],
-                     channel: discord.TextChannel,
-                     message: str
-        ) -> None:
+    async def invite(
+        self,
+        user: Union[discord.User, discord.Member],
+        channel: discord.TextChannel,
+        message: str
+    ) -> None:
         """Send guild invite link to user
 
         Args:
@@ -323,14 +329,15 @@ class Rules(commands.Cog):
             await self.bot.message_user(msg, user)
         except Exception as e:
             logger.warning('Failed to send rejoin message to {}.'
-                    'Caught exception: {}'.format(user, e))
+                           'Caught exception: {}'.format(user, e))
 
-    async def kick(self,
-                   member: discord.Member,
-                   channel: discord.TextChannel,
-                   guild: discord.Guild,
-                   message: str = None
-        ) -> bool:
+    async def kick(
+        self,
+        member: discord.Member,
+        channel: discord.TextChannel,
+        guild: discord.Guild,
+        message: str = None
+    ) -> bool:
         """Kick member from guild
 
         Args:
@@ -363,10 +370,11 @@ class Rules(commands.Cog):
             await self.bot.message_guild(message, channel, react=F_EMOTE)
         return True
 
-    async def add_strike(self,
-                         member: discord.Member,
-                         channel: discord.TextChannel
-        ) -> None:
+    async def add_strike(
+        self,
+        member: discord.Member,
+        channel: discord.TextChannel
+    ) -> None:
         """Add a strike to the `member` of `guild` in the database
 
         Calls `check_strikes()`
@@ -407,7 +415,6 @@ class Rules(commands.Cog):
         server_count = self.get_global_strikes(member.guild)
         if server_count > 0:
             self.db.set(member.guild, str(member.guild.id), server_count + 1)
-
 
     @commands.group(name='strikes', pass_context=True, brief='?help strikes for more info')
     async def _strikes(self, ctx: commands.Context) -> None:

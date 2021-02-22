@@ -19,3 +19,6 @@ docker-stop:
 
 dev-start:
 	eval $(RUN_CMD)
+
+flake8:
+	flake8 . --count --show-source --statistics

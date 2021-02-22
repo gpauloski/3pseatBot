@@ -1,8 +1,9 @@
+"""Install threepseat as module"""
 import setuptools
 
 with open('requirements.txt') as f:
     install_requires = f.readlines()
-    
+
 with open('README.md') as f:
     long_desc = f.read()
 

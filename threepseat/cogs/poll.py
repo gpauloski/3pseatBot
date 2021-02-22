@@ -1,6 +1,6 @@
+"""Cog for creating polls"""
 import discord
 import emoji
-import traceback
 
 from discord.ext import commands
 
@@ -27,13 +27,15 @@ class Poll(commands.Cog):
     Adds the following commands:
       - `?poll "[question]" "[option 1]" "[option 2]" ... "[option 9]"`
     """
-    def __init__(self,
-                 bot: Bot,
-                 guild_admin_permission: bool = True,
-                 bot_admin_permission: bool = True,
-                 everyone_permission: bool = False
+    def __init__(
+        self,
+        bot: Bot,
+        guild_admin_permission: bool = True,
+        bot_admin_permission: bool = True,
+        everyone_permission: bool = False
     ) -> None:
-        """
+        """Init Poll
+
         Args:
             bot (Bot): bot that loaded this cog
             guild_admin_permission (bool): can guild admins start polls
@@ -45,10 +47,11 @@ class Poll(commands.Cog):
         self.bot_admin_permission = bot_admin_permission
         self.everyone_permission = everyone_permission
 
-    async def create_poll(self,
-                          ctx: commands.Context,
-                          question: str,
-                          *options: str
+    async def create_poll(
+        self,
+        ctx: commands.Context,
+        question: str,
+        *options: str
     ) -> None:
         """Message `ctx.channel` with the formatted poll
 
@@ -92,10 +95,11 @@ class Poll(commands.Cog):
         return False
 
     @commands.Cog.listener()
-    async def on_command_error(self,
-                                ctx: commands.Context,
-                                error: commands.CommandError
-        ) -> None:
+    async def on_command_error(
+        self,
+        ctx: commands.Context,
+        error: commands.CommandError
+    ) -> None:
         """Catch unknown errors to see if they are actually a user command
 
         Args:
@@ -108,33 +112,37 @@ class Poll(commands.Cog):
         else:
             raise error
 
-    @commands.command(name='poll',
-                      pass_context=True,
-                      brief='Start poll: "question" "option 1" "option 2" ...'
+    @commands.command(
+        name='poll',
+        pass_context=True,
+        brief='Start poll: "question" "option 1" "option 2" ...'
     )
-    async def _poll(self,
-                    ctx: commands.Context,
-                    question: str,
-                    *options: str
+    async def _poll(
+        self,
+        ctx: commands.Context,
+        question: str,
+        *options: str
     ) -> None:
         await self.create_poll(ctx, question, *options)
 
     @_poll.error
-    async def _poll_error(self,
-                          ctx: commands.Context,
-                          error: commands.CommandError
+    async def _poll_error(
+        self,
+        ctx: commands.Context,
+        error: commands.CommandError
     ) -> None:
         """Handle invalid usage of poll command
+
         Args:
             ctx (Context): context from command call
             error (CommandError): error raised by the API
         """
         if isinstance(error, commands.MissingRequiredArgument):
             await self.bot.message_guild(
-                    'the format for the poll command is:\n'
-                    '> {}poll "question" "option 1" "option 2" ... "option 9"'
-                    '\nQuotation marks can be ignored for single '
-                    'word options.'.format(self.bot.command_prefix),
-                    ctx.channel)
+                'the format for the poll command is:\n'
+                '> {}poll "question" "option 1" "option 2" ... "option 9"'
+                '\nQuotation marks can be ignored for single '
+                'word options.'.format(self.bot.command_prefix),
+                ctx.channel)
         else:
             raise error

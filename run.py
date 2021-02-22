@@ -1,3 +1,5 @@
+"""Runner script for 3pseatBot"""
+
 import argparse
 import json
 import logging
@@ -14,8 +16,8 @@ from threepseat.bot import Bot
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
-            description='3pseatBot. A bot that does little of use.',
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description='3pseatBot. A bot that does little of use.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--config', required=True, help='Bot config file')
     parser.add_argument('--log_dir', default='logs', help='Logging directory')
 
@@ -23,9 +25,10 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def init_logger(log_dir: Optional[str] = None, 
-                filename: Optional[str] = None
-    ) -> logging.Logger:
+def init_logger(
+    log_dir: Optional[str] = None,
+    filename: Optional[str] = None
+) -> logging.Logger:
     """Logging Context Manager
 
     Logs to stdout and persistent file.
@@ -64,15 +67,16 @@ def init_logger(log_dir: Optional[str] = None,
     def exception_handler(type, value, tb):
         logger.exception('Uncaught exception: {}'.format(str(value)))
 
-    #sys.excepthook = exception_handler
+    sys.excepthook = exception_handler
 
     return logger
 
 
 def main():
+    """Initialize and run bot"""
     args = parse_args()
 
-    logger = init_logger(log_dir=args.log_dir)
+    init_logger(log_dir=args.log_dir)
 
     with open(args.config) as f:
         config = json.load(f)

@@ -1,11 +1,12 @@
+"""Cog with general utility functions"""
 import discord
-import traceback
 import traceback
 import sys
 
 from discord.ext import commands
 
 from threepseat.bot import Bot
+from threepseat.utils import is_admin
 
 
 class General(commands.Cog):
@@ -19,7 +20,8 @@ class General(commands.Cog):
     from the bot when commands fail.
     """
     def __init__(self, bot: Bot) -> None:
-        """
+        """Init General
+
         Args:
             bot (Bot): bot that loaded this cog
         """
@@ -43,28 +45,30 @@ class General(commands.Cog):
 
         Args:
             ctx (Context): context from command call
+            member (Member): member to yeet
         """
         if not ctx.message.author.guild_permissions.administrator:
             msg = '{}, you do not have yeet (admin) power.'.format(
                   ctx.message.author.mention)
             await self.bot.message_guild(msg, ctx.channel)
-        elif user.bot:
+        elif member.bot:
             msg = '{}, you cannot yeet a bot.'.format(
                   ctx.message.author.mention)
             await self.bot.message_guild(msg, ctx.channel)
         else:
             if is_admin(member):
                 msg = ('Failed to kick {}. Your cognizance is highly '
-                            'acknowledged.'.format(member.mention))
+                       'acknowledged.'.format(member.mention))
                 await self.bot.message_guild(msg, ctx.channel)
             else:
                 await ctx.guild.kick(member)
 
     @commands.Cog.listener()
-    async def on_command_error(self,
-                               ctx: commands.Context,
-                               error: commands.CommandError
-        ) -> None:
+    async def on_command_error(
+        self,
+        ctx: commands.Context,
+        error: commands.CommandError
+    ) -> None:
         """Handle common command errors
 
         Catches `MissingRequiredArgument`, `TooManyArguments`, and
@@ -77,14 +81,15 @@ class General(commands.Cog):
         if ctx.command is not None and ctx.command.error is not None:
             # Ignore commands that have their own error handlers
             return
-        if (isinstance(error, commands.MissingRequiredArgument) or
-            isinstance(error, commands.TooManyArguments)):
+        if (
+            isinstance(error, commands.MissingRequiredArgument)
+            or isinstance(error, commands.TooManyArguments)
+        ):
             await self.bot.message_guild(
-                    "Incorrect number of arguments in command.",
-                    ctx.channel)
+                'Incorrect number of arguments in command.', ctx.channel)
         elif isinstance(error, commands.BadArgument):
-            await self.bot.message_guild("Invalid argument to command.",
-                    ctx.channel)
+            await self.bot.message_guild(
+                'Invalid argument to command.', ctx.channel)
         else:
             traceback.print_exception(type(error), error, error.__traceback__,
                                       file=sys.stderr)

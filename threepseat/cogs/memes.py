@@ -1,3 +1,4 @@
+"""Cog for random memes and commands"""
 import discord
 import random
 import re
@@ -21,19 +22,21 @@ class Memes(commands.Cog):
       - `?odds [num]`: give random integer in [1, number]
       - `?snowball`: should you take the snowball?
     """
-    def __init__(self,
-                 bot: Bot,
-                 pog_reply: bool = False,
-                 dad_reply: bool = False
-        ) -> None:
-        """
+    def __init__(
+        self,
+        bot: Bot,
+        pog_reply: bool = False,
+        dad_reply: bool = False
+    ) -> None:
+        """Init Memes
+
         Args:
             bot (Bot): bot that loaded this cog
             pog_reply (bool): if `True`, any message with some variation of
                 pog in it will be replied to by the bot
             dad_reply (bool): if `True`, and message with "I'm {}..." will
                 be replied to by the bot.
-        """        
+        """
         self.bot = bot
         self.pog_reply = pog_reply
         self.dad_reply = dad_reply
@@ -53,6 +56,7 @@ class Memes(commands.Cog):
 
         Args:
             ctx (Context): context from command call
+            num (int): maximum range to sample number from
         """
         rand = random.randint(1, num)
         await self.bot.message_guild('{}'.format(rand), ctx.channel)
@@ -78,16 +82,16 @@ class Memes(commands.Cog):
         if self.pog_reply:
             text = message.content.lower()
             if re.search(POG_RE, text) or re.search(POG_EMOTE_RE, text):
-                await self.bot.message_guild('poggers', message.channel,
-                        POG_EMOTES)
+                await self.bot.message_guild(
+                    'poggers', message.channel, POG_EMOTES)
 
         if self.dad_reply:
             search = re.findall(DAD_RE, text)
             if len(search) > 0:
                 search = search[0]
                 await self.bot.message_guild(
-                        'Hi {}, I\'m {}!'.format(search[4], self.bot.user.mention),
-                        message.channel)
+                    'Hi {}, I\'m {}!'.format(search[4], self.bot.user.mention),
+                    message.channel)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
