@@ -1,5 +1,6 @@
 # 3pseatBot
 
+[![Build Status](https://github.com/gpauloski/3pseatBot/actions/workflows/python-package.yml/badge.svg)](https://github.com/gpauloski/3pseatBot/actions)
 [![Documentation Status](https://readthedocs.org/projects/3pseatbot/badge/?version=latest)](https://3pseatbot.readthedocs.io/en/latest/?badge=latest)
 
 ## What is 3pseatBot?

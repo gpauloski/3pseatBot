@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger()
 
 URL_RE = (r'((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.'
-          '([a-zA-Z]){2,6}([a-zA-Z0-9\.\&\/\?\:@\-_=#])*')
+          '([a-zA-Z]){2,6}([a-zA-Z0-9\\.\\&\\/\\?\\:@\\-_=#])*')
 DISCORD_EMOTE_RE = r'<.*:\w*:\d*>'
 
 
@@ -23,8 +23,11 @@ def is_emoji(text: str) -> bool:
 
     Returns:
         True if `test` is only some combination of unicode emojis,
-        Discord emotes, and whitespace.
+        Discord emotes, and whitespace. Note there must be at least
+        one emoji present.
     """
+    if text.strip() == '':
+        return False
     text = emoji.get_emoji_regexp().sub(r'', text)
     # unicode emojis are now removed
     text = re.sub(DISCORD_EMOTE_RE, '', text)
