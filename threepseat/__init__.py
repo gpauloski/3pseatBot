@@ -1,1 +1,1 @@
-import threepseat.cogs
+from threepseat import cogs
