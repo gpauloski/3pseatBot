@@ -129,7 +129,7 @@ class Voice(commands.Cog):
         Args:
             ctx (Context): context from command call
         """
-        _sounds = self.get_sounds().keys()
+        _sounds = list(self.get_sounds().keys())
         await self.play(ctx, random.choice(_sounds))
 
     async def list(self, ctx: commands.Context) -> None:
@@ -240,5 +240,5 @@ class Voice(commands.Cog):
         await self.add(ctx, name, url)
 
     @_sounds.command(name='roll', pass_context=True, brief='play a random sound')
-    async def _roll(self, ctx: commands.Context, name: str, url: str) -> None:
-        await self.roll(ctx, name, url)
+    async def _roll(self, ctx: commands.Context) -> None:
+        await self.roll(ctx)
