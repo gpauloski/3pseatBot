@@ -186,43 +186,30 @@ class Bot(commands.Bot):
         if ctx.invoked_subcommand is not None:
             cmd = ctx.invoked_subcommand.full_parent_name + ' ' + ctx.invoked_with
         if isinstance(error, commands.MissingRequiredArgument):
-            await self.message_guild(
-                'missing required options for command. '
-                'Try `?help {}` for more info'.format(cmd),
-                ctx.channel)
+            msg = 'missing required options for command. '
+                  'Try `?help {}` for more info'.format(cmd)
         elif isinstance(error, commands.TooManyArguments):
-            await self.message_guild(
-                'too many options for command. '
-                'Try `?help {}` for more info'.format(cmd),
-                ctx.channel)
+            msg = 'too many options for command. '
+                  'Try `?help {}` for more info'.format(cmd)
         elif isinstance(error, commands.BadArgument):
-            await self.message_guild(
-                'invalid option for command. '
-                'Try `?help {}` for more info'.format(cmd),
-                ctx.channel)
+            msg = 'invalid option for command. '
+                  'Try `?help {}` for more info'.format(cmd)
         elif isinstance(error, commands.ExpectedClosingQuoteError):
-            await self.message_guild(
-                'missing closing quotation mark in command', ctx.channel)
+            msg = 'missing closing quotation mark in command'
         elif isinstance(error, commands.CommandNotFound):
-            await self.message_guild(
-                'I do not know that command. '
-                'Try `?help` for a list of commands', ctx.channel)
+            msg = 'I do not know that command. '
+                  'Try `?help` for a list of commands'
         elif isinstance(error, commands.BadBoolArgument):
-            await self.message_guild(
-                'unable to convert the option to true or false', ctx.channel)
+            msg = 'unable to convert the option to true or false'
         elif isinstance(error, commands.MissingPermissions):
-            await self.message_guild(
-                '{}, you do not have permission to use that '
-                'command'.format(ctx.message.author.mention), ctx.channel)
+            msg = '{}, you do not have permission to use that '
+                  'command'.format(ctx.message.author.mention)
         elif isinstance(error, commands.BotMissingPermissions):
-            await self.message_guild(
-                'I do not have permission to run this command on this guild',
-                ctx.channel)
+            msg = 'I do not have permission to run this command on this guild'
         else:
-            await self.message_guild(
-                'oops command failed. See the logs for more info',
-                ctx.channel)
-            logger.exception(type(error), error, error.__traceback__)
+            msg = 'oops command failed. See the logs for more info'
+            logger.error(type(error), error, error.__traceback__)
+        self.message_guild(msg, ctx.channel)
 
     def run(self):
         """Start the bot"""
