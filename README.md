@@ -26,4 +26,9 @@
 - [x] Create hosting documentation
 - [x] Update this README to link to relevant stuff on readthedocs
 - [x] Change Games cog to work similar to Minecraft cog where data is local to a guild
-- [ ] GitHub CI, linting
+- [x] GitHub CI, linting
+  - [ ] add more advanced testing for discord commands (will probably require a new framework)
+- [x] Change missing permissions errors to raise MissingPermission error
+- [x] Change command error handling to be in base bot class
+  - [x] more helpful command errors
+- [x] Move flip and odds to general

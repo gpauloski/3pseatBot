@@ -210,35 +210,74 @@ class Voice(commands.Cog):
             if len(client.channel.members) <= 1:
                 await client.disconnect()
 
-    @commands.command(name='join', pass_context=True, brief='join voice channel')
+    @commands.command(
+        name='join',
+        pass_context=True,
+        brief='join voice channel',
+        ignore_extra=False
+    )
     async def _join(self, ctx: commands.Context) -> bool:
         await self.join(ctx)
 
-    @commands.command(name='leave', pass_context=True, brief='leave voice channel')
+    @commands.command(
+        name='leave',
+        pass_context=True,
+        brief='leave voice channel',
+        ignore_extra=False
+    )
     async def _leave(self, ctx: commands.Context) -> None:
         await self.leave(ctx)
 
-    @commands.command(name='volume', pass_context=True, brief='set bot volume [0-100]')
+    @commands.command(
+        name='volume',
+        pass_context=True,
+        brief='set bot volume [0-100]',
+        ignore_extra=False
+    )
     async def _volume(self, ctx: commands.Context, volume: int) -> None:
         await self.volume(ctx, volume)
 
-    @commands.group(name='sounds', pass_context=True, brief='?help sounds for more info')
+    @commands.group(
+        name='sounds',
+        pass_context=True,
+        brief='?help sounds for more info'
+    )
     async def _sounds(self, ctx: commands.Context) -> None:
         if ctx.invoked_subcommand is None:
             await self.list(ctx)
 
-    @_sounds.command(name='play', pass_context=True, brief='play a sound: [name]')
-    async def _play(self, ctx: commands.Context, sound: str) -> None:
-        await self.play(ctx, sound)
-
-    @_sounds.command(name='list', pass_context=True, brief='list sounds')
-    async def _list(self, ctx: commands.Context) -> None:
-        await self.list(ctx)
-
-    @_sounds.command(name='add', pass_context=True, brief='add a sound: [name] [url]')
+    @_sounds.command(
+        name='add',
+        pass_context=True,
+        brief='add a sound: [name] [url]',
+        ignore_extra=False
+    )
     async def _add(self, ctx: commands.Context, name: str, url: str) -> None:
         await self.add(ctx, name, url)
 
-    @_sounds.command(name='roll', pass_context=True, brief='play a random sound')
+    @_sounds.command(
+        name='list',
+        pass_context=True,
+        brief='list sounds',
+        ignore_extra=False
+    )
+    async def _list(self, ctx: commands.Context) -> None:
+        await self.list(ctx)
+
+    @_sounds.command(
+        name='play',
+        pass_context=True,
+        brief='play a sound: [name]',
+        ignore_extra=False
+    )
+    async def _play(self, ctx: commands.Context, sound: str) -> None:
+        await self.play(ctx, sound)
+
+    @_sounds.command(
+        name='roll',
+        pass_context=True,
+        brief='play a random sound',
+        ignore_extra=False
+    )
     async def _roll(self, ctx: commands.Context) -> None:
         await self.roll(ctx)

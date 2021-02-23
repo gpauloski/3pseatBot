@@ -32,7 +32,7 @@ class Poll(commands.Cog):
         bot: Bot,
         guild_admin_permission: bool = True,
         bot_admin_permission: bool = True,
-        everyone_permission: bool = False
+        everyone_permission: bool = True
     ) -> None:
         """Init Poll
 
@@ -61,11 +61,7 @@ class Poll(commands.Cog):
             options (list[str]): up to 9 response options
         """
         if not self.has_permission(ctx.message.author):
-            await self.bot.message_guild(
-                '{}, you do not have permission to start a poll'.format(
-                    ctx.message.author.mention),
-                ctx.channel)
-            return
+            raise commands.MissingPermissions
         if len(options) == 0:
             await self.bot.message_guild(
                 '{}, no voting options were provided'.format(
@@ -94,28 +90,14 @@ class Poll(commands.Cog):
             return True
         return False
 
-    @commands.Cog.listener()
-    async def on_command_error(
-        self,
-        ctx: commands.Context,
-        error: commands.CommandError
-    ) -> None:
-        """Catch unknown errors to see if they are actually a user command
-
-        Args:
-            ctx (Context): context from command call
-            error (CommandError): error raised by the API
-        """
-        if isinstance(error, commands.CommandNotFound):
-            # Ignore commands that have their own error handlers
-            print(ctx.__dict__)
-        else:
-            raise error
-
     @commands.command(
         name='poll',
         pass_context=True,
-        brief='Start poll: "question" "option 1" "option 2" ...'
+        brief='start a poll',
+        description='Start a poll for <question> with up to 9 options. '
+                    'Note if the question or options require a space, '
+                    'wrap it in quotation marks. '
+                    'E.g. "favorite food?" apples "frosted flakes" "ice cream"'
     )
     async def _poll(
         self,
@@ -124,25 +106,3 @@ class Poll(commands.Cog):
         *options: str
     ) -> None:
         await self.create_poll(ctx, question, *options)
-
-    @_poll.error
-    async def _poll_error(
-        self,
-        ctx: commands.Context,
-        error: commands.CommandError
-    ) -> None:
-        """Handle invalid usage of poll command
-
-        Args:
-            ctx (Context): context from command call
-            error (CommandError): error raised by the API
-        """
-        if isinstance(error, commands.MissingRequiredArgument):
-            await self.bot.message_guild(
-                'the format for the poll command is:\n'
-                '> {}poll "question" "option 1" "option 2" ... "option 9"'
-                '\nQuotation marks can be ignored for single '
-                'word options.'.format(self.bot.command_prefix),
-                ctx.channel)
-        else:
-            raise error

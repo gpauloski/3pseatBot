@@ -81,71 +81,6 @@ class Rules(commands.Cog):
 
         self.db = GuildDatabase(database_path)
 
-    @commands.Cog.listener()
-    async def on_message(self, message: discord.Message) -> None:
-        """Called when message is created and sent"""
-        if message.author.bot:
-            return
-        if message.guild is None:
-            await self.bot.message_user(
-                'Hi there, I cannot reply to direct messages.',
-                message.author)
-            return
-
-        if self.should_ignore(message):
-            return
-
-        if not self.is_verified(message):
-            await self.add_strike(message.author, message.channel)
-
-    @commands.Cog.listener()
-    async def on_message_delete(self, message: discord.Message) -> None:
-        """Called when message is deleted"""
-        if self.allow_deletes or message.author.bot or self.should_ignore(message):
-            return
-        msg = '{}, where did your message go? It was: \"{}\"'.format(
-              message.author.mention, message.clean_content)
-        await self.bot.message_guild(msg, message.channel)
-
-    @commands.Cog.listener()
-    async def on_message_edit(
-        self,
-        before: discord.Message,
-        after: discord.Message
-    ) -> None:
-        """Called when message is edited"""
-        if self.allow_edits or before.author.bot or self.should_ignore(after):
-            return
-        # ignore message with embeds because it counts as editing a message
-        if after.embeds:
-            return
-        # ignore message being edited because it was pinned
-        if not before.pinned and after.pinned:
-            return
-        msg = '{}, what did you do to your message? It was: \"{}\"'.format(
-              before.author.mention, before.clean_content)
-        await self.bot.message_guild(msg, before.channel)
-
-        # confirm new message still passes rules
-        if not self.is_verified(after):
-            await self.add_strike(after.author, after.channel)
-
-    @commands.Cog.listener()
-    async def on_command_error(
-        self,
-        ctx: commands.Context,
-        error: commands.CommandError
-    ) -> None:
-        """Called when a command is invalid"""
-        if (
-            isinstance(error, commands.CommandNotFound)
-            and not self.allow_wrong_commands
-        ):
-            for prefix in self.whitelist_prefix:
-                if ctx.message.content.startswith(prefix):
-                    return
-            await self.add_strike(ctx.message.author, ctx.channel)
-
     async def list(self, ctx: commands.Context) -> None:
         """List strikes for members in `ctx.guild`
 
@@ -416,19 +351,103 @@ class Rules(commands.Cog):
         if server_count > 0:
             self.db.set(member.guild, str(member.guild.id), server_count + 1)
 
-    @commands.group(name='strikes', pass_context=True, brief='?help strikes for more info')
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message) -> None:
+        """Called when message is created and sent"""
+        if message.author.bot:
+            return
+        if message.guild is None:
+            await self.bot.message_user(
+                'Hi there, I cannot reply to direct messages.',
+                message.author)
+            return
+
+        if self.should_ignore(message):
+            return
+
+        if not self.is_verified(message):
+            await self.add_strike(message.author, message.channel)
+
+    @commands.Cog.listener()
+    async def on_message_delete(self, message: discord.Message) -> None:
+        """Called when message is deleted"""
+        if self.allow_deletes or message.author.bot or self.should_ignore(message):
+            return
+        msg = '{}, where did your message go? It was: \"{}\"'.format(
+              message.author.mention, message.clean_content)
+        await self.bot.message_guild(msg, message.channel)
+
+    @commands.Cog.listener()
+    async def on_message_edit(
+        self,
+        before: discord.Message,
+        after: discord.Message
+    ) -> None:
+        """Called when message is edited"""
+        if self.allow_edits or before.author.bot or self.should_ignore(after):
+            return
+        # ignore message with embeds because it counts as editing a message
+        if after.embeds:
+            return
+        # ignore message being edited because it was pinned
+        if not before.pinned and after.pinned:
+            return
+        msg = '{}, what did you do to your message? It was: \"{}\"'.format(
+              before.author.mention, before.clean_content)
+        await self.bot.message_guild(msg, before.channel)
+
+        # confirm new message still passes rules
+        if not self.is_verified(after):
+            await self.add_strike(after.author, after.channel)
+
+    @commands.Cog.listener()
+    async def on_command_error(
+        self,
+        ctx: commands.Context,
+        error: commands.CommandError
+    ) -> None:
+        """Called when a command is invalid"""
+        if (
+            isinstance(error, commands.CommandNotFound)
+            and not self.allow_wrong_commands
+        ):
+            for prefix in self.whitelist_prefix:
+                if ctx.message.content.startswith(prefix):
+                    return
+            await self.add_strike(ctx.message.author, ctx.channel)
+
+    @commands.group(
+        name='strikes',
+        pass_context=True,
+        brief='?help strikes for more info'
+    )
     async def _strikes(self, ctx: commands.Context) -> None:
         if ctx.invoked_subcommand is None:
             await self.list(ctx)
 
-    @_strikes.command(name='list', pass_context=True, brief='add strike to user')
-    async def _list(self, ctx: commands.Context) -> None:
-        await self.list(ctx)
-
-    @_strikes.command(name='add', pass_context=True, brief='add strike to user')
+    @_strikes.command(
+        name='add',
+        pass_context=True,
+        brief='add strike to user',
+        ignore_extra=False
+    )
     async def _add(self, ctx: commands.Context, member: discord.Member) -> None:
         await self.add(ctx, member)
 
-    @_strikes.command(name='remove', pass_context=True, brief='remove strike from user')
+    @_strikes.command(
+        name='list',
+        pass_context=True,
+        brief='add strike to user',
+        ignore_extra=False
+    )
+    async def _list(self, ctx: commands.Context) -> None:
+        await self.list(ctx)
+
+    @_strikes.command(
+        name='remove',
+        pass_context=True,
+        brief='remove strike from user',
+        ignore_extra=False
+    )
     async def _remove(self, ctx: commands.Context, member: discord.Member) -> None:
         await self.remove(ctx, member)

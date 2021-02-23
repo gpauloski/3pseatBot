@@ -60,6 +60,27 @@ class Commands(commands.Cog):
             return cmd.__original_kwargs__['cog_name'] == 'custom_commands'
         return False
 
+    def make_command(self, name: str, text: str) -> commands.Command:
+        """Create Discord Command
+
+        Args:
+            name (str): name of command
+            text (str): message to return when command is executed
+
+        Returns:
+            Command
+        """
+        async def _command(_ctx: commands.Context):
+            _text = self._get_command(_ctx.guild, name)
+            if _text is None:
+                await self.bot.message_guild(
+                    'this command is not available in this guild',
+                    _ctx.channel)
+            else:
+                await self.bot.message_guild(_text, _ctx.channel)
+
+        return commands.Command(_command, name=name, cog_name='custom_commands')
+
     async def add(self, ctx: commands.Context, name: str, text: str) -> None:
         """Add a new command to the guild
 
@@ -71,11 +92,7 @@ class Commands(commands.Cog):
             text (str): text of command
         """
         if not self.has_permission(ctx.message.author):
-            await self.bot.message_guild(
-                '{}, you do not have permission to add a command'.format(
-                    ctx.message.author.mention),
-                ctx.channel)
-            return
+            raise commands.MissingPermissions
 
         # Check if this is a custom command that can be overwritten if
         # it exists
@@ -108,11 +125,7 @@ class Commands(commands.Cog):
             name (str): name of command to remove
         """
         if not self.has_permission(ctx.message.author):
-            await self.bot.message_guild(
-                '{}, you do not have permission to remove a command'.format(
-                    ctx.message.author.mention),
-                ctx.channel)
-            return
+            raise commands.MissingPermissions
 
         cmd = self.bot.get_command(name)
         if cmd is not None:
@@ -134,27 +147,6 @@ class Commands(commands.Cog):
                 'the {} command does not exists'.format(name),
                 ctx.channel)
 
-    def make_command(self, name: str, text: str) -> commands.Command:
-        """Create Discord Command
-
-        Args:
-            name (str): name of command
-            text (str): message to return when command is executed
-
-        Returns:
-            Command
-        """
-        async def _command(_ctx: commands.Context):
-            _text = self._get_command(_ctx.guild, name)
-            if _text is None:
-                await self.bot.message_guild(
-                    'this command is not available in this guild',
-                    _ctx.channel)
-            else:
-                await self.bot.message_guild(_text, _ctx.channel)
-
-        return commands.Command(_command, name=name, cog_name='custom_commands')
-
     def _get_command(self, guild: discord.Guild, name: str) -> Optional[str]:
         """Get command text from database"""
         return self.db.value(guild, name)
@@ -167,14 +159,37 @@ class Commands(commands.Cog):
         """Set command in dataset"""
         self.db.set(guild, name, text)
 
-    @commands.group(name='commands', pass_context=True, brief='?help commands for more info')
+    @commands.group(
+        name='commands',
+        pass_context=True,
+        brief='add/remove custom commands',
+        description='Add and remove custom commands for this guild.'
+    )
     async def _commands(self, ctx: commands.Context) -> None:
-        pass
+        if ctx.invoked_subcommand is None:
+            await self.bot.message_guild(
+                'use the `add` or `remove` subcommands. See `{}help {}` for '
+                'more info'.format(self.bot.command_prefix, ctx.invoked_with),
+                ctx.channel)
 
-    @_commands.command(name='add', pass_context=True, brief='add a command')
+    @_commands.command(
+        name='add',
+        pass_context=True,
+        brief='add a custom command',
+        description='Add a custom command that can be invoked with <name>. '
+                    'The command will print all <text> after <name>. '
+                    'Note that quotes are not needed around the command body '
+                    'text.'
+    )
     async def _add(self, ctx: commands.Context, name: str, *, text: str) -> None:
         await self.add(ctx, name, text)
 
-    @_commands.command(name='remove', pass_context=True, brief='remove a command')
+    @_commands.command(
+        name='remove',
+        pass_context=True,
+        brief='remove a custom command',
+        ignore_extra=False,
+        description='Remove the custom command with <name>'
+    )
     async def _remove(self, ctx: commands.Context, name: str) -> None:
         await self.remove(ctx, name)
