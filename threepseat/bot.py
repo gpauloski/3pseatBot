@@ -186,24 +186,23 @@ class Bot(commands.Bot):
         if ctx.invoked_subcommand is not None:
             cmd = ctx.invoked_subcommand.full_parent_name + ' ' + ctx.invoked_with
         if isinstance(error, commands.MissingRequiredArgument):
-            msg = 'missing required options for command. '
-                  'Try `?help {}` for more info'.format(cmd)
+            msg = ('missing required options for command. '
+                   'Try `?help {}` for more info'.format(cmd))
         elif isinstance(error, commands.TooManyArguments):
-            msg = 'too many options for command. '
-                  'Try `?help {}` for more info'.format(cmd)
+            msg = ('too many options for command. '
+                   'Try `?help {}` for more info'.format(cmd))
         elif isinstance(error, commands.BadArgument):
-            msg = 'invalid option for command. '
-                  'Try `?help {}` for more info'.format(cmd)
+            msg = ('invalid option for command. '
+                   'Try `?help {}` for more info'.format(cmd))
         elif isinstance(error, commands.ExpectedClosingQuoteError):
             msg = 'missing closing quotation mark in command'
         elif isinstance(error, commands.CommandNotFound):
-            msg = 'I do not know that command. '
-                  'Try `?help` for a list of commands'
+            msg = 'I do not know that command. Try `?help` for a list of commands'
         elif isinstance(error, commands.BadBoolArgument):
             msg = 'unable to convert the option to true or false'
         elif isinstance(error, commands.MissingPermissions):
-            msg = '{}, you do not have permission to use that '
-                  'command'.format(ctx.message.author.mention)
+            msg = ('{}, you do not have permission to use that '
+                   'command'.format(ctx.message.author.mention))
         elif isinstance(error, commands.BotMissingPermissions):
             msg = 'I do not have permission to run this command on this guild'
         else:
