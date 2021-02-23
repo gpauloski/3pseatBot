@@ -2,6 +2,7 @@
 import discord
 import logging
 import os
+import random
 import youtube_dl
 
 from discord.ext import commands, tasks
@@ -26,6 +27,7 @@ class Voice(commands.Cog):
       - `?volume [0-100]`: set volume
       - `?sounds`: aliases `?sounds list`
       - `?sounds play [name]`: play sound with name
+      - `?sounds roll`: play a random sound
       - `?sounds list`: list available sounds
       - `?sounds add [name] [youtube_url]`: download youtube audio and saves a sound with name
     """
@@ -120,6 +122,15 @@ class Voice(commands.Cog):
         voice_client = ctx.voice_client
         voice_client.play(source, after=None)
         voice_client.source = discord.PCMVolumeTransformer(voice_client.source, 1)
+
+    async def roll(self, ctx: commands.Context) -> None:
+        """Play a random sound
+
+        Args:
+            ctx (Context): context from command call
+        """
+        _sounds = self.get_sounds().keys()
+        await self.play(ctx, random.choice(_sounds))
 
     async def list(self, ctx: commands.Context) -> None:
         """List available sounds in `ctx.channel`
@@ -227,3 +238,7 @@ class Voice(commands.Cog):
     @_sounds.command(name='add', pass_context=True, brief='add a sound: [name] [url]')
     async def _add(self, ctx: commands.Context, name: str, url: str) -> None:
         await self.add(ctx, name, url)
+
+    @_sounds.command(name='roll', pass_context=True, brief='play a random sound')
+    async def _roll(self, ctx: commands.Context, name: str, url: str) -> None:
+        await self.roll(ctx, name, url)
