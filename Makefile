@@ -22,3 +22,4 @@ dev-start:
 
 flake8:
 	flake8 . --count --show-source --statistics
+	flake8 run.py --count --show-source --statistics
