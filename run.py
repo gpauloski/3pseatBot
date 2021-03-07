@@ -97,7 +97,7 @@ def main():
     except Exception as e:
         if ifttt_trigger is not None and ifttt_key is not None:
             requests.post(IFTTT_REQUEST.format(
-                trigger=ifttt_trigger, key=ifttt_key))
+                trigger=ifttt_trigger, key=ifttt_key), data={'value1': str(e)})
         raise e
 
 
