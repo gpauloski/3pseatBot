@@ -98,6 +98,8 @@ class Rules(commands.Cog):
             msg += '```'
             for uid in strikes:
                 if int(uid) != ctx.guild.id:
+                    if strikes[uid] == 0:
+                        continue
                     user = ctx.guild.get_member(int(uid))
                     if is_booster(user):
                         offenses = self.max_booster_offenses
