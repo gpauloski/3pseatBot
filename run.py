@@ -5,12 +5,16 @@ import json
 import logging
 import time
 import os
+import requests
 import sys
 
 from dotenv import load_dotenv
 from typing import Optional
 
 from threepseat.bot import Bot
+
+
+IFTTT_REQUEST = 'https://maker.ifttt.com/trigger/{trigger}/with/key/{key}'
 
 
 def parse_args() -> argparse.Namespace:
@@ -84,9 +88,17 @@ def main():
     load_dotenv(dotenv_path='.env')
 
     token = os.getenv('TOKEN')
+    ifttt_trigger = os.getenv('IFTTT_TRIGGER', None)
+    ifttt_key = os.getenv('IFTTT_KEY', None)
 
-    threepseatbot = Bot(token=token, **config)
-    threepseatbot.run()
+    try:
+        threepseatbot = Bot(token=token, **config)
+        threepseatbot.run()
+    except Exception as e:
+        if ifttt_trigger is not None and ifttt_key is not None:
+            requests.post(IFTTT_REQUEST.format(
+                trigger=ifttt_trigger, key=ifttt_key))
+        raise e
 
 
 if __name__ == '__main__':

@@ -36,7 +36,24 @@ Get Started
       $ sudo apt install ffmpeg
 
 
-**Example Config**
+IFTTT Integration
+-----------------
+
+3pseatBot is configured to trigger an `IFTTT Webhook <https://ifttt.com/maker_webhooks/>`_ if the bot fails for any reason.
+
+To set up Webhooks, configure your :code:`.env` as follows:
+
+.. code-block:: text
+
+   TOKEN=1234567898abc
+   IFTTT_TRIGGER=WebhookTriggerName
+   IFTTT_KEY=PersonalWebhookKey
+
+:code:`.env` in the webhook will contain the error message.
+
+
+Configuration Files
+-------------------
 
 .. code-block:: JSON
 
@@ -76,5 +93,6 @@ Get Started
 
 Notes:
 
+* For the most up to data config options, see the parameters for each extension in the docs.
 * `use_extensions` tells the bot which cogs to load
-* `extension_configs` has keys corresponding to the names cogs and values which are dicts containing all of the arguments for the cog object. 
+* `extension_configs` has keys corresponding to the names cogs and values which are dicts containing all of the arguments for the cog object.

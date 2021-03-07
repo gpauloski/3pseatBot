@@ -35,4 +35,5 @@
 - [x] Different strike counts for boosters
 - [ ] Freedom Mode
   - [ ] Randomly start freedom mode
-- [ ] Email on bot fail to start
+- [x] Email on bot fail to start
+  - Switched to IFTTT instead

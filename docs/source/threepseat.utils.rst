@@ -9,8 +9,6 @@ threepseat.utils
 
 .. autofunction:: threepseat.utils.is_url
 
-.. autofunction:: threepseat.utils.log
-
 .. autofunction:: threepseat.utils.keys_to_int
 
 threepseat.utils.GuildDatabase
