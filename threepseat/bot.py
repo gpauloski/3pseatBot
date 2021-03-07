@@ -2,6 +2,7 @@
 import discord
 import logging
 import threepseat
+import traceback
 
 from discord.ext import commands
 from typing import Union, Optional, List, Dict
@@ -207,8 +208,8 @@ class Bot(commands.Bot):
             msg = 'I do not have permission to run this command on this guild'
         else:
             msg = 'oops command failed. See the logs for more info'
-            logger.error('{}: {}\n{}'.format(
-                type(error), error, error.__traceback__))
+            logger.exception(''.join(traceback.format_exception(
+                type(error), error, error.__traceback__)))
         await self.message_guild(msg, ctx.channel)
 
     def run(self):
