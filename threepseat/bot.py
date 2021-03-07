@@ -207,8 +207,9 @@ class Bot(commands.Bot):
             msg = 'I do not have permission to run this command on this guild'
         else:
             msg = 'oops command failed. See the logs for more info'
-            logger.error(type(error), error, error.__traceback__)
-        self.message_guild(msg, ctx.channel)
+            logger.error('{}: {}\n{}'.format(
+                type(error), error, error.__traceback__))
+        await self.message_guild(msg, ctx.channel)
 
     def run(self):
         """Start the bot"""

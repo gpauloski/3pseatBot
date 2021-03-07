@@ -36,6 +36,7 @@ class Rules(commands.Cog):
         message_prefix: Optional[Union[str, List[str]]] = None,
         whitelist_prefix: Union[str, List[str]] = [],
         max_offenses: int = 3,
+        max_booster_offenses: int = 3,
         allow_deletes: bool = True,
         allow_edits: bool = True,
         allow_wrong_commands: bool = True,
@@ -53,6 +54,7 @@ class Rules(commands.Cog):
                 be ignored. Useful for ignoring the command prefixes of
                 other bots.
             max_offenses (int): maximum strikes before being kicked
+            max_booster_offenses (int): maximum strikes before a booster is kicked
             allow_deletes (bool): if false, the bot will notify the channel if
                 a message is deleted
             allow_edits (bool): if false, the bot will notify the channel if
@@ -70,6 +72,7 @@ class Rules(commands.Cog):
             message_prefix = [whitelist_prefix]
         self.whitelist_prefix = whitelist_prefix
         self.max_offenses = max_offenses
+        self.max_booster_offenses = max_booster_offenses
         self.allow_deletes = allow_deletes
         self.allow_edits = allow_edits
         self.allow_wrong_commands = allow_wrong_commands
@@ -95,9 +98,13 @@ class Rules(commands.Cog):
             msg += '```'
             for uid in strikes:
                 if int(uid) != ctx.guild.id:
+                    user = ctx.guild.get_member(int(uid))
+                    if is_booster(user):
+                        offenses = self.max_booster_offenses
+                    else:
+                        offenses = self.max_offenses
                     msg = msg + '\n{}: {}/{}'.format(
-                        self.bot.get_user(int(uid)).name,
-                        strikes[uid], self.max_offenses)
+                        user.name, strikes[uid], offenses)
                 else:
                     serverCount = strikes[uid]
             msg += '```'

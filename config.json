@@ -31,10 +31,11 @@
 			"message_prefix": ["3pseat", "3pfeet", "3ppie"],
 			"whitelist_prefix": ["!"],
 			"max_offenses": 3,
+			"max_booster_offenses": 100,
 			"allow_deletes": true,
 			"allow_edits": true,
 			"allow_wrong_commands": false,
-			"booster_exception": true,
+			"booster_exception": false,
 			"invite_after_kick": true
 		},
 		"voice": {

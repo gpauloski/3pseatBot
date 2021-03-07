@@ -32,3 +32,7 @@
 - [x] Change command error handling to be in base bot class
   - [x] more helpful command errors
 - [x] Move flip and odds to general
+- [x] Different strike counts for boosters
+- [ ] Freedom Mode
+  - [ ] Randomly start freedom mode
+- [ ] Email on bot fail to start
