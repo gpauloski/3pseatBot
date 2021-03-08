@@ -1,8 +1,10 @@
 """Cog for enforcing 3pseat rules"""
+import asyncio
 import discord
 import logging
+import random
 
-from discord.ext import commands
+from discord.ext import commands, tasks
 from typing import Union, Optional, List
 
 from threepseat.bot import Bot
@@ -41,7 +43,9 @@ class Rules(commands.Cog):
         allow_edits: bool = True,
         allow_wrong_commands: bool = True,
         booster_exception: bool = True,
-        invite_after_kick: bool = True
+        invite_after_kick: bool = True,
+        freedom_mode_default_time: int = 30,
+        freedom_mode_event_prob: float = 0.0029
     ) -> None:
         """Init Rules
 
@@ -63,6 +67,9 @@ class Rules(commands.Cog):
                 for trying to use invalid commands
             booster_exception (bool): boosters are exempt from rules
             invite_after_kick (bool): send invite link if member is kicked
+            freedom_mode_default_time (int): default length in minutes for freedom mode
+            freedom_mode_event_prob (float): probability every hour that freedom mode
+                is started. No rules are enforced in freedom mode
         """
         self.bot = bot
         if isinstance(message_prefix, str):
@@ -78,11 +85,21 @@ class Rules(commands.Cog):
         self.allow_wrong_commands = allow_wrong_commands
         self.booster_exception = booster_exception
         self.invite_after_kick = invite_after_kick
+        self.freedom_mode_default_time = freedom_mode_default_time
+        self.freedom_mode_event_prob = freedom_mode_event_prob
+
+        # List of guild IDs that have freedom mode enabled
+        self.freedom_mode_guilds = []
+
+        if self.freedom_mode_event_prob > 1 or self.freedom_mode_event_prob < 0:
+            raise ValueError('freedom_mode_event_prob must be in [0,1]')
 
         if self.message_prefix is not None:
             self.bot.guild_message_prefix = self.message_prefix[0]
 
         self.db = GuildDatabase(database_path)
+
+        self._freedom_event.start()
 
     async def list(self, ctx: commands.Context) -> None:
         """List strikes for members in `ctx.guild`
@@ -127,9 +144,7 @@ class Rules(commands.Cog):
         if self.bot.is_bot_admin(ctx.message.author):
             await self._add_strike(member, ctx.channel, ctx.guild)
         else:
-            await self.bot.message_guild(
-                'you lack permission, {}'.format(ctx.message.author.mention),
-                ctx.channel)
+            raise commands.MissingPermissions
 
     async def remove(self, ctx: commands.Context, member: discord.Member) -> None:
         """Removes a strike from `member`
@@ -146,9 +161,7 @@ class Rules(commands.Cog):
                 member.mention, self.get_strikes(member))
             await self.bot.message_guild(msg, ctx.message.channel)
         else:
-            await self.bot.message_guild(
-                'you lack permission, {}'.format(ctx.message.author.mention),
-                ctx.channel)
+            raise commands.MissingPermissions
 
     def should_ignore(self, message: discord.Message) -> bool:
         """Returns true if the message should be ignored
@@ -164,6 +177,8 @@ class Rules(commands.Cog):
         Returns:
             `bool`
         """
+        if message.guild.id in self.freedom_mode_guilds:
+            return True
         if message.type is discord.MessageType.pins_add:
             return True
         if message.type is discord.MessageType.new_member:
@@ -360,6 +375,77 @@ class Rules(commands.Cog):
         if server_count > 0:
             self.db.set(member.guild, str(member.guild.id), server_count + 1)
 
+    async def freedom_start(self, ctx: commands.Context, minutes: float = None) -> None:
+        """Start freedom mode
+
+        No rules are enforced in freedom mode. Freedom mode will
+        last for `minutes` if specified, otherwise freedom mode will
+        last for `self.freedom_mode_default_time`.
+
+        Args:
+            ctx (commands.Context): invoking context
+            minutes (float): duration of freedom mode
+        """
+        if not self.bot.is_bot_admin(ctx.message.author):
+            raise commands.MissingPermissions
+
+        if ctx.guild.id in self.freedom_mode_guilds:
+            await self.bot.message_guild(
+                'freedom mode is already enabled', ctx.channel)
+            return
+
+        await self._freedom_start(ctx.channel, minutes)
+
+    async def freedom_stop(self, ctx: commands.Context) -> None:
+        """Stop freedom mode"""
+        if not self.bot.is_bot_admin(ctx.message.author):
+            raise commands.MissingPermissions
+
+        if ctx.guild.id not in self.freedom_mode_guilds:
+            await self.bot.message_guild(
+                'freedom mode is already disabled', ctx.channel)
+            return
+
+        await self.bot.message_guild(
+            'your freedom has ended', ctx.channel)
+        self.freedom_mode_guilds.remove(ctx.guild.id)
+
+    async def _freedom_start(
+        self,
+        channel: commands.Context,
+        minutes: float = None
+    ) -> None:
+        """Freedom mode start helper"""
+        if channel.guild.id in self.freedom_mode_guilds:
+            return
+
+        self.freedom_mode_guilds.append(channel.guild.id)
+        minutes = self.freedom_mode_default_time if minutes is None else minutes
+        minutes = max(minutes, 1 / 60)
+        await self.bot.message_guild(
+            'starting freedom mode for {} {}'.format(
+                int(minutes) if minutes >= 1 else int(minutes * 60),
+                'minutes' if minutes >= 1 else 'seconds'),
+            channel, react='\U0001F1FA\U0001F1F8')
+        await asyncio.sleep(60 * minutes)
+        await self.bot.message_guild(
+            'your freedom has ended', channel)
+        if channel.guild.id in self.freedom_mode_guilds:
+            self.freedom_mode_guilds.remove(channel.guild.id)
+
+    @tasks.loop(hours=1)
+    async def _freedom_event(self) -> None:
+        """Task that randomly starts freedom events"""
+        for guild_id in self.db.tables():
+            rng = random.uniform(0, 1)
+            if rng < self.freedom_mode_event_prob:
+                try:
+                    guild = self.bot.get_guild(guild_id)
+                    channel = guild.text_channels[0]
+                except Exception as e:
+                    logger.error('{}: unable to get channel in guild {}'.format(e, guild_id))
+                await self._freedom_start(channel)
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         """Called when message is created and sent"""
@@ -428,7 +514,8 @@ class Rules(commands.Cog):
     @commands.group(
         name='strikes',
         pass_context=True,
-        brief='?help strikes for more info'
+        brief='?help strikes for more info',
+        description='Manage Guild member strikes'
     )
     async def _strikes(self, ctx: commands.Context) -> None:
         if ctx.invoked_subcommand is None:
@@ -460,3 +547,34 @@ class Rules(commands.Cog):
     )
     async def _remove(self, ctx: commands.Context, member: discord.Member) -> None:
         await self.remove(ctx, member)
+
+    @commands.group(
+        name='freedom',
+        pass_context=True,
+        brief='?help freedom for more info',
+        description='Start/stop freedom mode for the guild'
+    )
+    async def _freedom(self, ctx: commands.Context) -> None:
+        if ctx.invoked_subcommand is None:
+            await self.bot.message_guild(
+                'use the `start` or `stop` subcommands. See `{}help {}` for '
+                'more info'.format(self.bot.command_prefix, ctx.invoked_with),
+                ctx.channel)
+
+    @_freedom.command(
+        name='start',
+        pass_context=True,
+        brief='start freedom mode for [float] minutes',
+        ignore_extra=False
+    )
+    async def _start(self, ctx: commands.Context, minutes: float = None) -> None:
+        await self.freedom_start(ctx, minutes)
+
+    @_freedom.command(
+        name='stop',
+        pass_context=True,
+        brief='stop freedom mode',
+        ignore_extra=False
+    )
+    async def _stop(self, ctx: commands.Context) -> None:
+        await self.freedom_stop(ctx)

@@ -33,7 +33,7 @@
   - [x] more helpful command errors
 - [x] Move flip and odds to general
 - [x] Different strike counts for boosters
-- [ ] Freedom Mode
-  - [ ] Randomly start freedom mode
+- [x] Freedom Mode
+  - [x] Randomly start freedom mode
 - [x] Email on bot fail to start
-  - Switched to IFTTT instead
+  - Switched to IFTTT instead*

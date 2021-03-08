@@ -36,7 +36,9 @@
 			"allow_edits": true,
 			"allow_wrong_commands": false,
 			"booster_exception": false,
-			"invite_after_kick": true
+			"invite_after_kick": true,
+			"freedom_mode_default_time": 60,
+			"freedom_mode_event_prob": 0.006
 		},
 		"voice": {
 			"sounds_dir": "data/sounds"
