@@ -1,47 +1,47 @@
 {
-	"command_prefix": "?",
-	"bot_admins": [91344591814393856],
-	"playing_title": "3pseat Simulator 2020",
-	"use_extensions": ["commands", "games", "general", "memes", "minecraft", "poll", "rules", "voice"],
-	"extension_configs": {
-		"commands": {
-			"commands_file": "data/commands.json",
+    "command_prefix": "?",
+    "bot_admins": [91344591814393856],
+    "playing_title": "3pseat Simulator 2020",
+    "use_extensions": ["commands", "games", "general", "memes", "minecraft", "poll", "rules", "voice"],
+    "extension_configs": {
+        "commands": {
+            "commands_file": "data/commands.json",
             "guild_admin_permission": true,
             "bot_admin_permission": true,
             "everyone_permission": false
-		},
-		"games": {
-			"games_file": "data/games.json"
-		},
-		"general": {},
-		"memes": {
-			"dad_reply": true,
-			"pog_reply": true
-		},
-		"minecraft": {
-			"mc_file": "data/mc.json"
-		},
-		"poll": {
+        },
+        "games": {
+            "games_file": "data/games.json"
+        },
+        "general": {},
+        "memes": {
+            "dad_reply": true,
+            "pog_reply": true
+        },
+        "minecraft": {
+            "mc_file": "data/mc.json"
+        },
+        "poll": {
             "guild_admin_permission": true,
             "bot_admin_permission": true,
             "everyone_permission": true
-		},
-		"rules": {
-			"database_path": "data/bans.json",
-			"message_prefix": ["3pseat", "3pfeet", "3ppie"],
-			"whitelist_prefix": ["!"],
-			"max_offenses": 3,
-			"max_booster_offenses": 100,
-			"allow_deletes": true,
-			"allow_edits": true,
-			"allow_wrong_commands": false,
-			"booster_exception": false,
-			"invite_after_kick": true,
-			"freedom_mode_default_time": 60,
-			"freedom_mode_event_prob": 0.006
-		},
-		"voice": {
-			"sounds_dir": "data/sounds"
-		}
-	}
+        },
+        "rules": {
+            "database_path": "data/bans.json",
+            "message_prefix": ["3pseat", "3pfeet", "3ppie"],
+            "whitelist_prefix": ["!"],
+            "max_offenses": 3,
+            "max_booster_offenses": 100,
+            "allow_deletes": true,
+            "allow_edits": true,
+            "allow_wrong_commands": false,
+            "booster_exception": false,
+            "invite_after_kick": true,
+            "freedom_mode_default_time": 60,
+            "freedom_mode_event_prob": 0.006
+        },
+        "voice": {
+            "sounds_dir": "data/sounds"
+        }
+    }
 }
