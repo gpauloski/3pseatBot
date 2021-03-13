@@ -139,7 +139,7 @@ class Rules(commands.Cog):
             member (Member): member to add strike to
         """
         if self.bot.is_bot_admin(ctx.message.author):
-            await self.add_strike(member, ctx.channel, ctx.guild)
+            await self.add_strike(member, ctx.channel)
         else:
             raise commands.MissingPermissions
 
