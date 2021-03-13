@@ -118,12 +118,9 @@ class Rules(commands.Cog):
                     if strikes[uid] == 0:
                         continue
                     user = ctx.guild.get_member(int(uid))
-                    if is_booster(user):
-                        offenses = self.max_booster_offenses
-                    else:
-                        offenses = self.max_offenses
+                    max_offenses = self.get_max_offenses(user)
                     msg = msg + '\n{}: {}/{}'.format(
-                        user.name, strikes[uid], offenses)
+                        user.name, strikes[uid], max_offenses)
                 else:
                     serverCount = strikes[uid]
             msg += '```'
@@ -142,7 +139,7 @@ class Rules(commands.Cog):
             member (Member): member to add strike to
         """
         if self.bot.is_bot_admin(ctx.message.author):
-            await self._add_strike(member, ctx.channel, ctx.guild)
+            await self.add_strike(member, ctx.channel, ctx.guild)
         else:
             raise commands.MissingPermissions
 
@@ -231,6 +228,19 @@ class Rules(commands.Cog):
 
         return False
 
+    def get_max_offenses(self, member: discord.Member) -> int:
+        """Returns the max offenses a member can get
+
+        Args:
+            member (Member): member to check max offenses for
+
+        Returns:
+            max allowable offenses
+        """
+        if is_booster(member):
+            return self.max_booster_offenses
+        return self.max_offenses
+
     async def check_strikes(
         self,
         member: discord.Member,
@@ -254,15 +264,16 @@ class Rules(commands.Cog):
             guild (Guild): guild to kick user from if needed
         """
         count = self.get_strikes(member)
+        max_offenses = self.get_max_offenses(member)
 
-        if count < self.max_offenses:
+        if count < max_offenses:
             msg = '{}! You\'ve disturbed the spirits ({}/{})'.format(
-                  member.mention, count, self.max_offenses)
+                  member.mention, count, max_offenses)
             await self.bot.message_guild(msg, channel)
         else:
             self.clear_strikes(member)
             msg = ('That\'s {} strikes, {}. I\'m sorry but your time as come. '
-                   'RIP.\n'.format(self.max_offenses, member.mention))
+                   'RIP.\n'.format(max_offenses, member.mention))
             success = await self.kick(member, channel, guild, msg)
             if self.invite_after_kick and success:
                 msg = ('Sorry we had to kick you. Here is a link to rejoin: '
