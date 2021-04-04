@@ -37,3 +37,5 @@
   - [x] Randomly start freedom mode
 - [x] Email on bot fail to start
   - Switched to IFTTT instead*
+- [ ] Allow certain words/phrases
+- [ ] Bruh reply similar to pog
