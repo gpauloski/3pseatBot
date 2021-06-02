@@ -41,6 +41,7 @@
             "freedom_mode_event_prob": 0.006
         },
         "voice": {
+            "sounds_file": "data/sounds.json",
             "sounds_dir": "data/sounds"
         }
     }
