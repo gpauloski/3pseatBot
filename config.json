@@ -3,6 +3,7 @@
     "bot_admins": [91344591814393856],
     "playing_title": "3pseat Simulator 2020",
     "use_extensions": ["commands", "games", "general", "memes", "minecraft", "poll", "rules", "voice"],
+    "flask_port": 5000,
     "extension_configs": {
         "commands": {
             "commands_file": "data/commands.json",

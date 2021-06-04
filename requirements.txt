@@ -1,5 +1,8 @@
 discord.py
 emoji
+flask
+flask-discord
+nest-asyncio
 pynacl
 python-dotenv
 requests

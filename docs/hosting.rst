@@ -17,7 +17,7 @@ By default, the included Dockerfile is designed to run on a Raspberry Pi. For us
 
    .. code-block:: bash
 
-      $ echo "TOKEN=1234567898abc" > .env
+      $ echo "DISCORD_BOT_TOKEN=1234567898abc" > .env
 
    If you do not have a token, create a New Application `here <https://discord.com/developers/applications/>`_. The token is found in the 'bot' tab of the application.
 

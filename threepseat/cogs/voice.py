@@ -51,7 +51,12 @@ class Voice(commands.Cog):
       - `?sounds list`: list available sounds
       - `?sounds add [name] [youtube_url]`: download youtube audio and saves a sound with name
     """
-    def __init__(self, bot: Bot, sounds_file: str, sounds_dir: str) -> None:
+    def __init__(
+        self,
+        bot: Bot,
+        sounds_file: str,
+        sounds_dir: str,
+    ) -> None:
         """Init Voice
 
         Args:

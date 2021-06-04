@@ -1,5 +1,4 @@
 """Runner script for 3pseatBot"""
-
 import argparse
 import json
 import logging
@@ -7,11 +6,13 @@ import time
 import os
 import requests
 import sys
+import threading
 
 from dotenv import load_dotenv
 from typing import Optional
 
 from threepseat.bot import Bot
+from threepseat.rest import get_app
 
 
 IFTTT_REQUEST = 'https://maker.ifttt.com/trigger/{trigger}/with/key/{key}'
@@ -71,7 +72,7 @@ def init_logger(
     def exception_handler(type, value, tb):
         logger.exception('Uncaught exception: {}'.format(str(value)))
 
-    sys.excepthook = exception_handler
+    #sys.excepthook = exception_handler
 
     return logger
 
@@ -87,12 +88,30 @@ def main():
 
     load_dotenv(dotenv_path='.env')
 
-    token = os.getenv('TOKEN')
+    discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
     ifttt_trigger = os.getenv('IFTTT_TRIGGER', None)
     ifttt_key = os.getenv('IFTTT_KEY', None)
+    
+    flask_port = config.pop('flask_port')
+    discord_client_id = os.getenv('DISCORD_CLIENT_ID', None)
+    discord_client_secret = os.getenv('DISCORD_CLIENT_SECRET', None)
 
     try:
-        threepseatbot = Bot(token=token, **config)
+        threepseatbot = Bot(token=discord_bot_token, **config)
+
+        # Start REST app in separate thread if we have necessary information
+        if discord_client_secret is not None and discord_bot_token is not None:
+            app = get_app(
+                threepseatbot,
+                flask_port,
+                discord_client_id,
+                discord_client_secret,
+                discord_bot_token
+            )
+            threading.Thread(
+                target=app.run, args=('0.0.0.0', flask_port, False)
+            ).start()
+        
         threepseatbot.run()
     except Exception as e:
         if ifttt_trigger is not None and ifttt_key is not None:
