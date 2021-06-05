@@ -1,7 +1,9 @@
 discord.py
+gevent
 emoji
 flask
 flask-discord
+Flask-Limiter
 nest-asyncio
 pynacl
 python-dotenv

@@ -7,4 +7,6 @@ RUN apt install -y ffmpeg
 RUN pip install -r requirements.txt
 RUN cd / && pip install -r requirements.txt
 
+EXPOSE 5000
+
 WORKDIR /bot

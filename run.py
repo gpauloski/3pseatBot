@@ -1,4 +1,8 @@
 """Runner script for 3pseatBot"""
+# Monkey patch threading for WSGIServer
+from gevent import monkey
+monkey.patch_all()
+
 import argparse
 import json
 import logging
@@ -9,10 +13,11 @@ import sys
 import threading
 
 from dotenv import load_dotenv
+from gevent.pywsgi import WSGIServer
 from typing import Optional
 
 from threepseat.bot import Bot
-from threepseat.rest import get_app
+from threepseat.soundboard.service import get_app
 
 
 IFTTT_REQUEST = 'https://maker.ifttt.com/trigger/{trigger}/with/key/{key}'
@@ -72,7 +77,7 @@ def init_logger(
     def exception_handler(type, value, tb):
         logger.exception('Uncaught exception: {}'.format(str(value)))
 
-    #sys.excepthook = exception_handler
+    sys.excepthook = exception_handler
 
     return logger
 
@@ -92,7 +97,7 @@ def main():
     ifttt_trigger = os.getenv('IFTTT_TRIGGER', None)
     ifttt_key = os.getenv('IFTTT_KEY', None)
     
-    flask_port = config.pop('flask_port')
+    soundboard_config = config.pop('soundboard')
     discord_client_id = os.getenv('DISCORD_CLIENT_ID', None)
     discord_client_secret = os.getenv('DISCORD_CLIENT_SECRET', None)
 
@@ -103,14 +108,17 @@ def main():
         if discord_client_secret is not None and discord_bot_token is not None:
             app = get_app(
                 threepseatbot,
-                flask_port,
+                soundboard_config['port'],
                 discord_client_id,
                 discord_client_secret,
-                discord_bot_token
+                discord_bot_token,
+                static_site=soundboard_config['static']
             )
-            threading.Thread(
-                target=app.run, args=('0.0.0.0', flask_port, False)
-            ).start()
+            http_server = WSGIServer(('', soundboard_config['port']), app)
+            #threading.Thread(
+            #    target=app.run, args=('0.0.0.0', soundboard_config['port'], False)
+            #).start()
+            threading.Thread(target=http_server.serve_forever).start()
         
         threepseatbot.run()
     except Exception as e:
