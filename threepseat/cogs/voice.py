@@ -91,7 +91,8 @@ class Voice(commands.Cog):
             if guild is None:
                 logger.info(f'[VOICE] Failed to find guild {guild_id}')
                 continue
-            for sound, data in table.items():
+            for sound in list(table.keys()):
+                data = table[sound]
                 # Check additional metadata exists
                 if 'image_url' not in data:
                     data['image_url'] = None
