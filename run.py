@@ -109,6 +109,7 @@ def main():
         if discord_client_secret is not None and discord_bot_token is not None:
             app = get_app(
                 threepseatbot,
+                soundboard_config['redirect'],
                 soundboard_config['port'],
                 discord_client_id,
                 discord_client_secret,

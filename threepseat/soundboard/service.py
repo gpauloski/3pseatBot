@@ -31,6 +31,7 @@ HYPERLINK = '<a href="{}">{}</a>'
 
 def get_app(
     bot_instance: Bot,
+    redirect: str,
     port: int,
     discord_client_id: str,
     discord_client_secret: str,
@@ -41,6 +42,7 @@ def get_app(
 
     Args:
         bot (Bot)
+        redirect (str): redirect url
         port (int): port flask is running on
         discord_client_id (str): discord client id
         discord_client_secret (str): discord client secret
@@ -57,7 +59,7 @@ def get_app(
     app.config['DISCORD_CLIENT_ID'] = discord_client_id
     app.config['DISCORD_CLIENT_SECRET'] = discord_client_secret
     app.config['DISCORD_BOT_TOKEN'] = discord_bot_token
-    app.config['DISCORD_REDIRECT_URI'] = f'http://localhost:{port}/callback'
+    app.config['DISCORD_REDIRECT_URI'] = f'{redirect}/callback'
 
     discord.init_app(app)
     return app
