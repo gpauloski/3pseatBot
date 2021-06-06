@@ -21,11 +21,9 @@ class Memes(commands.Cog):
       - `?snowball`: should you take the snowball?
       - `?yeet @Member`: kicks member from guild
     """
+
     def __init__(
-        self,
-        bot: Bot,
-        pog_reply: bool = False,
-        dad_reply: bool = False
+        self, bot: Bot, pog_reply: bool = False, dad_reply: bool = False
     ) -> None:
         """Init Memes
 
@@ -50,7 +48,8 @@ class Memes(commands.Cog):
             text = message.content.lower()
             if re.search(POG_RE, text) or re.search(POG_EMOTE_RE, text):
                 await self.bot.message_guild(
-                    'poggers', message.channel, POG_EMOTES)
+                    'poggers', message.channel, POG_EMOTES
+                )
 
         if self.dad_reply:
             search = re.findall(DAD_RE, text)
@@ -58,7 +57,8 @@ class Memes(commands.Cog):
                 search = search[0]
                 await self.bot.message_guild(
                     'Hi {}, I\'m {}!'.format(search[4], self.bot.user.mention),
-                    message.channel)
+                    message.channel,
+                )
 
     async def snowball(self, ctx: commands.Context) -> None:
         """Message `ctx.channel` to tell `ctx.message.author` if they should take the snowball
@@ -69,10 +69,13 @@ class Memes(commands.Cog):
             ctx (Context): context from command call
         """
         msg = '{}, you should always take the snowball'.format(
-              ctx.message.author.mention)
+            ctx.message.author.mention
+        )
         await self.bot.message_guild(msg, ctx.channel)
 
-    async def yeet(self, ctx: commands.Context, member: discord.Member) -> None:
+    async def yeet(
+        self, ctx: commands.Context, member: discord.Member
+    ) -> None:
         """Kicks `member` from `ctx.guild`
 
         The caller of the command (i.e. `ctx.message.author`) must have
@@ -86,12 +89,15 @@ class Memes(commands.Cog):
             raise commands.MissingPermissions
         elif member.bot:
             msg = '{}, you cannot yeet a bot.'.format(
-                  ctx.message.author.mention)
+                ctx.message.author.mention
+            )
             await self.bot.message_guild(msg, ctx.channel)
         else:
             if is_admin(member):
-                msg = ('Failed to kick {}. Your cognizance is highly '
-                       'acknowledged.'.format(member.mention))
+                msg = (
+                    'Failed to kick {}. Your cognizance is highly '
+                    'acknowledged.'.format(member.mention)
+                )
                 await self.bot.message_guild(msg, ctx.channel)
             else:
                 await ctx.guild.kick(member)
@@ -109,7 +115,7 @@ class Memes(commands.Cog):
         name='snowball',
         pass_context=True,
         brief='should I snowball?',
-        ignore_extra=False
+        ignore_extra=False,
     )
     async def _snowball(self, ctx: commands.Context) -> None:
         await self.snowball(ctx)
@@ -120,7 +126,9 @@ class Memes(commands.Cog):
         brief='yeet tha boi',
         ignore_extra=False,
         description='Kick a member from the guild. Note <member> should '
-                    'be a mention.'
+        'be a mention.',
     )
-    async def _yeet(self, ctx: commands.Context, member: discord.Member) -> None:
+    async def _yeet(
+        self, ctx: commands.Context, member: discord.Member
+    ) -> None:
         await self.yeet(ctx, member)

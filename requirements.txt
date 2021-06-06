@@ -1,6 +1,8 @@
+black
 discord.py
 gevent
 emoji
+flake8
 flask
 flask-discord
 Flask-Limiter

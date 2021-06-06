@@ -17,6 +17,7 @@ class Bot(commands.Bot):
     This class manages cogs/extensions and implements some minimal
     functionality needed by the cogs.
     """
+
     def __init__(
         self,
         token: str,
@@ -67,7 +68,7 @@ class Bot(commands.Bot):
         self,
         message: str,
         user: Union[discord.User, discord.Member],
-        react: Optional[Union[str, List[str]]] = None
+        react: Optional[Union[str, List[str]]] = None,
     ) -> discord.Message:
         """Message user
 
@@ -89,7 +90,7 @@ class Bot(commands.Bot):
         message: str,
         channel: discord.TextChannel,
         react: Optional[Union[str, List[str]]] = None,
-        ignore_prefix: bool = False
+        ignore_prefix: bool = False,
     ) -> discord.Message:
         """Message Guild Channel
 
@@ -104,15 +105,18 @@ class Bot(commands.Bot):
         """
         if not ignore_prefix:
             message = self.guild_message_prefix + ' ' + message
-        logger.info('Message guild={}, channel={}: {}'.format(
-            channel.guild, channel, message))
+        logger.info(
+            'Message guild={}, channel={}: {}'.format(
+                channel.guild, channel, message
+            )
+        )
         return await self._message(message, channel, react)
 
     async def _message(
         self,
         message: str,
         channel: discord.abc.Messageable,
-        react: Optional[Union[str, List[str]]] = None
+        react: Optional[Union[str, List[str]]] = None,
     ) -> discord.Message:
         """Send message in channel
 
@@ -138,10 +142,12 @@ class Bot(commands.Bot):
         """Called when the bot has successfully connected to Discord"""
         if self.playing_title is not None:
             await self.change_presence(
-                activity=discord.Game(name=self.playing_title))
+                activity=discord.Game(name=self.playing_title)
+            )
 
-        logger.info('Logged in as {} (ID={})'.format(
-            self.user.name, self.user.id))
+        logger.info(
+            'Logged in as {} (ID={})'.format(self.user.name, self.user.id)
+        )
 
         # Load extensions/cogs
         for ext in self.use_extensions:
@@ -160,9 +166,11 @@ class Bot(commands.Bot):
                 try:
                     self.load_extension(ext)
                 except Exception as e:
-                    logger.warning('Failed to load extension {}. '
-                                   'Does this file exist in the '
-                                   'cogs/ directory?'.format(ext))
+                    logger.warning(
+                        'Failed to load extension {}. '
+                        'Does this file exist in the '
+                        'cogs/ directory?'.format(ext)
+                    )
                     raise e
 
             logger.info('Loaded extension: {}'.format(ext))
@@ -170,9 +178,7 @@ class Bot(commands.Bot):
         logger.info('Bot is ready!')
 
     async def on_command_error(
-        self,
-        ctx: commands.Context,
-        error: commands.CommandError
+        self, ctx: commands.Context, error: commands.CommandError
     ) -> None:
         """Handle common command errors
 
@@ -185,16 +191,26 @@ class Bot(commands.Bot):
         """
         cmd = ctx.invoked_with
         if ctx.invoked_subcommand is not None:
-            cmd = ctx.invoked_subcommand.full_parent_name + ' ' + ctx.invoked_with
+            cmd = (
+                ctx.invoked_subcommand.full_parent_name
+                + ' '
+                + ctx.invoked_with
+            )
         if isinstance(error, commands.MissingRequiredArgument):
-            msg = ('missing required options for command. '
-                   'Try `?help {}` for more info'.format(cmd))
+            msg = (
+                'missing required options for command. '
+                'Try `?help {}` for more info'.format(cmd)
+            )
         elif isinstance(error, commands.TooManyArguments):
-            msg = ('too many options for command. '
-                   'Try `?help {}` for more info'.format(cmd))
+            msg = (
+                'too many options for command. '
+                'Try `?help {}` for more info'.format(cmd)
+            )
         elif isinstance(error, commands.BadArgument):
-            msg = ('invalid option for command. '
-                   'Try `?help {}` for more info'.format(cmd))
+            msg = (
+                'invalid option for command. '
+                'Try `?help {}` for more info'.format(cmd)
+            )
         elif isinstance(error, commands.ExpectedClosingQuoteError):
             msg = 'missing closing quotation mark in command'
         elif isinstance(error, commands.CommandNotFound):
@@ -202,14 +218,21 @@ class Bot(commands.Bot):
         elif isinstance(error, commands.BadBoolArgument):
             msg = 'unable to convert the option to true or false'
         elif isinstance(error, commands.MissingPermissions):
-            msg = ('{}, you do not have permission to use that '
-                   'command'.format(ctx.message.author.mention))
+            msg = (
+                '{}, you do not have permission to use that '
+                'command'.format(ctx.message.author.mention)
+            )
         elif isinstance(error, commands.BotMissingPermissions):
             msg = 'I do not have permission to run this command on this guild'
         else:
             msg = 'oops command failed. See the logs for more info'
-            logger.exception(''.join(traceback.format_exception(
-                type(error), error, error.__traceback__)))
+            logger.exception(
+                ''.join(
+                    traceback.format_exception(
+                        type(error), error, error.__traceback__
+                    )
+                )
+            )
         await self.message_guild(msg, ctx.channel)
 
     def run(self):

@@ -23,6 +23,7 @@ class Minecraft(commands.Cog):
             to dicts of the form: :code:`{name: str, address: str,
             has_whitelist: bool, admin_id: int}`.
     """
+
     def __init__(self, bot: Bot, mc_file: str) -> None:
         """Init Minecraft
 
@@ -43,7 +44,9 @@ class Minecraft(commands.Cog):
             await self.bot.message_guild(
                 'there is no minecraft server on this guild. '
                 'Use `mc set name [name]` and `mc set address [ip]` '
-                'to set one', ctx.channel)
+                'to set one',
+                ctx.channel,
+            )
         else:
             name = self.db.value(ctx.guild, 'name')
             address = self.db.value(ctx.guild, 'address')
@@ -64,7 +67,8 @@ class Minecraft(commands.Cog):
         if is_admin(ctx.author) or self.bot.is_bot_admin(ctx.author):
             self.db.drop_table(ctx.guild)
             await self.bot.message_guild(
-                'cleared Minecraft server info', ctx.channel)
+                'cleared Minecraft server info', ctx.channel
+            )
         else:
             raise commands.MissingPermissions
 
@@ -78,11 +82,14 @@ class Minecraft(commands.Cog):
         if is_admin(ctx.author) or self.bot.is_bot_admin(ctx.author):
             self.db.set(ctx.guild, 'address', address)
             await self.bot.message_guild(
-                'updated server address to: {}'.format(address), ctx.channel)
+                'updated server address to: {}'.format(address), ctx.channel
+            )
         else:
             raise commands.MissingPermissions
 
-    async def admin(self, ctx: commands.Context, member: discord.Member) -> None:
+    async def admin(
+        self, ctx: commands.Context, member: discord.Member
+    ) -> None:
         """Change Minecraft server name for the guild
 
         The "admin" is the guild member that will be mentioned for contact
@@ -96,7 +103,8 @@ class Minecraft(commands.Cog):
             self.db.set(ctx.guild, 'admin_id', member.id)
             await self.bot.message_guild(
                 'updated server admin to: {}'.format(member.mention),
-                ctx.channel)
+                ctx.channel,
+            )
         else:
             raise commands.MissingPermissions
 
@@ -110,11 +118,14 @@ class Minecraft(commands.Cog):
         if is_admin(ctx.author) or self.bot.is_bot_admin(ctx.author):
             self.db.set(ctx.guild, 'name', name)
             await self.bot.message_guild(
-                'updated server name to: {}'.format(name), ctx.channel)
+                'updated server name to: {}'.format(name), ctx.channel
+            )
         else:
             raise commands.MissingPermissions
 
-    async def whitelist(self, ctx: commands.Context, has_whitelist: bool) -> None:
+    async def whitelist(
+        self, ctx: commands.Context, has_whitelist: bool
+    ) -> None:
         """Change Minecraft server name for the guild
 
         Args:
@@ -125,7 +136,8 @@ class Minecraft(commands.Cog):
             self.db.set(ctx.guild, 'has_whitelist', has_whitelist)
             await self.bot.message_guild(
                 'updated server whitelist to: {}'.format(has_whitelist),
-                ctx.channel)
+                ctx.channel,
+            )
         else:
             raise commands.MissingPermissions
 
@@ -134,15 +146,17 @@ class Minecraft(commands.Cog):
 
         The name and address are required for the server to be valid.
         """
-        return (self.db.value(guild, 'name') is not None
-                and self.db.value(guild, 'address') is not None)
+        return (
+            self.db.value(guild, 'name') is not None
+            and self.db.value(guild, 'address') is not None
+        )
 
     @commands.group(
         name='mc',
         pass_context=True,
         brief='Minecraft server info',
         description='Manage and see Minecraft server info for the guild. '
-                    'Calling mc on its own will print the server info.'
+        'Calling mc on its own will print the server info.',
     )
     async def _mc(self, ctx: commands.Context) -> None:
         if ctx.invoked_subcommand is None:
@@ -153,7 +167,7 @@ class Minecraft(commands.Cog):
         pass_context=True,
         brief='clear Minecraft info',
         ignore_extra=False,
-        description='Remove all info about the Mincraft server for the guild.'
+        description='Remove all info about the Mincraft server for the guild.',
     )
     async def _clear(self, ctx: commands.Context) -> None:
         await self.clear(ctx)
@@ -163,19 +177,21 @@ class Minecraft(commands.Cog):
         pass_context=True,
         brief='update Minecraft info',
         description='Update the Minecraft server info. Note that at minimum, '
-                    'the name and address must be specified.'
+        'the name and address must be specified.',
     )
     async def _set(self, ctx: commands.Context) -> None:
         if ctx.invoked_subcommand is None:
             await self.bot.message_guild(
                 'use one of the subcommands (address/admin/name/whitelist) '
-                'to set that value', ctx.channel)
+                'to set that value',
+                ctx.channel,
+            )
 
     @_set.command(
         name='address',
         pass_context=True,
         brief='set Minecraft server IP address',
-        description='Set the IP address used to connect to the server'
+        description='Set the IP address used to connect to the server',
     )
     async def _address(self, ctx: commands.Context, *, address: str) -> None:
         await self.address(ctx, address)
@@ -186,10 +202,12 @@ class Minecraft(commands.Cog):
         brief='set Minecraft server admin',
         ignore_extra=False,
         description='Set the admin of the Minecraft server. Note this should '
-                    'be a mention and is only used if whitelist is also set '
-                    'to true.'
+        'be a mention and is only used if whitelist is also set '
+        'to true.',
     )
-    async def _admin(self, ctx: commands.Context, member: discord.Member) -> None:
+    async def _admin(
+        self, ctx: commands.Context, member: discord.Member
+    ) -> None:
         await self.admin(ctx, member)
 
     @_set.command(
@@ -197,7 +215,7 @@ class Minecraft(commands.Cog):
         pass_context=True,
         brief='set Minecraft server name',
         description='Set name of Minecraft server. Note quotations around the '
-                    'name are not necessary'
+        'name are not necessary',
     )
     async def _name(self, ctx: commands.Context, *, name: str) -> None:
         await self.name(ctx, name)
@@ -208,8 +226,10 @@ class Minecraft(commands.Cog):
         brief='set Minecraft server whitelist',
         ignore_extra=False,
         description='Set the flag for if the server has a whitelist. I.e. '
-                    '<whitelist>=true|false. If true, a server admin must '
-                    'also be set.'
+        '<whitelist>=true|false. If true, a server admin must '
+        'also be set.',
     )
-    async def _whitelist(self, ctx: commands.Context, has_whitelist: bool) -> None:
+    async def _whitelist(
+        self, ctx: commands.Context, has_whitelist: bool
+    ) -> None:
         await self.whitelist(ctx, has_whitelist)

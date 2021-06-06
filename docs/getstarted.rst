@@ -52,6 +52,21 @@ To set up Webhooks, configure your :code:`.env` as follows:
 :code:`value1` in the webhook will contain the error message.
 
 
+Soundboard API
+--------------
+
+To use the soundboard API, add your Discord bot client ID and secret key to the :code:`.env` as follow:
+
+.. code-block:: text
+
+   DISCORD_BOT_TOKEN=1234567898abc
+   DISCORD_CLIENT_ID=123456789abc
+   DISCORD_CLIENT_SECRET=123456789abc
+   IFTTT_TRIGGER=WebhookTriggerName
+   IFTTT_KEY=PersonalWebhookKey
+
+The soundboard port can be configured in the config file, and the available endpoints are described in the API docs.
+
 Configuration Files
 -------------------
 

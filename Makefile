@@ -20,6 +20,10 @@ docker-stop:
 dev-start:
 	eval $(RUN_CMD)
 
-flake8:
+lint:
+	black threepseat run.py
 	flake8 . --count --show-source --statistics
 	flake8 run.py --count --show-source --statistics
+
+docs:
+	cd docs ; make html ; cd ..

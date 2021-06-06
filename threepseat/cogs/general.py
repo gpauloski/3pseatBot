@@ -17,6 +17,7 @@ class General(commands.Cog):
     Catches common command errors to provide more helpful feedback
     from the bot when commands fail.
     """
+
     def __init__(self, bot: Bot) -> None:
         """Init General
 
@@ -51,15 +52,14 @@ class General(commands.Cog):
         Args:
             ctx (Context): context from command call
         """
-        msg = ('3pseatBot\'s source code can be found here: '
-               'https://github.com/gpauloski/3pseatBot')
+        msg = (
+            '3pseatBot\'s source code can be found here: '
+            'https://github.com/gpauloski/3pseatBot'
+        )
         await self.bot.message_guild(msg, ctx.channel, ignore_prefix=True)
 
     @commands.command(
-        name='flip',
-        pass_context=True,
-        brief='flip a coin',
-        ignore_extra=False
+        name='flip', pass_context=True, brief='flip a coin', ignore_extra=False
     )
     async def _flip(self, ctx: commands.Context) -> None:
         await self.flip(ctx)
@@ -69,7 +69,7 @@ class General(commands.Cog):
         pass_context=True,
         brief='get a random number in a range',
         ignore_extra=False,
-        description='Print a random integer between 1 and <int>'
+        description='Print a random integer between 1 and <int>',
     )
     async def _odds(self, ctx: commands.Context, num: int) -> None:
         await self.odds(ctx, num)
@@ -78,7 +78,7 @@ class General(commands.Cog):
         name='source',
         pass_context=True,
         brief='3pseatBot source code',
-        ignore_extra=False
+        ignore_extra=False,
     )
     async def _source(self, ctx: commands.Context) -> None:
         await self.source(ctx)

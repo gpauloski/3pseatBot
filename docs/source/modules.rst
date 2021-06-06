@@ -6,3 +6,4 @@ API
     threepseat.bot
     threepseat.utils
     threepseat.cogs
+    threepseat.soundboard

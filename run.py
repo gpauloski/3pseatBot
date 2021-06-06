@@ -1,6 +1,7 @@
 """Runner script for 3pseatBot"""
 # Monkey patch threading for WSGIServer
 from gevent import monkey
+
 monkey.patch_all()
 
 import argparse
@@ -27,7 +28,8 @@ def parse_args() -> argparse.Namespace:
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
         description='3pseatBot. A bot that does little of use.',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument('--config', required=True, help='Bot config file')
     parser.add_argument('--log_dir', default='logs', help='Logging directory')
 
@@ -36,8 +38,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def init_logger(
-    log_dir: Optional[str] = None,
-    filename: Optional[str] = None
+    log_dir: Optional[str] = None, filename: Optional[str] = None
 ) -> logging.Logger:
     """Logging Context Manager
 
@@ -96,7 +97,7 @@ def main():
     discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
     ifttt_trigger = os.getenv('IFTTT_TRIGGER', None)
     ifttt_key = os.getenv('IFTTT_KEY', None)
-    
+
     soundboard_config = config.pop('soundboard')
     discord_client_id = os.getenv('DISCORD_CLIENT_ID', None)
     discord_client_secret = os.getenv('DISCORD_CLIENT_SECRET', None)
@@ -112,19 +113,21 @@ def main():
                 discord_client_id,
                 discord_client_secret,
                 discord_bot_token,
-                static_site=soundboard_config['static']
+                static_site=soundboard_config['static'],
             )
             http_server = WSGIServer(('', soundboard_config['port']), app)
-            #threading.Thread(
+            # threading.Thread(
             #    target=app.run, args=('0.0.0.0', soundboard_config['port'], False)
-            #).start()
+            # ).start()
             threading.Thread(target=http_server.serve_forever).start()
-        
+
         threepseatbot.run()
     except Exception as e:
         if ifttt_trigger is not None and ifttt_key is not None:
-            requests.post(IFTTT_REQUEST.format(
-                trigger=ifttt_trigger, key=ifttt_key), data={'value1': str(e)})
+            requests.post(
+                IFTTT_REQUEST.format(trigger=ifttt_trigger, key=ifttt_key),
+                data={'value1': str(e)},
+            )
         raise e
 
 

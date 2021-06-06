@@ -10,8 +10,10 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger()
 
-URL_RE = (r'((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.'
-          '([a-zA-Z]){2,6}([a-zA-Z0-9\\.\\&\\/\\?\\:@\\-_=#])*')
+URL_RE = (
+    r'((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.'
+    '([a-zA-Z]){2,6}([a-zA-Z0-9\\.\\&\\/\\?\\:@\\-_=#])*'
+)
 DISCORD_EMOTE_RE = r'<.*:\w*:\d*>'
 
 
@@ -62,6 +64,7 @@ class GuildDatabase:
     'Tables' are created on a per guild basis, indexed by guild ID.
     Each table contains a set of key: values.
     """
+
     def __init__(self, db_file: str) -> None:
         """Init GuildDatabase
 

@@ -15,13 +15,14 @@ class Commands(commands.Cog):
       - `?command add [name] [command text]`
       - `?command remove [name]`
     """
+
     def __init__(
         self,
         bot: Bot,
         commands_file: str,
         guild_admin_permission: bool = True,
         bot_admin_permission: bool = True,
-        everyone_permission: bool = False
+        everyone_permission: bool = False,
     ) -> None:
         """Init Commands
 
@@ -70,16 +71,19 @@ class Commands(commands.Cog):
         Returns:
             Command
         """
+
         async def _command(_ctx: commands.Context):
             _text = self._get_command(_ctx.guild, name)
             if _text is None:
                 await self.bot.message_guild(
-                    'this command is not available in this guild',
-                    _ctx.channel)
+                    'this command is not available in this guild', _ctx.channel
+                )
             else:
                 await self.bot.message_guild(_text, _ctx.channel)
 
-        return commands.Command(_command, name=name, cog_name='custom_commands')
+        return commands.Command(
+            _command, name=name, cog_name='custom_commands'
+        )
 
     async def add(self, ctx: commands.Context, name: str, text: str) -> None:
         """Add a new command to the guild
@@ -103,7 +107,8 @@ class Commands(commands.Cog):
             else:
                 await self.bot.message_guild(
                     'this command already exist and cannot be overwritten',
-                    ctx.channel)
+                    ctx.channel,
+                )
                 return
 
         # Save to database
@@ -113,7 +118,8 @@ class Commands(commands.Cog):
 
         await self.bot.message_guild(
             'added command {}{}'.format(self.bot.command_prefix, name),
-            ctx.channel)
+            ctx.channel,
+        )
 
     async def remove(self, ctx: commands.Context, name: str) -> None:
         """Remove a command from the guild
@@ -135,17 +141,19 @@ class Commands(commands.Cog):
                 self.bot.remove_command(name)
                 # Remove from database
                 self._remove_command(ctx.guild, name)
-                msg = 'removed command {}{}'.format(self.bot.command_prefix, name)
+                msg = 'removed command {}{}'.format(
+                    self.bot.command_prefix, name
+                )
                 await self.bot.message_guild(msg, ctx.channel)
             else:
                 await self.bot.message_guild(
-                    'this command cannot be removed',
-                    ctx.channel)
+                    'this command cannot be removed', ctx.channel
+                )
                 return
         else:
             await self.bot.message_guild(
-                'the {} command does not exists'.format(name),
-                ctx.channel)
+                'the {} command does not exists'.format(name), ctx.channel
+            )
 
     def _get_command(self, guild: discord.Guild, name: str) -> Optional[str]:
         """Get command text from database"""
@@ -163,25 +171,28 @@ class Commands(commands.Cog):
         name='commands',
         pass_context=True,
         brief='add/remove custom commands',
-        description='Add and remove custom commands for this guild.'
+        description='Add and remove custom commands for this guild.',
     )
     async def _commands(self, ctx: commands.Context) -> None:
         if ctx.invoked_subcommand is None:
             await self.bot.message_guild(
                 'use the `add` or `remove` subcommands. See `{}help {}` for '
                 'more info'.format(self.bot.command_prefix, ctx.invoked_with),
-                ctx.channel)
+                ctx.channel,
+            )
 
     @_commands.command(
         name='add',
         pass_context=True,
         brief='add a custom command',
         description='Add a custom command that can be invoked with <name>. '
-                    'The command will print all <text> after <name>. '
-                    'Note that quotes are not needed around the command body '
-                    'text.'
+        'The command will print all <text> after <name>. '
+        'Note that quotes are not needed around the command body '
+        'text.',
     )
-    async def _add(self, ctx: commands.Context, name: str, *, text: str) -> None:
+    async def _add(
+        self, ctx: commands.Context, name: str, *, text: str
+    ) -> None:
         await self.add(ctx, name, text)
 
     @_commands.command(
@@ -189,7 +200,7 @@ class Commands(commands.Cog):
         pass_context=True,
         brief='remove a custom command',
         ignore_extra=False,
-        description='Remove the custom command with <name>'
+        description='Remove the custom command with <name>',
     )
     async def _remove(self, ctx: commands.Context, name: str) -> None:
         await self.remove(ctx, name)
