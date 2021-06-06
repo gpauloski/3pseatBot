@@ -120,6 +120,12 @@ def get_member_guild(
     return member, guild
 
 
+@app.route('/')
+def default():
+    """Default endpoint (`/`)"""
+    return redirect(url_for('login'))
+
+
 @app.route('/login/')
 def login():
     """Login endpoint (`/login`)"""
@@ -130,7 +136,10 @@ def login():
 def callback():
     """Callback endpoint (`/callback`)"""
     discord.callback()
-    return redirect(url_for('guilds'))
+    if static:
+        return redirect(url_for('guilds'))
+    else:
+        return 'success'
 
 
 @app.route('/me/')
