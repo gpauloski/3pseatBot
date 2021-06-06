@@ -7,7 +7,7 @@ docker-build:
 
 docker-interactive:
 	docker run --rm --entrypoint=/bin/bash -v $(shell pwd):/bot \
-		-w /bot -it -p 5000: 5000 --name=$(APP_NAME) $(APP_NAME)
+		-w /bot -it -p 5000:5000 --name=$(APP_NAME) $(APP_NAME)
 
 docker-start:
 	docker run -v $(shell pwd):/bot -d --restart=unless-stopped \
