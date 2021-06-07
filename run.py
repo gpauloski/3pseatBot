@@ -1,4 +1,8 @@
 """Runner script for 3pseatBot"""
+# Monkey patch threading for WSGIServer
+from gevent import monkey
+
+monkey.patch_all()
 
 import argparse
 import json
@@ -7,11 +11,14 @@ import time
 import os
 import requests
 import sys
+import threading
 
 from dotenv import load_dotenv
+from gevent.pywsgi import WSGIServer
 from typing import Optional
 
 from threepseat.bot import Bot
+from threepseat.soundboard.service import get_app
 
 
 IFTTT_REQUEST = 'https://maker.ifttt.com/trigger/{trigger}/with/key/{key}'
@@ -21,7 +28,8 @@ def parse_args() -> argparse.Namespace:
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
         description='3pseatBot. A bot that does little of use.',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument('--config', required=True, help='Bot config file')
     parser.add_argument('--log_dir', default='logs', help='Logging directory')
 
@@ -30,8 +38,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def init_logger(
-    log_dir: Optional[str] = None,
-    filename: Optional[str] = None
+    log_dir: Optional[str] = None, filename: Optional[str] = None
 ) -> logging.Logger:
     """Logging Context Manager
 
@@ -87,17 +94,47 @@ def main():
 
     load_dotenv(dotenv_path='.env')
 
-    token = os.getenv('TOKEN')
+    discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
     ifttt_trigger = os.getenv('IFTTT_TRIGGER', None)
     ifttt_key = os.getenv('IFTTT_KEY', None)
 
+    if 'soundboard' in config:
+        soundboard_config = config.pop('soundboard')
+    else:
+        soundboard_config = None
+
     try:
-        threepseatbot = Bot(token=token, **config)
+        threepseatbot = Bot(token=discord_bot_token, **config)
+
+        if soundboard_config is not None:
+            discord_client_id = os.getenv('DISCORD_CLIENT_ID')
+            discord_client_secret = os.getenv('DISCORD_CLIENT_SECRET')
+            app = get_app(
+                threepseatbot,
+                soundboard_config['redirect'],
+                soundboard_config['port'],
+                discord_client_id,
+                discord_client_secret,
+                discord_bot_token,
+                static_site=soundboard_config['static'],
+            )
+            ssl_cert = soundboard_config['ssl_cert']
+            ssl_key = soundboard_config['ssl_key']
+            http_server = WSGIServer(
+                ('', soundboard_config['port']),
+                app,
+                keyfile=ssl_key,
+                certfile=ssl_cert,
+            )
+            threading.Thread(target=http_server.serve_forever).start()
+
         threepseatbot.run()
     except Exception as e:
         if ifttt_trigger is not None and ifttt_key is not None:
-            requests.post(IFTTT_REQUEST.format(
-                trigger=ifttt_trigger, key=ifttt_key), data={'value1': str(e)})
+            requests.post(
+                IFTTT_REQUEST.format(trigger=ifttt_trigger, key=ifttt_key),
+                data={'value1': str(e)},
+            )
         raise e
 
 

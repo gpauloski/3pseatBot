@@ -1,5 +1,12 @@
+black
 discord.py
+gevent
 emoji
+flake8
+flask
+flask-discord
+Flask-Limiter
+nest-asyncio
 pynacl
 python-dotenv
 requests

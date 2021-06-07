@@ -31,6 +31,7 @@ class Rules(commands.Cog):
       - `?strikes add @member`: add strike to member
       - `?strikes remove @member`: remove strike from member
     """
+
     def __init__(
         self,
         bot: Bot,
@@ -45,7 +46,7 @@ class Rules(commands.Cog):
         booster_exception: bool = True,
         invite_after_kick: bool = True,
         freedom_mode_default_time: int = 30,
-        freedom_mode_event_prob: float = 0.0029
+        freedom_mode_event_prob: float = 0.0029,
     ) -> None:
         """Init Rules
 
@@ -91,7 +92,10 @@ class Rules(commands.Cog):
         # List of guild IDs that have freedom mode enabled
         self.freedom_mode_guilds = []
 
-        if self.freedom_mode_event_prob > 1 or self.freedom_mode_event_prob < 0:
+        if (
+            self.freedom_mode_event_prob > 1
+            or self.freedom_mode_event_prob < 0
+        ):
             raise ValueError('freedom_mode_event_prob must be in [0,1]')
 
         if self.message_prefix is not None:
@@ -107,8 +111,7 @@ class Rules(commands.Cog):
         Args:
             ctx (Context): context from command call
         """
-        msg = '{}, here are the strikes:'.format(
-            ctx.message.author.mention)
+        msg = '{}, here are the strikes:'.format(ctx.message.author.mention)
         serverCount = 0
         strikes = self.db.table(ctx.guild)
         if len(strikes) > 0:
@@ -120,7 +123,8 @@ class Rules(commands.Cog):
                     user = ctx.guild.get_member(int(uid))
                     max_offenses = self.get_max_offenses(user)
                     msg = msg + '\n{}: {}/{}'.format(
-                        user.name, strikes[uid], max_offenses)
+                        user.name, strikes[uid], max_offenses
+                    )
                 else:
                     serverCount = strikes[uid]
             msg += '```'
@@ -143,7 +147,9 @@ class Rules(commands.Cog):
         else:
             raise commands.MissingPermissions
 
-    async def remove(self, ctx: commands.Context, member: discord.Member) -> None:
+    async def remove(
+        self, ctx: commands.Context, member: discord.Member
+    ) -> None:
         """Removes a strike from `member`
 
         Requires `ctx.message.author` to be a bot admin (not guild admin).
@@ -155,7 +161,8 @@ class Rules(commands.Cog):
         if self.bot.is_bot_admin(ctx.message.author):
             self.remove_strike(member)
             msg = 'removed strike for {}. New strike count is {}.'.format(
-                member.mention, self.get_strikes(member))
+                member.mention, self.get_strikes(member)
+            )
             await self.bot.message_guild(msg, ctx.message.channel)
         else:
             raise commands.MissingPermissions
@@ -245,7 +252,7 @@ class Rules(commands.Cog):
         self,
         member: discord.Member,
         channel: discord.TextChannel,
-        guild: discord.Guild
+        guild: discord.Guild,
     ) -> None:
         """Handles what to do when user recieves a strike
 
@@ -268,23 +275,28 @@ class Rules(commands.Cog):
 
         if count < max_offenses:
             msg = '{}! You\'ve disturbed the spirits ({}/{})'.format(
-                  member.mention, count, max_offenses)
+                member.mention, count, max_offenses
+            )
             await self.bot.message_guild(msg, channel)
         else:
             self.clear_strikes(member)
-            msg = ('That\'s {} strikes, {}. I\'m sorry but your time as come. '
-                   'RIP.\n'.format(max_offenses, member.mention))
+            msg = (
+                'That\'s {} strikes, {}. I\'m sorry but your time as come. '
+                'RIP.\n'.format(max_offenses, member.mention)
+            )
             success = await self.kick(member, channel, guild, msg)
             if self.invite_after_kick and success:
-                msg = ('Sorry we had to kick you. Here is a link to rejoin: '
-                       '{link}')
+                msg = (
+                    'Sorry we had to kick you. Here is a link to rejoin: '
+                    '{link}'
+                )
                 await self.invite(member, channel, msg)
 
     async def invite(
         self,
         user: Union[discord.User, discord.Member],
         channel: discord.TextChannel,
-        message: str
+        message: str,
     ) -> None:
         """Send guild invite link to user
 
@@ -298,15 +310,17 @@ class Rules(commands.Cog):
             msg = message.format(link=link)
             await self.bot.message_user(msg, user)
         except Exception as e:
-            logger.warning('Failed to send rejoin message to {}.'
-                           'Caught exception: {}'.format(user, e))
+            logger.warning(
+                'Failed to send rejoin message to {}.'
+                'Caught exception: {}'.format(user, e)
+            )
 
     async def kick(
         self,
         member: discord.Member,
         channel: discord.TextChannel,
         guild: discord.Guild,
-        message: str = None
+        message: str = None,
     ) -> bool:
         """Kick member from guild
 
@@ -323,16 +337,19 @@ class Rules(commands.Cog):
         if is_admin(member):
             if message is None:
                 message = ''
-            message += ('Failed to kick {}. Your cognizance is highly '
-                        'acknowledged.'.format(member.mention))
+            message += (
+                'Failed to kick {}. Your cognizance is highly '
+                'acknowledged.'.format(member.mention)
+            )
             await self.bot.message_guild(message, channel)
             return False
 
         try:
             await guild.kick(member)
         except Exception as e:
-            logger.warning('Failed to kick {}. Caught exception: '
-                           '{}'.format(member, e))
+            logger.warning(
+                'Failed to kick {}. Caught exception: ' '{}'.format(member, e)
+            )
             return False
 
         if message is not None:
@@ -341,9 +358,7 @@ class Rules(commands.Cog):
         return True
 
     async def add_strike(
-        self,
-        member: discord.Member,
-        channel: discord.TextChannel
+        self, member: discord.Member, channel: discord.TextChannel
     ) -> None:
         """Add a strike to the `member` of `guild` in the database
 
@@ -386,7 +401,9 @@ class Rules(commands.Cog):
         if server_count > 0:
             self.db.set(member.guild, str(member.guild.id), server_count + 1)
 
-    async def freedom_start(self, ctx: commands.Context, minutes: float = None) -> None:
+    async def freedom_start(
+        self, ctx: commands.Context, minutes: float = None
+    ) -> None:
         """Start freedom mode
 
         No rules are enforced in freedom mode. Freedom mode will
@@ -402,7 +419,8 @@ class Rules(commands.Cog):
 
         if ctx.guild.id in self.freedom_mode_guilds:
             await self.bot.message_guild(
-                'freedom mode is already enabled', ctx.channel)
+                'freedom mode is already enabled', ctx.channel
+            )
             return
 
         await self._freedom_start(ctx.channel, minutes)
@@ -414,33 +432,35 @@ class Rules(commands.Cog):
 
         if ctx.guild.id not in self.freedom_mode_guilds:
             await self.bot.message_guild(
-                'freedom mode is already disabled', ctx.channel)
+                'freedom mode is already disabled', ctx.channel
+            )
             return
 
-        await self.bot.message_guild(
-            'your freedom has ended', ctx.channel)
+        await self.bot.message_guild('your freedom has ended', ctx.channel)
         self.freedom_mode_guilds.remove(ctx.guild.id)
 
     async def _freedom_start(
-        self,
-        channel: commands.Context,
-        minutes: float = None
+        self, channel: commands.Context, minutes: float = None
     ) -> None:
         """Freedom mode start helper"""
         if channel.guild.id in self.freedom_mode_guilds:
             return
 
         self.freedom_mode_guilds.append(channel.guild.id)
-        minutes = self.freedom_mode_default_time if minutes is None else minutes
+        minutes = (
+            self.freedom_mode_default_time if minutes is None else minutes
+        )
         minutes = max(minutes, 1 / 60)
         await self.bot.message_guild(
             'starting freedom mode for {} {}'.format(
                 int(minutes) if minutes >= 1 else int(minutes * 60),
-                'minutes' if minutes >= 1 else 'seconds'),
-            channel, react='\U0001F1FA\U0001F1F8')
+                'minutes' if minutes >= 1 else 'seconds',
+            ),
+            channel,
+            react='\U0001F1FA\U0001F1F8',
+        )
         await asyncio.sleep(60 * minutes)
-        await self.bot.message_guild(
-            'your freedom has ended', channel)
+        await self.bot.message_guild('your freedom has ended', channel)
         if channel.guild.id in self.freedom_mode_guilds:
             self.freedom_mode_guilds.remove(channel.guild.id)
 
@@ -454,7 +474,11 @@ class Rules(commands.Cog):
                     guild = self.bot.get_guild(guild_id)
                     channel = guild.text_channels[0]
                 except Exception as e:
-                    logger.error('{}: unable to get channel in guild {}'.format(e, guild_id))
+                    logger.error(
+                        '{}: unable to get channel in guild {}'.format(
+                            e, guild_id
+                        )
+                    )
                 await self._freedom_start(channel)
 
     @commands.Cog.listener()
@@ -464,8 +488,8 @@ class Rules(commands.Cog):
             return
         if message.guild is None:
             await self.bot.message_user(
-                'Hi there, I cannot reply to direct messages.',
-                message.author)
+                'Hi there, I cannot reply to direct messages.', message.author
+            )
             return
 
         if self.should_ignore(message):
@@ -477,17 +501,20 @@ class Rules(commands.Cog):
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message) -> None:
         """Called when message is deleted"""
-        if self.allow_deletes or message.author.bot or self.should_ignore(message):
+        if (
+            self.allow_deletes
+            or message.author.bot
+            or self.should_ignore(message)
+        ):
             return
         msg = '{}, where did your message go? It was: \"{}\"'.format(
-              message.author.mention, message.clean_content)
+            message.author.mention, message.clean_content
+        )
         await self.bot.message_guild(msg, message.channel)
 
     @commands.Cog.listener()
     async def on_message_edit(
-        self,
-        before: discord.Message,
-        after: discord.Message
+        self, before: discord.Message, after: discord.Message
     ) -> None:
         """Called when message is edited"""
         if self.allow_edits or before.author.bot or self.should_ignore(after):
@@ -499,7 +526,8 @@ class Rules(commands.Cog):
         if not before.pinned and after.pinned:
             return
         msg = '{}, what did you do to your message? It was: \"{}\"'.format(
-              before.author.mention, before.clean_content)
+            before.author.mention, before.clean_content
+        )
         await self.bot.message_guild(msg, before.channel)
 
         # confirm new message still passes rules
@@ -508,9 +536,7 @@ class Rules(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(
-        self,
-        ctx: commands.Context,
-        error: commands.CommandError
+        self, ctx: commands.Context, error: commands.CommandError
     ) -> None:
         """Called when a command is invalid"""
         if (
@@ -526,7 +552,7 @@ class Rules(commands.Cog):
         name='strikes',
         pass_context=True,
         brief='?help strikes for more info',
-        description='Manage Guild member strikes'
+        description='Manage Guild member strikes',
     )
     async def _strikes(self, ctx: commands.Context) -> None:
         if ctx.invoked_subcommand is None:
@@ -536,16 +562,18 @@ class Rules(commands.Cog):
         name='add',
         pass_context=True,
         brief='add strike to user',
-        ignore_extra=False
+        ignore_extra=False,
     )
-    async def _add(self, ctx: commands.Context, member: discord.Member) -> None:
+    async def _add(
+        self, ctx: commands.Context, member: discord.Member
+    ) -> None:
         await self.add(ctx, member)
 
     @_strikes.command(
         name='list',
         pass_context=True,
         brief='add strike to user',
-        ignore_extra=False
+        ignore_extra=False,
     )
     async def _list(self, ctx: commands.Context) -> None:
         await self.list(ctx)
@@ -554,38 +582,43 @@ class Rules(commands.Cog):
         name='remove',
         pass_context=True,
         brief='remove strike from user',
-        ignore_extra=False
+        ignore_extra=False,
     )
-    async def _remove(self, ctx: commands.Context, member: discord.Member) -> None:
+    async def _remove(
+        self, ctx: commands.Context, member: discord.Member
+    ) -> None:
         await self.remove(ctx, member)
 
     @commands.group(
         name='freedom',
         pass_context=True,
         brief='?help freedom for more info',
-        description='Start/stop freedom mode for the guild'
+        description='Start/stop freedom mode for the guild',
     )
     async def _freedom(self, ctx: commands.Context) -> None:
         if ctx.invoked_subcommand is None:
             await self.bot.message_guild(
                 'use the `start` or `stop` subcommands. See `{}help {}` for '
                 'more info'.format(self.bot.command_prefix, ctx.invoked_with),
-                ctx.channel)
+                ctx.channel,
+            )
 
     @_freedom.command(
         name='start',
         pass_context=True,
         brief='start freedom mode for [float] minutes',
-        ignore_extra=False
+        ignore_extra=False,
     )
-    async def _start(self, ctx: commands.Context, minutes: float = None) -> None:
+    async def _start(
+        self, ctx: commands.Context, minutes: float = None
+    ) -> None:
         await self.freedom_start(ctx, minutes)
 
     @_freedom.command(
         name='stop',
         pass_context=True,
         brief='stop freedom mode',
-        ignore_extra=False
+        ignore_extra=False,
     )
     async def _stop(self, ctx: commands.Context) -> None:
         await self.freedom_stop(ctx)

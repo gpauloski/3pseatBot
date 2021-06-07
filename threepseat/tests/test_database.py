@@ -26,11 +26,7 @@ def test_is_url():
 
 def test_keys_to_int():
     """Test keys_to_int function"""
-    d = {
-        '1': 1,
-        '2': 2,
-        '3': 3
-    }
+    d = {'1': 1, '2': 2, '3': 3}
     d_out = keys_to_int(d)
     for key in d_out:
         assert isinstance(key, int)

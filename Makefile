@@ -7,11 +7,11 @@ docker-build:
 
 docker-interactive:
 	docker run --rm --entrypoint=/bin/bash -v $(shell pwd):/bot \
-		-w /bot -it --name=$(APP_NAME) $(APP_NAME)
+		-w /bot -it -p 5000:5000 --name=$(APP_NAME) $(APP_NAME)
 
 docker-start:
 	docker run -v $(shell pwd):/bot -d --restart=unless-stopped \
-		-w /bot --name=$(APP_NAME) $(APP_NAME) /bin/bash -c $(RUN_CMD)
+		-w /bot -p 5000:5000 --name=$(APP_NAME) $(APP_NAME) /bin/bash -c $(RUN_CMD)
 
 docker-stop:
 	docker stop $(APP_NAME) || true;
@@ -20,6 +20,10 @@ docker-stop:
 dev-start:
 	eval $(RUN_CMD)
 
-flake8:
+lint:
+	black threepseat run.py
 	flake8 . --count --show-source --statistics
 	flake8 run.py --count --show-source --statistics
+
+docs:
+	cd docs ; make html ; cd ..

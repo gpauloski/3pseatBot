@@ -9,7 +9,7 @@ with open('README.md') as f:
 
 setuptools.setup(
     name="3pseatBot",
-    version="1.0.0",
+    version="1.1.0",
     author="Greg Pauloski",
     author_email="jgpauloski@uchicago.edu",
     description="3pseatBot for Discord",

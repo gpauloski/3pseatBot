@@ -17,7 +17,7 @@ NUMBERS = {
     6: emoji.emojize(':six:', use_aliases=True),
     7: emoji.emojize(':seven:', use_aliases=True),
     8: emoji.emojize(':eight:', use_aliases=True),
-    9: emoji.emojize(':nine:', use_aliases=True)
+    9: emoji.emojize(':nine:', use_aliases=True),
 }
 
 
@@ -27,12 +27,13 @@ class Poll(commands.Cog):
     Adds the following commands:
       - `?poll "[question]" "[option 1]" "[option 2]" ... "[option 9]"`
     """
+
     def __init__(
         self,
         bot: Bot,
         guild_admin_permission: bool = True,
         bot_admin_permission: bool = True,
-        everyone_permission: bool = True
+        everyone_permission: bool = True,
     ) -> None:
         """Init Poll
 
@@ -48,10 +49,7 @@ class Poll(commands.Cog):
         self.everyone_permission = everyone_permission
 
     async def create_poll(
-        self,
-        ctx: commands.Context,
-        question: str,
-        *options: str
+        self, ctx: commands.Context, question: str, *options: str
     ) -> None:
         """Message `ctx.channel` with the formatted poll
 
@@ -65,14 +63,18 @@ class Poll(commands.Cog):
         if len(options) == 0:
             await self.bot.message_guild(
                 '{}, no voting options were provided'.format(
-                    ctx.message.author.mention),
-                ctx.channel)
+                    ctx.message.author.mention
+                ),
+                ctx.channel,
+            )
             return
         if len(options) > 9:
             await self.bot.message_guild(
                 '{}, a maximum of 9 options can be provided'.format(
-                    ctx.message.author.mention),
-                ctx.channel)
+                    ctx.message.author.mention
+                ),
+                ctx.channel,
+            )
             return
         msg = 'vote by reacting:\n\n**{}**\n'.format(question)
         numbers = []
@@ -95,14 +97,11 @@ class Poll(commands.Cog):
         pass_context=True,
         brief='start a poll',
         description='Start a poll for <question> with up to 9 options. '
-                    'Note if the question or options require a space, '
-                    'wrap it in quotation marks. '
-                    'E.g. "favorite food?" apples "frosted flakes" "ice cream"'
+        'Note if the question or options require a space, '
+        'wrap it in quotation marks. '
+        'E.g. "favorite food?" apples "frosted flakes" "ice cream"',
     )
     async def _poll(
-        self,
-        ctx: commands.Context,
-        question: str,
-        *options: str
+        self, ctx: commands.Context, question: str, *options: str
     ) -> None:
         await self.create_poll(ctx, question, *options)

@@ -16,7 +16,7 @@ EXTENSIONS = {
     'minecraft': Minecraft,
     'poll': Poll,
     'rules': Rules,
-    'voice': Voice
+    'voice': Voice,
 }
 """Maps extension names to the classes"""
 
@@ -29,5 +29,5 @@ __all__ = [
     'Minecraft',
     'Poll',
     'Rules',
-    'Voice'
+    'Voice',
 ]
