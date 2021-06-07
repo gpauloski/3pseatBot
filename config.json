@@ -2,7 +2,7 @@
     "command_prefix": "?",
     "bot_admins": [91344591814393856],
     "playing_title": "3pseat Simulator 2020",
-    "use_extensions": ["commands", "games", "general", "memes", "minecraft", "poll", "rules", "voice"],
+    "use_extensions": ["commands", "games", "general", "memes", "poll", "rules", "voice"],
     "extension_configs": {
         "commands": {
             "commands_file": "data/commands.json",
@@ -34,7 +34,7 @@
             "max_booster_offenses": 100,
             "allow_deletes": true,
             "allow_edits": true,
-            "allow_wrong_commands": false,
+            "allow_wrong_commands": true,
             "booster_exception": false,
             "invite_after_kick": true,
             "freedom_mode_default_time": 60,
@@ -46,8 +46,10 @@
         }
     },
     "soundboard": {
-        "redirect": "https://localhost:5000",
+        "redirect": "https://3pseat.lol:5000",
         "port": 5000,
-        "static": false
+        "static": false,
+        "ssl_key": "env/ssl_key.pem",
+        "ssl_cert": "env/ssl_cert.pem"
     }
 }

@@ -116,10 +116,14 @@ def main():
                 discord_bot_token,
                 static_site=soundboard_config['static'],
             )
-            http_server = WSGIServer(('', soundboard_config['port']), app)
-            # threading.Thread(
-            #    target=app.run, args=('0.0.0.0', soundboard_config['port'], False)
-            # ).start()
+            ssl_cert = soundboard_config['ssl_cert']
+            ssl_key = soundboard_config['ssl_key']
+            http_server = WSGIServer(
+                ('', soundboard_config['port']), 
+                app,
+                keyfile=ssl_key,
+                certfile=ssl_cert
+            )
             threading.Thread(target=http_server.serve_forever).start()
 
         threepseatbot.run()
