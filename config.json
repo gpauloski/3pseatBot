@@ -18,9 +18,6 @@
             "dad_reply": true,
             "pog_reply": true
         },
-        "minecraft": {
-            "mc_file": "data/mc.json"
-        },
         "poll": {
             "guild_admin_permission": true,
             "bot_admin_permission": true,

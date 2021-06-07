@@ -15,7 +15,7 @@ Welcome to 3pseatBot's documentation!
    :caption: Contents:
 
    getstarted
-   hosting
+   configuration
    develop
    source/modules
 

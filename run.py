@@ -97,16 +97,18 @@ def main():
     discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
     ifttt_trigger = os.getenv('IFTTT_TRIGGER', None)
     ifttt_key = os.getenv('IFTTT_KEY', None)
-
-    soundboard_config = config.pop('soundboard')
-    discord_client_id = os.getenv('DISCORD_CLIENT_ID', None)
-    discord_client_secret = os.getenv('DISCORD_CLIENT_SECRET', None)
+    
+    if 'soundboard' in config:
+        soundboard_config = config.pop('soundboard')
+    else:
+        soundboard_config = None
 
     try:
         threepseatbot = Bot(token=discord_bot_token, **config)
 
-        # Start REST app in separate thread if we have necessary information
-        if discord_client_secret is not None and discord_bot_token is not None:
+        if soundboard_config is not None:
+            discord_client_id = os.getenv('DISCORD_CLIENT_ID')
+            discord_client_secret = os.getenv('DISCORD_CLIENT_SECRET')
             app = get_app(
                 threepseatbot,
                 soundboard_config['redirect'],
