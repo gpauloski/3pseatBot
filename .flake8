@@ -1,5 +1,5 @@
 [flake8]
-ignore = D415 W605 W503
+ignore = D415 W605 W503 D101 D103 D107 D417
 max-line-length = 100
 docstring-convention = google
 per-file-ignores = 

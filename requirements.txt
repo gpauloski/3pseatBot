@@ -3,7 +3,7 @@ discord.py
 gevent
 emoji
 flake8
-flask
+Flask
 flask-discord
 Flask-Limiter
 nest-asyncio
