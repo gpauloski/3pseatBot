@@ -97,7 +97,7 @@ def main():
     discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
     ifttt_trigger = os.getenv('IFTTT_TRIGGER', None)
     ifttt_key = os.getenv('IFTTT_KEY', None)
-    
+
     if 'soundboard' in config:
         soundboard_config = config.pop('soundboard')
     else:
@@ -121,10 +121,10 @@ def main():
             ssl_cert = soundboard_config['ssl_cert']
             ssl_key = soundboard_config['ssl_key']
             http_server = WSGIServer(
-                ('', soundboard_config['port']), 
+                ('', soundboard_config['port']),
                 app,
                 keyfile=ssl_key,
-                certfile=ssl_cert
+                certfile=ssl_cert,
             )
             threading.Thread(target=http_server.serve_forever).start()
 
