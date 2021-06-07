@@ -32,7 +32,8 @@ jobs:
         python -m pip install .
     - name: Lint with flake8
       run: |
-        make flake8
+        flake8 . --count --show-source --statistics
+        flake8 run.py --count --show-source --statistics
     - name: Test with pytest
       run: |
         python -m pytest
