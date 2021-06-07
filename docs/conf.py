@@ -35,7 +35,7 @@ def setup(app):
 project = '3pseatBot'
 copyright = '2021, Greg Pauloski'
 author = 'Greg Pauloski'
-release = '1.0.0'
+release = '1.1.0'
 
 
 # -- General configuration ---------------------------------------------------
