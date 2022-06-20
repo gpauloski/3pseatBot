@@ -285,12 +285,6 @@ class Rules(commands.Cog):
                 'RIP.\n'.format(max_offenses, member.mention)
             )
             success = await self.kick(member, channel, guild, msg)
-            if self.invite_after_kick and success:
-                msg = (
-                    'Sorry we had to kick you. Here is a link to rejoin: '
-                    '{link}'
-                )
-                await self.invite(member, channel, msg)
 
     async def invite(
         self,
@@ -345,6 +339,12 @@ class Rules(commands.Cog):
             return False
 
         try:
+            if self.invite_after_kick:
+                msg = (
+                    'Sorry we had to kick you. Here is a link to rejoin: '
+                    '{link}'
+                )
+                await self.invite(member, channel, msg)
             await guild.kick(member)
         except Exception as e:
             logger.warning(

@@ -45,8 +45,8 @@
     "soundboard": {
         "redirect": "https://3pseat.lol:5000",
         "port": 5000,
-        "static": false,
-        "ssl_key": "env/ssl_key.pem",
-        "ssl_cert": "env/ssl_cert.pem"
+        "static": true,
+        "ssl_cert": "env/ssl_cert.pem",
+        "ssl_key": "env/ssl_key.pem"
     }
 }
