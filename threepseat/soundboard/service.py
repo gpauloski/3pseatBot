@@ -26,8 +26,74 @@ limiter = Limiter(
     app, key_func=get_remote_address, default_limits=['10/second']
 )
 
-HYPERLINK = '<a href="{}">{}</a>'
+TEXT_WHITE = '#f5f5f5'
+BG_BLUE = '#17223b'
+BG_LIGHT_BLUE = '#404965'
+BG_DARK_BLUE = '#000016'
+HIGHLIGHT_PINK = '#FF6768'
+HIGHLIGHT_GREEN = '#66bb6a'
 
+HYPERLINK = '<a class="card" href="{}">{}</a>'
+STYLE = f"""
+<style>
+.card {{
+    background-color: {BG_LIGHT_BLUE};
+    color: {TEXT_WHITE};
+    font-family: Roboto, Arial, Sans-serif;
+    font-style: normal;
+    font-weight: bold;
+    font-size: 24px;
+    line-height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    overflow-wrap: anywhere;
+    text-decoration: none;
+    padding: 10px;
+    border: 5px solid {BG_DARK_BLUE};
+    border-style: inset;
+    border-radius: 10px;
+    width: 180px;
+    height: auto;
+    max-height: 100px;
+    margin-right: 20px;
+    margin-bottom: 20px;
+}}
+
+.card:hover {{
+    background: {BG_LIGHT_BLUE};
+    border: 5px solid {HIGHLIGHT_PINK};
+}}
+
+.card:active {{
+    background: {BG_LIGHT_BLUE};
+    border: 5px solid {HIGHLIGHT_GREEN};
+}}
+
+body {{
+    color: {TEXT_WHITE};
+    background-color: {BG_BLUE};
+    margin: 40px 40px 40px 40px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    text-align: center;
+    Justify-content: center;
+    align-items: stretch;
+}}
+</style>
+"""
+PAGE_FORMAT = """
+<html>
+<head>
+{style}
+</head>
+<body>
+{body}
+</body>
+</html>
+"""
 
 def get_app(
     bot_instance: Bot,
@@ -179,12 +245,13 @@ def guilds():
     if not static:
         return jsonify(guilds)
 
-    s = 'Choose a guild: <br /><br />'
+    s = ''
     for guild in guilds.values():
         url = HYPERLINK.format(
             url_for('sounds', guild_id=guild['id']), guild['name']
         )
-        s += f'{url} <br \>'
+        s += f'{url} '
+    s = PAGE_FORMAT.format(style=STYLE, body=s)
     return s
 
 
@@ -200,17 +267,16 @@ def sounds(guild_id):
         return jsonify(data)
 
     sounds = sorted(data.keys())
-    s = 'Click a sound to play: <br \><br \>'
+    s = HYPERLINK.format(url_for('roll', guild_id=guild_id), 'Random Sound')
     if len(sounds) == 0:
-        s += 'No sounds found. <br \>'
+        s += 'No sounds found.'
     for sound in sounds:
         url = HYPERLINK.format(
             url_for('play', guild_id=guild_id, sound=sound), sound
         )
-        s += f'{url} <br \>'
+        s += f' {url}'
 
-    url = HYPERLINK.format(url_for('roll', guild_id=guild_id), 'Roll a sound')
-    s += f'<br \> {url}'
+    s = PAGE_FORMAT.format(style=STYLE, body=s)
     return s
 
 

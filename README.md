@@ -39,3 +39,9 @@
   - Switched to IFTTT instead*
 - [ ] Allow certain words/phrases
 - [ ] Bruh reply similar to pog
+- [ ] Add instructions to docs for renewing Certbot certificates
+  - Stop 3pseatBot
+  - Stop nginx server
+  - `certbot renew`
+  - Restart nginx server
+  - Start 3pseatBot
