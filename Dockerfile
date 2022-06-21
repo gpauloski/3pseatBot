@@ -1,12 +1,12 @@
-FROM arm32v7/python
+FROM python:3.10-bullseye
 
-COPY requirements.txt /
+RUN apt-get update
+RUN apt-get install -y ffmpeg vim
 
-RUN apt-get update && apt-get install -y vim
-RUN apt install -y ffmpeg
-RUN pip install -r requirements.txt
-RUN cd / && pip install -r requirements.txt
+RUN git clone https://github.com/gpauloski/3pseatBot /bot
+WORKDIR /bot
+RUN pip install -e .
 
 EXPOSE 5000
 
-WORKDIR /bot
+CMD ["python", "run.py", "--config", "/data/config.json"]

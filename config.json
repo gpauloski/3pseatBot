@@ -1,17 +1,17 @@
 {
     "command_prefix": "?",
-    "bot_admins": [91344591814393856],
+    "bot_admins": [],
     "playing_title": "3pseat Simulator 2020",
     "use_extensions": ["commands", "games", "general", "memes", "poll", "rules", "voice"],
     "extension_configs": {
         "commands": {
-            "commands_file": "data/commands.json",
+            "commands_file": "/data/commands.json",
             "guild_admin_permission": true,
             "bot_admin_permission": true,
             "everyone_permission": false
         },
         "games": {
-            "games_file": "data/games.json"
+            "games_file": "/data/games.json"
         },
         "general": {},
         "memes": {
@@ -24,7 +24,7 @@
             "everyone_permission": true
         },
         "rules": {
-            "database_path": "data/bans.json",
+            "database_path": "/data/bans.json",
             "message_prefix": ["3pseat", "3pfeet", "3ppie"],
             "whitelist_prefix": ["!"],
             "max_offenses": 3,
@@ -38,15 +38,15 @@
             "freedom_mode_event_prob": 0.006
         },
         "voice": {
-            "sounds_file": "data/sounds.json",
-            "sounds_dir": "data/sounds"
+            "sounds_file": "/data/sounds.json",
+            "sounds_dir": "/data/sounds"
         }
     },
     "soundboard": {
-        "redirect": "https://3pseat.lol:5000",
+        "redirect": null,
         "port": 5000,
         "static": true,
-        "ssl_cert": "env/ssl_cert.pem",
-        "ssl_key": "env/ssl_key.pem"
+        "ssl_cert": null,
+        "ssl_key": null
     }
 }

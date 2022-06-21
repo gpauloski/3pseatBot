@@ -45,3 +45,17 @@
   - `certbot renew`
   - Restart nginx server
   - Start 3pseatBot
+
+
+# Environment Variables
+
+```Bash
+DISCORD_BOT_TOKEN
+DISCORD_CLIENT_ID
+DISCORD_CLIENT_SECRET
+IFTTT_TRIGGER
+IFTTT_KEY
+REDIRECT_URL  # Redirect url for soundboard
+SSL_CERT # Path to SSL certificate
+SSL_KEY # Path to SSK key
+```

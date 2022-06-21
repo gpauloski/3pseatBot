@@ -91,12 +91,17 @@ def main():
 
     with open(args.config) as f:
         config = json.load(f)
-
-    load_dotenv(dotenv_path='.env')
+    
+    if os.path.exists('.env'):
+        load_dotenv(dotenv_path='.env')
 
     discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
     ifttt_trigger = os.getenv('IFTTT_TRIGGER', None)
     ifttt_key = os.getenv('IFTTT_KEY', None)
+
+    redirect_url = os.getenv('REDIRECT_URL', None)
+    ssl_cert = os.getenv('SSL_CERT', None)
+    ssl_key = os.getenv('SSL_KEY', None)
 
     if 'soundboard' in config:
         soundboard_config = config.pop('soundboard')
@@ -109,6 +114,14 @@ def main():
         if soundboard_config is not None:
             discord_client_id = os.getenv('DISCORD_CLIENT_ID')
             discord_client_secret = os.getenv('DISCORD_CLIENT_SECRET')
+
+            if redirect_url is not None:
+                soundboard_config['redirect'] = redirect_url
+            if ssl_cert is not None:
+                soundboard_config['ssl_cert'] = ssl_cert
+            if ssl_key is not None:
+                soundboard_config['ssl_key'] = ssl_key
+
             app = get_app(
                 threepseatbot,
                 soundboard_config['redirect'],
