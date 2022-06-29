@@ -1,0 +1,34 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+    tags:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    timeout-minutes: 10
+
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          python: '3.10'
+          toxenv: py310
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{matrix.python}}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install Packages
+        run: python -mpip install --upgrade setuptools pip tox virtualenv
+
+      - name: Run Tox
+        run: tox -e ${{ matrix.toxenv }}

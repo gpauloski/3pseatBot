@@ -1,2 +1,3 @@
-from threepseat import cogs
-from threepseat import soundboard
+from __future__ import annotations
+
+__version__ = '2.0.0'
