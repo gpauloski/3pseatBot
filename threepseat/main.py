@@ -5,6 +5,7 @@ import sys
 from typing import Sequence
 
 import threepseat
+from threepseat import config
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -17,10 +18,37 @@ def main(argv: Sequence[str] | None = None) -> int:
         '-V',
         '--version',
         action='version',
-        version=f'%(prog)s {threepseat.__version__}',
+        version=f'3pseatBot {threepseat.__version__}',
+    )
+    mutex_group = parser.add_mutually_exclusive_group(required=True)
+    mutex_group.add_argument(
+        '--config',
+        help='start bot using this config',
+        metavar='PATH',
+    )
+    mutex_group.add_argument(
+        '--template',
+        help='create template config file',
+        metavar='PATH',
     )
 
-    parser.parse_args(argv)
+    if len(argv) == 0:
+        argv = ['--help']
+
+    args = parser.parse_args(argv)
+
+    if args.template is not None:
+        config.write_template(args.template)
+        return 0
+
+    cfg = config.load(args.config)
+
+    # TODO:
+    # - setup logging
+    # - log cfg
+    # - start amain()
+
+    print(cfg)
 
     return 0
 
