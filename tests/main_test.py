@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import contextlib
-import json
 import pathlib
+import shutil
 import subprocess
 
 import pytest
 
 import threepseat
-from testing.config import EXAMPLE_CONFIG
 from testing.config import TEMPLATE_CONFIG
 from threepseat.main import main
 
@@ -45,12 +44,18 @@ def test_main_template(tmp_path: pathlib.Path) -> None:
         assert f.read() == TEMPLATE_CONFIG
 
 
-def test_main_start(tmp_path: pathlib.Path) -> None:
-    filepath = tmp_path / 'config.json'
-    with open(filepath, 'w') as f:
-        json.dump(EXAMPLE_CONFIG, f)
+def test_main_start(config: str) -> None:
     with contextlib.redirect_stdout(None):
-        main(['--config', str(filepath)])
+        main(['--config', str(config)])
+
+
+def test_logging(config: str, tmp_path: pathlib.Path) -> None:
+    logdir = tmp_path / 'logdir'
+    if logdir.exists():  # pragma: no cover
+        shutil.rmtree(logdir)
+    main(['--config', config, '--log-dir', str(logdir)])
+    assert logdir.exists()
+    shutil.rmtree(logdir)
 
 
 def test_cli() -> None:
