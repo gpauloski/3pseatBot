@@ -1,6 +1,7 @@
 black
 covdefaults>=2.2
 coverage
+dpytest
 flake8
 flake8-bugbear
 flake8-docstrings
@@ -8,6 +9,7 @@ mypy
 pep8-naming
 pre-commit
 pytest
+pytest-asyncio
 pytest-cov
 tox
 virtualenv

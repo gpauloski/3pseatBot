@@ -4,6 +4,7 @@ import contextlib
 import pathlib
 import shutil
 import subprocess
+from unittest import mock
 
 import pytest
 
@@ -45,15 +46,21 @@ def test_main_template(tmp_path: pathlib.Path) -> None:
 
 
 def test_main_start(config: str) -> None:
-    with contextlib.redirect_stdout(None):
-        main(['--config', str(config)])
+    # Note: we are not interested in testing the functionality of the bot here,
+    # just that it gets started
+    with mock.patch('threepseat.main.Bot', autospec=True) as mocked:
+        assert not mocked.called
+        with contextlib.redirect_stdout(None):
+            main(['--config', str(config)])
+        assert mocked.called
 
 
 def test_logging(config: str, tmp_path: pathlib.Path) -> None:
     logdir = tmp_path / 'logdir'
     if logdir.exists():  # pragma: no cover
         shutil.rmtree(logdir)
-    main(['--config', config, '--log-dir', str(logdir)])
+    with mock.patch('threepseat.main.amain', mock.AsyncMock()):
+        main(['--config', config, '--log-dir', str(logdir)])
     assert logdir.exists()
     shutil.rmtree(logdir)
 

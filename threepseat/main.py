@@ -1,16 +1,25 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
+import contextlib
 import logging
 import sys
 from typing import Sequence
 
 import threepseat
 from threepseat import config
+from threepseat.bot import Bot
 from threepseat.logging import configure_logging
 
 
 logger = logging.getLogger(__name__)
+
+
+async def amain(cfg: config.Config) -> None:
+    """Run asyncio services."""
+    bot = Bot(cfg)
+    await asyncio.gather(bot.start())
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -67,10 +76,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     cfg = config.load(args.config)
     logger.info(cfg)
 
-    # TODO:
-    # - setup logging
-    # - log cfg
-    # - start amain()
+    with contextlib.suppress(KeyboardInterrupt):
+        asyncio.run(amain(cfg))
 
     return 0
 

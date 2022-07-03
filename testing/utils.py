@@ -5,9 +5,22 @@ import os
 import pathlib
 from typing import Generator
 
+import discord.ext.test as dpytest
 import pytest
+import pytest_asyncio
 
 from testing.config import EXAMPLE_CONFIG
+from threepseat.bot import Bot
+from threepseat.config import Config
+
+
+@pytest_asyncio.fixture
+@pytest.mark.asyncio
+async def bot() -> Bot:
+    """Fixture that initialized bot instance."""
+    bot = Bot(Config(**EXAMPLE_CONFIG))  # type: ignore
+    dpytest.configure(bot)
+    return bot
 
 
 @pytest.fixture()
