@@ -9,7 +9,7 @@ import typing
 class Config:
     """3pseatBot configuration."""
 
-    application_id: int
+    bot_token: str = dataclasses.field(repr=False)
     client_id: int
     client_secret: str = dataclasses.field(repr=False)
     mongodb_connection: str

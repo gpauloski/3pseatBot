@@ -21,7 +21,7 @@ def test_config_parse_correct() -> None:
 
 def test_config_parse_bad_types() -> None:
     cfg_dict = {
-        'application_id': 1234,
+        'bot_token': '1234',
         'client_id': 1234,
         # This should be a string
         'client_secret': 1234,
@@ -41,7 +41,7 @@ def test_secret_not_in_repr() -> None:
     cfg = Config(**EXAMPLE_CONFIG)  # type: ignore
     r = repr(cfg)
     for field in EXAMPLE_CONFIG:
-        if field != 'client_secret':
+        if field not in ('client_secret', 'bot_token'):
             assert field in r
         else:
             assert field not in r

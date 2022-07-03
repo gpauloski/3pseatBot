@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 EXAMPLE_CONFIG = {
-    'application_id': 1234,
+    'bot_token': '1234abc',
     'client_id': 1234,
     'client_secret': 'abcd',
     'mongodb_connection': 'str',
@@ -9,7 +9,7 @@ EXAMPLE_CONFIG = {
 
 TEMPLATE_CONFIG = """\
 {
-    "application_id": <int>,
+    "bot_token": <str>,
     "client_id": <int>,
     "client_secret": <str>,
     "mongodb_connection": <str>,
