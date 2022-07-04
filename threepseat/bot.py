@@ -5,6 +5,7 @@ import logging
 import discord
 from discord.ext import commands
 
+from threepseat.commands import registered_commands
 from threepseat.config import Config
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,8 @@ class Bot(commands.Bot):
         )
 
         super().__init__(
-            command_prefix=None,
+            # We are not using command prefixes right now
+            command_prefix='???',
             description=None,
             intents=intents,
         )
@@ -45,6 +47,13 @@ class Bot(commands.Bot):
         await self.change_presence(
             activity=discord.Game(name=self.config.playing_title),
         )
+
+        self.tree.clear_commands(guild=None)
+
+        for command in registered_commands():
+            self.tree.add_command(command)
+
+        await self.tree.sync()
 
     async def start(self) -> None:
         """Start the bot."""

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import logging
 import pathlib
 import shutil
 import subprocess
@@ -53,6 +54,24 @@ def test_main_start(config: str) -> None:
         with contextlib.redirect_stdout(None):
             main(['--config', str(config)])
         assert mocked.called
+
+
+def test_main_errors(config: str, caplog) -> None:
+    caplog.set_level(logging.ERROR)
+    with mock.patch(
+        'threepseat.main.amain',
+        mock.AsyncMock(side_effect=KeyboardInterrupt),
+    ):
+        ret = main(['--config', config])
+    assert ret == 0
+
+    with mock.patch(
+        'threepseat.main.amain',
+        mock.AsyncMock(side_effect=Exception('uh oh')),
+    ):
+        ret = main(['--config', config])
+    assert ret != 0
+    assert any(['uh oh' in record.message for record in caplog.records])
 
 
 def test_logging(config: str, tmp_path: pathlib.Path) -> None:

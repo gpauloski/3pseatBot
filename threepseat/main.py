@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import contextlib
 import logging
 import sys
 from typing import Sequence
@@ -76,8 +75,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     cfg = config.load(args.config)
     logger.info(cfg)
 
-    with contextlib.suppress(KeyboardInterrupt):
+    try:
         asyncio.run(amain(cfg))
+    except KeyboardInterrupt:
+        logger.info('bot exited')
+    except Exception as e:
+        logger.exception(e)
+        return 1
 
     return 0
 

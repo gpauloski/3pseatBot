@@ -31,10 +31,16 @@ async def test_bot_startup(bot: Bot, caplog) -> None:
             'change_presence',
             mock.AsyncMock(),
         ) as change_presence,
+        mock.patch.object(
+            bot.tree,
+            'sync',
+            mock.AsyncMock(),
+        ) as sync,
     ):
         await bot.on_ready()
         assert wait_until_ready.called
         assert change_presence.called
+        assert sync.called
     assert any(
         ['ready!' in record.message for record in caplog.records],
     )
