@@ -11,6 +11,8 @@ import discord
 from discord import app_commands
 from discord.app_commands.commands import Command as _Command
 
+import threepseat
+
 
 Command: TypeAlias = _Command[Any, Any, Any]
 
@@ -57,17 +59,11 @@ def log_interaction(
         if interaction.command is None
         else interaction.command.__class__.__name__
     )
-    message = (
-        None
-        if interaction.message is None
-        else interaction.message.clean_content
-    )
 
     logger.log(
         level,
         f'[Channel: {channel_name}, Guild: {guild}] '
-        f'{interaction.user.name} ({interaction.user.id}) called '
-        f'/{command}: {message}',
+        f'{interaction.user.name} ({interaction.user.id}) called /{command}',
     )
 
 
@@ -115,3 +111,19 @@ async def roll(
         f'{user.mention} rolled **{num}** from [{start}, {end}]!',
     )
     return num
+
+
+@register
+@app_commands.command(description='3pseatBot source code')
+async def source(interaction: discord.Interaction) -> None:
+    """Get 3pseatBot's source code link."""
+    log_interaction(interaction)
+    name = (
+        'Bot'
+        if interaction.client.user is None
+        else interaction.client.user.name
+    )
+    await interaction.response.send_message(
+        f'This is {name} v{threepseat.__version__}. '
+        f'You can find source code at https://github.com/gpauloski/3pseatBot.',
+    )

@@ -11,6 +11,7 @@ from testing.mock import MockUser
 from threepseat.commands import flip
 from threepseat.commands import registered_commands
 from threepseat.commands import roll
+from threepseat.commands import source
 
 
 def extract(app_command) -> Callable[..., Awaitable[Any]]:
@@ -79,4 +80,18 @@ async def test_roll() -> None:
     assert (
         interaction.response_message is not None
         and 'calling-user' in interaction.response_message
+    )
+
+
+@pytest.mark.asyncio
+async def test_source() -> None:
+    source_ = extract(source)
+
+    interaction = MockInteraction(roll, user='calling-user')
+
+    await source_(interaction)
+    assert interaction.responded
+    assert (
+        interaction.response_message is not None
+        and 'github' in interaction.response_message
     )

@@ -24,6 +24,15 @@ class MockChannel(discord.TextChannel):
         self.name = name
 
 
+class MockClient(discord.Client):
+    def __init__(self, user: discord.User) -> None:
+        self._user = user
+
+    @property
+    def user(self) -> discord.ClientUser | None:
+        return cast(discord.ClientUser, self._user)
+
+
 class MockGuild(discord.Guild):
     def __init__(self, name: str) -> None:
         self.name = name
@@ -58,9 +67,14 @@ class MockInteraction(Interaction):
         self.user = MockUser(user, 123456789)
         self.message = None if message is None else MockMessage(message)
         self.channel = None if channel is None else MockChannel(channel)
+        self._client = MockClient(MockUser('MockBotClient', 31415))
         self._guild = None if guild is None else MockGuild(guild)
 
         self.response = Response()
+
+    @property
+    def client(self) -> discord.Client:
+        return self._client
 
     @property
     def guild(self) -> discord.Guild | None:
