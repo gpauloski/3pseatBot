@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+from typing import Any
+from typing import Awaitable
+from typing import Callable
 from typing import Generator
 
 import discord.ext.test as dpytest
@@ -31,3 +34,8 @@ def config(tmp_path: pathlib.Path) -> Generator[str, None, None]:
         json.dump(EXAMPLE_CONFIG, f)
     yield filepath
     os.remove(filepath)
+
+
+def extract(app_command) -> Callable[..., Awaitable[Any]]:
+    """Extract the original function from the Command."""
+    return app_command._callback

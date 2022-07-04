@@ -5,7 +5,7 @@ import logging
 import discord
 from discord.ext import commands
 
-from threepseat.commands import registered_commands
+from threepseat.commands.commands import registered_commands
 from threepseat.config import Config
 
 logger = logging.getLogger(__name__)

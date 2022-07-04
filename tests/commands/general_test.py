@@ -1,26 +1,13 @@
 from __future__ import annotations
 
-from typing import Any
-from typing import Awaitable
-from typing import Callable
-
 import pytest
 
 from testing.mock import MockInteraction
 from testing.mock import MockUser
-from threepseat.commands import flip
-from threepseat.commands import registered_commands
-from threepseat.commands import roll
-from threepseat.commands import source
-
-
-def extract(app_command) -> Callable[..., Awaitable[Any]]:
-    """Extract the original function from the Command."""
-    return app_command._callback
-
-
-def test_commands_registered() -> None:
-    assert len(registered_commands()) > 0
+from testing.utils import extract
+from threepseat.commands.general import flip
+from threepseat.commands.general import roll
+from threepseat.commands.general import source
 
 
 @pytest.mark.asyncio
