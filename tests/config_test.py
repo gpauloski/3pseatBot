@@ -25,7 +25,7 @@ def test_config_parse_bad_types() -> None:
         'client_id': 1234,
         # This should be a string
         'client_secret': 1234,
-        'mongodb_connection': 'str',
+        'sqlite_database': 'str',
     }
     with pytest.raises(
         TypeError,

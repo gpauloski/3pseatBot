@@ -12,7 +12,7 @@ class Config:
     bot_token: str = dataclasses.field(repr=False)
     client_id: int
     client_secret: str = dataclasses.field(repr=False)
-    mongodb_connection: str
+    sqlite_database: str
     playing_title: str = '3pseat Simulator 2022'
 
     def __post_init__(self) -> None:
