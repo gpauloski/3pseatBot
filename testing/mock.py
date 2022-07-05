@@ -5,6 +5,7 @@ from typing import cast
 
 import discord
 from discord.app_commands.commands import Command
+from discord.ext import commands
 from discord.interactions import Interaction
 from discord.interactions import InteractionResponse
 
@@ -24,9 +25,13 @@ class MockChannel(discord.TextChannel):
         self.name = name
 
 
-class MockClient(discord.Client):
+class MockClient(commands.Bot):
     def __init__(self, user: discord.User) -> None:
         self._user = user
+
+    @property
+    def owner_id(self) -> int:
+        return self._user.id
 
     @property
     def user(self) -> discord.ClientUser | None:
@@ -34,8 +39,9 @@ class MockClient(discord.Client):
 
 
 class MockGuild(discord.Guild):
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, id: int) -> None:
         self.name = name
+        self.id = id
 
 
 class MockMessage(discord.Message):
@@ -47,9 +53,27 @@ class Response(InteractionResponse):
     def __init__(self) -> None:
         self.called = False
         self.message: str | None = None
+        self.deferred = False
 
-    async def send_message(self, message: str) -> None:  # type: ignore
-        self.called |= True
+    async def send_message(  # type: ignore
+        self,
+        message: str,
+        ephemeral: bool = False,
+    ) -> None:
+        self.called = True
+        self.message = message
+
+    async def defer(self, **kwargs: Any) -> None:
+        self.deferred = True
+
+
+class Followup:
+    def __init__(self) -> None:
+        self.followed = False
+        self.message: str | None = None
+
+    async def send(self, message: str, *args: Any, **kwargs: Any) -> None:
+        self.followed = True
         self.message = message
 
 
@@ -58,19 +82,35 @@ class MockInteraction(Interaction):
         self,
         command: Command[Any, Any, Any],
         *,
-        user: str,
-        message: str | None = None,
-        channel: str | None = None,
-        guild: str | None = None,
+        user: str | discord.User,
+        message: str | discord.Message | None = None,
+        channel: str | discord.TextChannel | None = None,
+        guild: str | discord.Guild | None = None,
+        client: discord.Client | None = None,
     ) -> None:
         self.command = command
-        self.user = MockUser(user, 123456789)
-        self.message = None if message is None else MockMessage(message)
-        self.channel = None if channel is None else MockChannel(channel)
-        self._client = MockClient(MockUser('MockBotClient', 31415))
-        self._guild = None if guild is None else MockGuild(guild)
+        self.user = (
+            MockUser(user, 123456789) if isinstance(user, str) else user
+        )
+
+        if isinstance(message, str):
+            message = MockMessage(message)
+        self.message: discord.Message | None = message
+
+        if isinstance(channel, str):
+            channel = MockChannel(channel)
+        self.channel: discord.TextChannel | None = channel  # type: ignore
+
+        if isinstance(guild, str):
+            guild = MockGuild(guild, 123982131)
+        self._guild = guild
+
+        if client is None:
+            client = MockClient(MockUser('MockBotClient', 31415))
+        self._client = client
 
         self.response = Response()
+        self.followup = Followup()  # type: ignore
 
     @property
     def client(self) -> discord.Client:
@@ -79,6 +119,16 @@ class MockInteraction(Interaction):
     @property
     def guild(self) -> discord.Guild | None:
         return self._guild
+
+    @property
+    def followed(self) -> bool:
+        return (
+            self.response.deferred and self.followup.followed  # type: ignore
+        )
+
+    @property
+    def followup_message(self) -> str | None:
+        return self.followup.message  # type: ignore
 
     @property
     def responded(self) -> bool:

@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import sqlite3
+import uuid
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -17,13 +19,30 @@ from threepseat.bot import Bot
 from threepseat.config import Config
 
 
+@pytest.fixture()
+def tmp_file(tmp_path: pathlib.Path) -> Generator[str, None, None]:
+    """Fixture that random file path."""
+    filepath = os.path.join(tmp_path, str(uuid.uuid4()))
+    yield filepath
+    os.remove(filepath)
+
+
 @pytest_asyncio.fixture
 @pytest.mark.asyncio
-async def bot() -> Bot:
+async def bot(tmp_file) -> Bot:
     """Fixture that initialized bot instance."""
-    bot = Bot(Config(**EXAMPLE_CONFIG))  # type: ignore
+    cfg = EXAMPLE_CONFIG.copy()
+    cfg['sqlite_database'] = tmp_file
+    bot = Bot(Config(**cfg))  # type: ignore
     dpytest.configure(bot)
     return bot
+
+
+@pytest.fixture()
+def database() -> Generator[sqlite3.Connection, None, None]:
+    con = sqlite3.connect(':memory:')
+    yield con
+    con.close()
 
 
 @pytest.fixture()

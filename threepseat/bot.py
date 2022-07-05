@@ -6,6 +6,7 @@ import discord
 from discord.ext import commands
 
 from threepseat.commands.commands import registered_commands
+from threepseat.commands.custom import CustomCommands
 from threepseat.config import Config
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,10 @@ class Bot(commands.Bot):
             config (Config): configuration.
         """
         self.config = config
+        self.custom_commands = CustomCommands(
+            self,
+            db_path=self.config.sqlite_database,
+        )
 
         intents = discord.Intents(
             guilds=True,
@@ -49,11 +54,21 @@ class Bot(commands.Bot):
         )
 
         self.tree.clear_commands(guild=None)
+        for guild in self.guilds:
+            self.tree.clear_commands(guild=guild)
 
         for command in registered_commands():
             self.tree.add_command(command)
 
+        logger.info(f'registered {len(registered_commands())} app commands')
+
+        self.tree.add_command(self.custom_commands)
+        await self.custom_commands.register_all()
+        logger.info('registered custom commands')
+
         await self.tree.sync()
+        for guild in self.guilds:
+            await self.tree.sync(guild=guild)
 
     async def start(self) -> None:
         """Start the bot."""
