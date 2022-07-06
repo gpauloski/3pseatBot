@@ -9,6 +9,7 @@ from typing import Sequence
 import threepseat
 from threepseat import config
 from threepseat.bot import Bot
+from threepseat.commands.custom import CustomCommands
 from threepseat.logging import configure_logging
 
 
@@ -17,8 +18,12 @@ logger = logging.getLogger(__name__)
 
 async def amain(cfg: config.Config) -> None:
     """Run asyncio services."""
-    bot = Bot(cfg)
-    await asyncio.gather(bot.start())
+    custom_commands = CustomCommands(cfg.sqlite_database)
+    bot = Bot(
+        playing_title=cfg.playing_title,
+        custom_commands=custom_commands,
+    )
+    await asyncio.gather(bot.start(cfg.bot_token, reconnect=True))
 
 
 def main(argv: Sequence[str] | None = None) -> int:

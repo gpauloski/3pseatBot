@@ -16,14 +16,17 @@ from threepseat.commands.custom import CustomCommands
 
 
 @pytest.fixture
-def mockbot(bot: Bot) -> Generator[Bot, None, None]:
+def mockbot(tmp_file: str) -> Generator[Bot, None, None]:
+    cc = CustomCommands(tmp_file)
+    bot = Bot(custom_commands=cc)
     with mock.patch.object(bot.tree, 'sync', mock.AsyncMock()):
         yield bot
 
 
 @pytest.mark.asyncio
 async def test_create(mockbot: Bot) -> None:
-    custom = CustomCommands(mockbot.config.sqlite_database)
+    custom = mockbot.custom_commands
+    assert custom is not None
     create_ = extract(custom.create)
 
     interaction = MockInteraction(
@@ -52,7 +55,8 @@ async def test_create(mockbot: Bot) -> None:
 
 @pytest.mark.asyncio
 async def test_create_invalid_name(mockbot: Bot) -> None:
-    custom = CustomCommands(mockbot.config.sqlite_database)
+    custom = mockbot.custom_commands
+    assert custom is not None
     create_ = extract(custom.create)
 
     interaction = MockInteraction(
@@ -79,7 +83,8 @@ async def test_create_invalid_name(mockbot: Bot) -> None:
 
 @pytest.mark.asyncio
 async def test_list(mockbot: Bot) -> None:
-    custom = CustomCommands(mockbot.config.sqlite_database)
+    custom = mockbot.custom_commands
+    assert custom is not None
     list_ = extract(custom.list)
 
     interaction = MockInteraction(
@@ -130,7 +135,8 @@ async def test_list(mockbot: Bot) -> None:
 
 @pytest.mark.asyncio
 async def test_remove(mockbot: Bot) -> None:
-    custom = CustomCommands(mockbot.config.sqlite_database)
+    custom = mockbot.custom_commands
+    assert custom is not None
     remove_ = extract(custom.remove)
 
     interaction = MockInteraction(
@@ -148,7 +154,8 @@ async def test_remove(mockbot: Bot) -> None:
 
 @pytest.mark.asyncio
 async def test_on_error(mockbot: Bot, caplog) -> None:
-    custom = CustomCommands(mockbot.config.sqlite_database)
+    custom = mockbot.custom_commands
+    assert custom is not None
 
     interaction = MockInteraction(
         custom.remove,

@@ -5,7 +5,10 @@ from unittest import mock
 
 import pytest
 
+from testing.mock import MockGuild
+from testing.mock import MockUser
 from threepseat.bot import Bot
+from threepseat.commands.custom import CustomCommands
 
 # NOTE: there is not a great way to mock the discord API/discord Bots right
 # now so these tests mock a lot of things. As a result, the quality of these
@@ -14,33 +17,43 @@ from threepseat.bot import Bot
 
 
 @pytest.mark.asyncio
-async def test_bot_startup(bot: Bot, caplog) -> None:
-    with mock.patch('discord.ext.commands.Bot.start', mock.AsyncMock()):
-        await bot.start()
-
-    # dpytest does not trigger on_ready
+async def test_bot_startup(tmp_file: str, caplog) -> None:
     caplog.set_level(logging.INFO)
     with (
-        mock.patch.object(
-            bot,
-            'wait_until_ready',
+        mock.patch(
+            'threepseat.bot.Bot.user',
+            new_callable=mock.PropertyMock(
+                return_value=MockUser('botuser', 1234),
+            ),
+        ),
+        mock.patch(
+            'threepseat.bot.Bot.wait_until_ready',
             mock.AsyncMock(),
-        ) as wait_until_ready,
-        mock.patch.object(
-            bot,
-            'change_presence',
+        ),
+        mock.patch(
+            'threepseat.bot.Bot.change_presence',
             mock.AsyncMock(),
-        ) as change_presence,
-        mock.patch.object(
-            bot.tree,
-            'sync',
+        ),
+        mock.patch(
+            'discord.app_commands.tree.CommandTree.sync',
             mock.AsyncMock(),
-        ) as sync,
+        ),
     ):
+        bot = Bot(playing_title='3pseat Test Simulator')
         await bot.on_ready()
-        assert wait_until_ready.called
-        assert change_presence.called
-        assert sync.called
+        assert bot.wait_until_ready.called
+        assert bot.change_presence.called
+        assert bot.tree.sync.called
+
+        with mock.patch(
+            'threepseat.bot.Bot.guilds',
+            new_callable=mock.PropertyMock(
+                return_value=[MockGuild('guild', 1234)],
+            ),
+        ):
+            bot = Bot(custom_commands=CustomCommands(tmp_file))
+            await bot.on_ready()
+
     assert any(
         ['ready!' in record.message for record in caplog.records],
     )

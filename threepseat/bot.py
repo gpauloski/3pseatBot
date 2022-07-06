@@ -7,7 +7,6 @@ from discord.ext import commands
 
 from threepseat.commands.commands import registered_commands
 from threepseat.commands.custom import CustomCommands
-from threepseat.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -15,14 +14,22 @@ logger = logging.getLogger(__name__)
 class Bot(commands.Bot):
     """3pseatBot."""
 
-    def __init__(self, config: Config) -> None:
+    def __init__(
+        self,
+        *,
+        playing_title: str | None = None,
+        custom_commands: CustomCommands | None = None,
+    ) -> None:
         """Init Bot.
 
         Args:
-            config (Config): configuration.
+            playing_title (str, optional): set bot as playing this title
+                (default: None).
+            custom_commands (CustomCommands, optional): custom commands
+                object to register with bot (default: None).
         """
-        self.config = config
-        self.custom_commands = CustomCommands(self.config.sqlite_database)
+        self.playing_title = playing_title
+        self.custom_commands = custom_commands
 
         intents = discord.Intents(
             guilds=True,
@@ -40,15 +47,16 @@ class Bot(commands.Bot):
 
     async def on_ready(self) -> None:
         """Bot on ready event."""
-        await self.wait_until_ready()
         await self.setup()
+        await self.wait_until_ready()
         logger.info(f'{self.user.name} (Client ID: {self.user.id}) is ready!')
 
     async def setup(self) -> None:
         """Setup operations to perform once bot is ready."""
-        await self.change_presence(
-            activity=discord.Game(name=self.config.playing_title),
-        )
+        if self.playing_title is not None:
+            await self.change_presence(
+                activity=discord.Game(name=self.playing_title),
+            )
 
         self.tree.clear_commands(guild=None)
         for guild in self.guilds:
@@ -59,14 +67,11 @@ class Bot(commands.Bot):
 
         logger.info(f'registered {len(registered_commands())} app commands')
 
-        self.tree.add_command(self.custom_commands)
-        await self.custom_commands.register_all(self)
-        logger.info('registered custom commands')
+        if self.custom_commands is not None:
+            self.tree.add_command(self.custom_commands)
+            await self.custom_commands.register_all(self)
+            logger.info('registered custom commands')
 
         await self.tree.sync()
         for guild in self.guilds:
             await self.tree.sync(guild=guild)
-
-    async def start(self) -> None:
-        """Start the bot."""
-        await super().start(self.config.bot_token, reconnect=True)
