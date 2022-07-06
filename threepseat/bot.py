@@ -22,10 +22,7 @@ class Bot(commands.Bot):
             config (Config): configuration.
         """
         self.config = config
-        self.custom_commands = CustomCommands(
-            self,
-            db_path=self.config.sqlite_database,
-        )
+        self.custom_commands = CustomCommands(self.config.sqlite_database)
 
         intents = discord.Intents(
             guilds=True,
@@ -63,7 +60,7 @@ class Bot(commands.Bot):
         logger.info(f'registered {len(registered_commands())} app commands')
 
         self.tree.add_command(self.custom_commands)
-        await self.custom_commands.register_all()
+        await self.custom_commands.register_all(self)
         logger.info('registered custom commands')
 
         await self.tree.sync()

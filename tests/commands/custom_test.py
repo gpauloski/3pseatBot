@@ -23,7 +23,7 @@ def mockbot(bot: Bot) -> Generator[Bot, None, None]:
 
 @pytest.mark.asyncio
 async def test_create(mockbot: Bot) -> None:
-    custom = CustomCommands(mockbot, mockbot.config.sqlite_database)
+    custom = CustomCommands(mockbot.config.sqlite_database)
     create_ = extract(custom.create)
 
     interaction = MockInteraction(
@@ -31,6 +31,7 @@ async def test_create(mockbot: Bot) -> None:
         user='calling-user',
         channel='mychannel',
         guild='myguild',
+        client=mockbot,
     )
 
     with mock.patch.object(
@@ -51,7 +52,7 @@ async def test_create(mockbot: Bot) -> None:
 
 @pytest.mark.asyncio
 async def test_create_invalid_name(mockbot: Bot) -> None:
-    custom = CustomCommands(mockbot, mockbot.config.sqlite_database)
+    custom = CustomCommands(mockbot.config.sqlite_database)
     create_ = extract(custom.create)
 
     interaction = MockInteraction(
@@ -59,6 +60,7 @@ async def test_create_invalid_name(mockbot: Bot) -> None:
         user='calling-user',
         channel='mychannel',
         guild='myguild',
+        client=mockbot,
     )
 
     await create_(
@@ -77,7 +79,7 @@ async def test_create_invalid_name(mockbot: Bot) -> None:
 
 @pytest.mark.asyncio
 async def test_list(mockbot: Bot) -> None:
-    custom = CustomCommands(mockbot, mockbot.config.sqlite_database)
+    custom = CustomCommands(mockbot.config.sqlite_database)
     list_ = extract(custom.list)
 
     interaction = MockInteraction(
@@ -85,6 +87,7 @@ async def test_list(mockbot: Bot) -> None:
         user='calling-user',
         channel='mychannel',
         guild=MockGuild('myguild', 5678),
+        client=mockbot,
     )
 
     await list_(custom, interaction)
@@ -108,13 +111,14 @@ async def test_list(mockbot: Bot) -> None:
         'get_guild',
         return_value=interaction.guild,
     ):
-        await custom.register_all()
+        await custom.register_all(mockbot)
 
     interaction = MockInteraction(
         custom.list,
         user='calling-user',
         channel='mychannel',
         guild=MockGuild('myguild', 5678),
+        client=mockbot,
     )
     await list_(custom, interaction)
     assert interaction.responded
@@ -126,7 +130,7 @@ async def test_list(mockbot: Bot) -> None:
 
 @pytest.mark.asyncio
 async def test_remove(mockbot: Bot) -> None:
-    custom = CustomCommands(mockbot, mockbot.config.sqlite_database)
+    custom = CustomCommands(mockbot.config.sqlite_database)
     remove_ = extract(custom.remove)
 
     interaction = MockInteraction(
@@ -134,6 +138,7 @@ async def test_remove(mockbot: Bot) -> None:
         user='calling-user',
         channel='mychannel',
         guild='myguild',
+        client=mockbot,
     )
 
     await remove_(custom, interaction, 'command1')
@@ -143,13 +148,14 @@ async def test_remove(mockbot: Bot) -> None:
 
 @pytest.mark.asyncio
 async def test_on_error(mockbot: Bot, caplog) -> None:
-    custom = CustomCommands(mockbot, mockbot.config.sqlite_database)
+    custom = CustomCommands(mockbot.config.sqlite_database)
 
     interaction = MockInteraction(
         custom.remove,
         user='calling-user',
         channel='mychannel',
         guild='myguild',
+        client=mockbot,
     )
     await custom.on_error(
         interaction,
@@ -167,8 +173,8 @@ async def test_on_error(mockbot: Bot, caplog) -> None:
     assert any(['test1' in record.message for record in caplog.records])
 
 
-def test_db_create_command(mockbot: Bot, tmp_file: str) -> None:
-    custom = CustomCommands(mockbot, tmp_file)
+def test_db_create_command(tmp_file: str) -> None:
+    custom = CustomCommands(tmp_file)
     command = CustomCommand(
         name='mycommand',
         description='a command',
@@ -187,8 +193,8 @@ def test_db_create_command(mockbot: Bot, tmp_file: str) -> None:
     assert len(rows) == 1
 
 
-def test_db_list_commands(mockbot: Bot, tmp_file: str) -> None:
-    custom = CustomCommands(mockbot, tmp_file)
+def test_db_list_commands(tmp_file: str) -> None:
+    custom = CustomCommands(tmp_file)
     commands = [
         CustomCommand(
             name='mycommand1',
@@ -224,8 +230,8 @@ def test_db_list_commands(mockbot: Bot, tmp_file: str) -> None:
     assert commands[1] in found
 
 
-def test_db_remove_command(mockbot: Bot, tmp_file: str) -> None:
-    custom = CustomCommands(mockbot, tmp_file)
+def test_db_remove_command(tmp_file: str) -> None:
+    custom = CustomCommands(tmp_file)
     command = CustomCommand(
         name='mycommand',
         description='a command',

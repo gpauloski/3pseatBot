@@ -34,7 +34,7 @@ class CustomCommand(NamedTuple):
 class CustomCommands(app_commands.Group):
     """Custom commands group."""
 
-    def __init__(self, bot: ext_commands.Bot, db_path: str) -> None:
+    def __init__(self, db_path: str) -> None:
         """Init CustomCommands.
 
         Warning:
@@ -43,10 +43,8 @@ class CustomCommands(app_commands.Group):
             registered.
 
         Args:
-            bot (Bot): bot this command group should interact with.
             db_path (str): path to database file.
         """
-        self.bot = bot
         self.db_path = db_path
         self.values = (
             '(name TEXT, description TEXT, body TEXT, author INTEGER, '
@@ -73,9 +71,16 @@ class CustomCommands(app_commands.Group):
     async def register(
         self,
         command: CustomCommand,
+        bot: ext_commands.Bot,
         sync: bool = True,
     ) -> None:
-        """Register app command with bot."""
+        """Register app command with bot.
+
+        Args:
+            command (CustomCommand): command to register.
+            bot (Bot): bot to register command using.
+            sync (bool): force sync guild commands.
+        """
 
         @app_commands.guild_only
         async def _callback(
@@ -89,29 +94,38 @@ class CustomCommands(app_commands.Group):
             callback=_callback,
         )
 
-        guild = self.bot.get_guild(command.guild_id)
-        self.bot.tree.remove_command(command.name, guild=guild)
-        self.bot.tree.add_command(command_, guild=guild)
+        guild = bot.get_guild(command.guild_id)
+        bot.tree.remove_command(command.name, guild=guild)
+        bot.tree.add_command(command_, guild=guild)
         if sync:
-            await self.bot.tree.sync(guild=guild)
+            await bot.tree.sync(guild=guild)
         logger.info(
             f'registered custom command /{command.name} in {guild.name} '
             f'({command.guild_id}) (sync={sync})',
         )
 
-    async def unregister(self, name: str, guild: discord.Guild) -> None:
+    async def unregister(
+        self,
+        name: str,
+        guild: discord.Guild,
+        bot: ext_commands.Bot,
+    ) -> None:
         """Unregister app command from bot."""
-        self.bot.tree.remove_command(name, guild=guild)
-        await self.bot.tree.sync(guild=guild)
+        bot.tree.remove_command(name, guild=guild)
+        await bot.tree.sync(guild=guild)
         logger.info(
             f'unregistered custom command /{name} from '
             f'{guild.name} ({guild.id})',
         )
 
-    async def register_all(self, sync: bool = False) -> None:
+    async def register_all(
+        self,
+        bot: ext_commands.Bot,
+        sync: bool = False,
+    ) -> None:
         """Register all commands in the database."""
         for command in self.list_in_db():
-            await self.register(command, sync)
+            await self.register(command, bot, sync)
 
     def add_to_db(self, command: CustomCommand) -> None:
         """Add command to the table."""
@@ -185,7 +199,7 @@ class CustomCommands(app_commands.Group):
         )
 
         self.add_to_db(command)
-        await self.register(command)
+        await self.register(command, interaction.client)
 
         await interaction.followup.send(f'Created /{name}')
 
@@ -224,7 +238,7 @@ class CustomCommands(app_commands.Group):
 
         assert interaction.guild is not None
         self.remove_from_db(name, interaction.guild.id)
-        await self.unregister(name, interaction.guild)
+        await self.unregister(name, interaction.guild, interaction.client)
 
         await interaction.followup.send(f'Removed /{name}')
 
