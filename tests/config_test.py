@@ -26,6 +26,8 @@ def test_config_parse_bad_types() -> None:
         # This should be a string
         'client_secret': 1234,
         'sqlite_database': 'str',
+        'sounds_path': '/tmp/sounds',
+        'redirect_uri': 'http://localhost:5001',
     }
     with pytest.raises(
         TypeError,

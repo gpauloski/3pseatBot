@@ -49,11 +49,21 @@ def test_main_template(tmp_path: pathlib.Path) -> None:
 def test_main_start(config: str) -> None:
     # Note: we are not interested in testing the functionality of the bot here,
     # just that it gets started
-    with mock.patch('threepseat.main.Bot', autospec=True) as mocked:
-        assert not mocked.called
+    with (
+        # mock.patch('threepseat.main.Bot', autospec=True) as mocked_bot,
+        # mock.patch('quart.Quart', autospec=True) as mocked_app
+        mock.patch(
+            'threepseat.main.Bot.start',
+            mock.AsyncMock(),
+        ) as mocked_bot,
+        mock.patch('quart.Quart.run_task', mock.AsyncMock()) as mocked_app,
+    ):
+        assert not mocked_bot.called
+        assert not mocked_app.called
         with contextlib.redirect_stdout(None):
             main(['--config', str(config)])
-        assert mocked.called
+        assert mocked_bot.called
+        assert mocked_app.called
 
 
 def test_main_errors(config: str, caplog) -> None:
