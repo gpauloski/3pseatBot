@@ -106,7 +106,7 @@ class Sounds:
             filename=f'{uuid_}-{name}-{guild_id}.mp3',
         )
 
-        self.download(sound.link, sound.filename)
+        download(sound.link, self.filepath(sound.filename))
 
         with self.connect() as db:
             db.execute(
@@ -117,59 +117,6 @@ class Sounds:
             )
 
         logger.info(f'added sound to database: {sound}')
-
-    def download(self, link: str, filename: str) -> None:
-        """Download sound from YouTube.
-
-        Args:
-            link (str): youtube link to download.
-            filename (str): filename for downloaded file.
-
-        Raises:
-            ValueError:
-                if the clip is longer than MAX_SOUND_LENGTH_SECONDS.
-            ValueError:
-                if there is an error downloading the clip.
-        """
-        filepath = self.filepath(filename)
-        ydl_opts = {
-            'outtmpl': filepath,
-            'format': 'worst',
-            'postprocessors': [
-                {
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '128',
-                },
-            ],
-            'logger': logger,
-            'socket_timeout': 30,
-        }
-
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            try:
-                metadata = ydl.extract_info(
-                    link,
-                    download=False,
-                    process=False,
-                )
-            except Exception as e:
-                logger.exception(
-                    f'caught error extracting sound metadata: {e}',
-                )
-                raise ValueError('Error extracting sound metadata.')
-
-            if int(metadata['duration']) > MAX_SOUND_LENGTH_SECONDS:
-                raise ValueError(
-                    f'Clip is longer than {MAX_SOUND_LENGTH_SECONDS} '
-                    'seconds.',
-                )
-
-            try:
-                ydl.download([link])
-            except Exception as e:
-                logger.exception(f'caught error downloading sound: {e}')
-                raise ValueError('Error downloading sound.')
 
     def get(self, name: str, guild_id: int) -> Sound | None:
         """Get sound in database."""
@@ -195,14 +142,72 @@ class Sounds:
 
     def remove(self, name: str, guild_id: int) -> None:
         """Remove sound from database."""
-        with self.connect() as db:
-            db.execute(
-                'DELETE FROM sounds '
-                'WHERE name = :name AND guild_id = :guild_id',
-                {'guild_id': guild_id, 'name': name},
+        sound = self.get(name, guild_id)
+
+        if sound is not None:
+            with self.connect() as db:
+                db.execute(
+                    'DELETE FROM sounds '
+                    'WHERE name = :name AND guild_id = :guild_id',
+                    {'guild_id': guild_id, 'name': name},
+                )
+
+            filepath = self.filepath(sound.filename)
+            os.remove(filepath)
+
+            logger.info(
+                'removed sound from database: '
+                f'(name={name}, guild_id={guild_id})',
             )
 
-        logger.info(
-            'removed sound from database: '
-            f'(name={name}, guild_id={guild_id})',
-        )
+
+def download(link: str, filepath: str) -> None:
+    """Download sound from YouTube.
+
+    Args:
+        link (str): youtube link to download.
+        filepath (str): filepath for downloaded file.
+
+    Raises:
+        ValueError:
+            if the clip is longer than MAX_SOUND_LENGTH_SECONDS.
+        ValueError:
+            if there is an error downloading the clip.
+    """
+    ydl_opts = {
+        'outtmpl': filepath,
+        'format': 'worst',
+        'postprocessors': [
+            {
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '128',
+            },
+        ],
+        'logger': logger,
+        'socket_timeout': 30,
+    }
+
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        try:
+            metadata = ydl.extract_info(
+                link,
+                download=False,
+                process=False,
+            )
+        except Exception as e:
+            logger.exception(
+                f'caught error extracting sound metadata: {e}',
+            )
+            raise ValueError('Error extracting sound metadata.')
+
+        if int(metadata['duration']) > MAX_SOUND_LENGTH_SECONDS:
+            raise ValueError(
+                f'Clip is longer than {MAX_SOUND_LENGTH_SECONDS} ' 'seconds.',
+            )
+
+        try:
+            ydl.download([link])
+        except Exception as e:
+            logger.exception(f'caught error downloading sound: {e}')
+            raise ValueError('Error downloading sound.')

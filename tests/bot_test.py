@@ -9,6 +9,8 @@ from testing.mock import MockGuild
 from testing.mock import MockUser
 from threepseat.bot import Bot
 from threepseat.commands.custom import CustomCommands
+from threepseat.sounds.commands import SoundCommands
+from threepseat.sounds.data import Sounds
 
 # NOTE: there is not a great way to mock the discord API/discord Bots right
 # now so these tests mock a lot of things. As a result, the quality of these
@@ -51,7 +53,11 @@ async def test_bot_startup(tmp_file: str, caplog) -> None:
                 return_value=[MockGuild('guild', 1234)],
             ),
         ):
-            bot = Bot(custom_commands=CustomCommands(tmp_file))
+            sounds = Sounds(tmp_file, data_path='/tmp/threepseat-test')
+            bot = Bot(
+                custom_commands=CustomCommands(tmp_file),
+                sound_commands=SoundCommands(sounds),
+            )
             await bot.on_ready()
 
     assert any(

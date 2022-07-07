@@ -9,6 +9,7 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import Generator
+from unittest import mock
 
 import pytest
 
@@ -43,3 +44,16 @@ def config(tmp_path: pathlib.Path) -> Generator[str, None, None]:
 def extract(app_command) -> Callable[..., Awaitable[Any]]:
     """Extract the original function from the Command."""
     return app_command._callback
+
+
+@pytest.fixture()
+def mock_download() -> Generator[None, None, None]:
+    def _download(link: str, filepath: str) -> None:
+        with open(filepath, 'w') as f:
+            f.write('data')
+
+    with mock.patch(
+        'threepseat.sounds.data.download',
+        mock.MagicMock(side_effect=_download),
+    ):
+        yield

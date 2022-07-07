@@ -7,6 +7,9 @@ from discord.ext import commands
 
 from threepseat.commands.commands import registered_commands
 from threepseat.commands.custom import CustomCommands
+from threepseat.sounds.commands import SoundCommands
+from threepseat.utils import leave_on_empty
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +22,7 @@ class Bot(commands.Bot):
         *,
         playing_title: str | None = None,
         custom_commands: CustomCommands | None = None,
+        sound_commands: SoundCommands | None = None,
     ) -> None:
         """Init Bot.
 
@@ -27,9 +31,12 @@ class Bot(commands.Bot):
                 (default: None).
             custom_commands (CustomCommands, optional): custom commands
                 object to register with bot (default: None).
+            sound_commands (SoundCommands, optional): sound commands
+                object to register with bot (default: None).
         """
         self.playing_title = playing_title
         self.custom_commands = custom_commands
+        self.sound_commands = sound_commands
 
         intents = discord.Intents(
             guilds=True,
@@ -71,6 +78,12 @@ class Bot(commands.Bot):
             self.tree.add_command(self.custom_commands)
             await self.custom_commands.register_all(self)
             logger.info('registered custom commands')
+
+        if self.sound_commands is not None:
+            self.tree.add_command(self.sound_commands)
+            logger.info('registered sound commands')
+            self.voice_channel_checker = leave_on_empty(self, 30)
+            self.voice_channel_checker.start()
 
         await self.tree.sync()
         for guild in self.guilds:

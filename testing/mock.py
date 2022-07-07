@@ -20,9 +20,44 @@ class MockUser(discord.User):
         return f'<@{self.name}>'
 
 
+class MockMember(discord.Member):
+    def __init__(self, name: str, id_: int, guild: discord.Guild) -> None:
+        self._name = name
+        self._id = id_
+        self.guild = guild
+        self._voice: discord.VoiceState | None = None
+
+    @property
+    def name(self) -> str:  # type: ignore
+        return self._name
+
+    @property
+    def id(self) -> int:  # type: ignore
+        return self._id
+
+    @property
+    def mention(self) -> str:  # pragma: no cover
+        return f'<@{self.name}>'
+
+    @property
+    def voice(self) -> discord.VoiceState | None:
+        return self._voice
+
+
 class MockChannel(discord.TextChannel):
     def __init__(self, name: str) -> None:
         self.name = name
+
+
+class MockVoiceChannel(discord.VoiceChannel):
+    def __init__(self) -> None:
+        self.name = 'voice-channel'
+        self.id = 9876
+        self.guild = MockGuild('guild', 4567)
+
+    @property
+    def members(self) -> list[discord.Member]:
+        return []
 
 
 class MockClient(commands.Bot):
@@ -82,7 +117,7 @@ class MockInteraction(Interaction):
         self,
         command: Command[Any, Any, Any],
         *,
-        user: str | discord.User,
+        user: str | discord.User | discord.Member,
         message: str | discord.Message | None = None,
         channel: str | discord.TextChannel | None = None,
         guild: str | discord.Guild | None = None,

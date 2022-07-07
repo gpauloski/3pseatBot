@@ -43,6 +43,6 @@ async def test_admin_or_owner() -> None:
 
     interaction = MockInteraction(
         command=None,  # type: ignore
-        user=Admin(),  # type: ignore
+        user=Admin(),
     )
     assert await admin_or_owner(interaction)
