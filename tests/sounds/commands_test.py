@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import logging
 import os
 import pathlib
 from typing import Generator
 from unittest import mock
 
 import pytest
+from discord import app_commands
 
 from testing.mock import MockGuild
 from testing.mock import MockInteraction
@@ -86,6 +88,41 @@ async def test_add_command_failure(mockbot: Bot) -> None:
         interaction.followup_message is not None
         and 'alphanumeric' in interaction.followup_message
     )
+
+
+@pytest.mark.asyncio
+async def test_autocomplete(mockbot: Bot) -> None:
+    sounds = mockbot.sound_commands
+    assert sounds is not None
+    add_ = extract(sounds.add)
+
+    interaction = MockInteraction(
+        sounds.add,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+    await add_(
+        sounds,
+        interaction,
+        name='mysound',
+        link='localhost',
+        description='a sound',
+    )
+
+    interaction = MockInteraction(
+        sounds.info,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+    choices = await sounds.autocomplete(interaction, current='my')
+    assert any(['mysound' in choice.name for choice in choices])
+
+    choices = await sounds.autocomplete(interaction, current='missing')
+    assert len(choices) == 0
 
 
 @pytest.mark.asyncio
@@ -425,3 +462,31 @@ async def test_remove_command(mockbot: Bot) -> None:
         interaction.response_message is not None
         and 'does not exist' in interaction.response_message
     )
+
+
+@pytest.mark.asyncio
+async def test_on_error(mockbot: Bot, caplog) -> None:
+    sounds = mockbot.sound_commands
+    assert sounds is not None
+
+    interaction = MockInteraction(
+        sounds.remove,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+    await sounds.on_error(
+        interaction,
+        app_commands.MissingPermissions(['test']),
+    )
+    assert interaction.responded
+    assert (
+        interaction.response_message is not None
+        and 'test' in interaction.response_message.lower()
+    )
+
+    # Should not raise error, just log it
+    caplog.set_level(logging.ERROR)
+    await sounds.on_error(interaction, app_commands.AppCommandError('test1'))
+    assert any(['test1' in record.message for record in caplog.records])

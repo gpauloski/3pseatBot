@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import functools
 import logging
 
 import discord
@@ -26,6 +27,12 @@ class SoundCommands(app_commands.Group):
             sounds (Sounds): sounds database object.
         """
         self.sounds = sounds
+
+        # Create a new cached list method because the function
+        # can get called many times in quick succession for autocomplete
+        self.sounds_list_cached = functools.lru_cache(maxsize=8)(
+            self.sounds.list,
+        )
 
         super().__init__(
             name='sounds',
@@ -63,7 +70,22 @@ class SoundCommands(app_commands.Group):
         except ValueError as e:
             await interaction.followup.send(str(e))
         else:
+            self.sounds_list_cached.cache_clear()
             await interaction.followup.send(f'Added *{name}* to the sounds.')
+
+    async def autocomplete(
+        self,
+        interaction: discord.Interaction,
+        current: str,
+    ) -> list[app_commands.Choice[str]]:
+        """Return list of sound choices matching current."""
+        assert interaction.guild is not None
+        sounds = self.sounds_list_cached(interaction.guild.id)
+        return [
+            app_commands.Choice(name=sound.name, value=sound.name)
+            for sound in sounds
+            if current.lower() in sound.name.lower()
+        ]
 
     @app_commands.command(name='list', description='List available sounds')
     async def list(self, interaction: discord.Interaction) -> None:
@@ -82,7 +104,7 @@ class SoundCommands(app_commands.Group):
 
     @app_commands.command(name='info', description='Information about a sound')
     @app_commands.describe(name='Name of sound to query')
-    # TODO: autocomplete, list options
+    @app_commands.autocomplete(name=autocomplete)
     async def info(self, interaction: discord.Interaction, name: str) -> None:
         """Information about a sound."""
         log_interaction(interaction)
@@ -107,7 +129,7 @@ class SoundCommands(app_commands.Group):
 
     @app_commands.command(name='play', description='Play a sound')
     @app_commands.describe(name='Name of sound to play')
-    # TODO: autocomplete, list options
+    @app_commands.autocomplete(name=autocomplete)
     async def play(self, interaction: discord.Interaction, name: str) -> None:
         """Play a sound."""
         log_interaction(interaction)
@@ -145,8 +167,8 @@ class SoundCommands(app_commands.Group):
 
     @app_commands.command(name='remove', description='Remove a sound')
     @app_commands.describe(name='Name of sound to remove')
+    @app_commands.autocomplete(name=autocomplete)
     @app_commands.check(admin_or_owner)
-    # TODO: autocomplete, list options
     async def remove(
         self,
         interaction: discord.Interaction,
@@ -157,7 +179,21 @@ class SoundCommands(app_commands.Group):
 
         assert interaction.guild is not None
         self.sounds.remove(name, interaction.guild.id)
+        self.sounds_list_cached.cache_clear()
 
         await interaction.response.send_message(
             f'Removed *{name}* if it existed.',
         )
+
+    async def on_error(
+        self,
+        interaction: discord.Interaction,
+        error: app_commands.AppCommandError,
+    ) -> None:
+        """Callback for errors in child functions."""
+        log_interaction(interaction)
+        if isinstance(error, app_commands.CheckFailure):
+            await interaction.response.send_message(str(error), ephemeral=True)
+            logger.info(f'app command check failed: {error}')
+        else:
+            logger.exception(error)
