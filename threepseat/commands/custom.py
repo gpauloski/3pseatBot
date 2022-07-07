@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import logging
-import re
 import sqlite3
 import time
 from typing import Any
@@ -16,6 +15,7 @@ from discord.ext import commands as ext_commands
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
 from threepseat.database import create_table
+from threepseat.utils import alphanumeric
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +179,7 @@ class CustomCommands(app_commands.Group):
         """Create a custom command."""
         log_interaction(interaction)
 
-        if len(re.findall(r'[^A-Za-z0-9]', name)) > 0 or len(name) == 0:
+        if not alphanumeric(name) or len(name) == 0:
             await interaction.response.send_message(
                 'The command name must be a single word with only '
                 'alphanumeric characters.',
