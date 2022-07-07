@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import pathlib
 import time
+from unittest import mock
 
 import pytest
 
@@ -34,6 +35,18 @@ def test_table_created(tmp_path: pathlib.Path) -> None:
         return res[0] == 1
 
 
+def test_filepath(tmp_path: pathlib.Path) -> None:
+    db_path = os.path.join(tmp_path, 'sounds.db')
+    data_path = os.path.join(tmp_path, 'data')
+    filename = 'testfile.mp3'
+
+    sounds = Sounds(db_path=db_path, data_path=data_path)
+    assert not os.path.isdir(data_path)
+    assert sounds.filepath(filename) == os.path.join(data_path, filename)
+    assert os.path.isdir(data_path)
+
+
+@mock.patch('threepseat.sounds.data.Sounds.download', mock.MagicMock())
 def test_add_get_sound(tmp_path: pathlib.Path) -> None:
     db_path = os.path.join(tmp_path, 'sounds.db')
 
@@ -60,6 +73,7 @@ def test_add_get_sound(tmp_path: pathlib.Path) -> None:
     assert time.time() - found.created_time < 5
 
 
+@mock.patch('threepseat.sounds.data.Sounds.download', mock.MagicMock())
 def test_add_sound_validation(tmp_path: pathlib.Path) -> None:
     db_path = os.path.join(tmp_path, 'sounds.db')
 
@@ -102,6 +116,7 @@ def test_add_sound_validation(tmp_path: pathlib.Path) -> None:
         )
 
 
+@mock.patch('threepseat.sounds.data.Sounds.download', mock.MagicMock())
 def test_add_sound_exists(tmp_path: pathlib.Path) -> None:
     db_path = os.path.join(tmp_path, 'sounds.db')
 
@@ -125,6 +140,7 @@ def test_add_sound_exists(tmp_path: pathlib.Path) -> None:
         )
 
 
+@mock.patch('threepseat.sounds.data.Sounds.download', mock.MagicMock())
 def test_list_sounds(tmp_path: pathlib.Path) -> None:
     db_path = os.path.join(tmp_path, 'sounds.db')
 
@@ -172,6 +188,7 @@ def test_list_sounds(tmp_path: pathlib.Path) -> None:
     assert names == {'mysound1', 'mysound2'}
 
 
+@mock.patch('threepseat.sounds.data.Sounds.download', mock.MagicMock())
 def test_remove_sound(tmp_path: pathlib.Path) -> None:
     db_path = os.path.join(tmp_path, 'sounds.db')
 
@@ -191,3 +208,43 @@ def test_remove_sound(tmp_path: pathlib.Path) -> None:
     sounds.remove(name=TEST_SOUND.name, guild_id=TEST_SOUND.guild_id)
     found = sounds.get(name=TEST_SOUND.name, guild_id=TEST_SOUND.guild_id)
     assert found is None
+
+
+def test_youtube_download(tmp_path: pathlib.Path) -> None:
+    db_path = os.path.join(tmp_path, 'sounds.db')
+    data_path = os.path.join(tmp_path, 'data')
+    filename = 'test_video.mp3'
+    link = 'https://www.youtube.com/watch?v=jhFDyDgMVUI'
+
+    sounds = Sounds(db_path=db_path, data_path=data_path)
+
+    sounds.download(link, filename)
+
+    assert os.path.isfile(os.path.join(data_path, filename))
+
+
+def test_youtube_download_errors(tmp_path: pathlib.Path) -> None:
+    db_path = os.path.join(tmp_path, 'sounds.db')
+    data_path = os.path.join(tmp_path, 'data')
+    filename = 'test_video.mp3'
+    link = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+
+    sounds = Sounds(db_path=db_path, data_path=data_path)
+
+    with pytest.raises(ValueError, match='Clip is longer than'):
+        sounds.download(link, filename)
+
+    with mock.patch(
+        'youtube_dl.YoutubeDL.extract_info',
+        side_effect=Exception('test'),
+    ):
+        with pytest.raises(ValueError, match='extracting'):
+            sounds.download(link, filename)
+
+    link = 'https://www.youtube.com/watch?v=jhFDyDgMVUI'
+    with mock.patch(
+        'youtube_dl.YoutubeDL.download',
+        side_effect=Exception('test'),
+    ):
+        with pytest.raises(ValueError, match='downloading'):
+            sounds.download(link, filename)

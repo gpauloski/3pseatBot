@@ -1,14 +1,23 @@
 from __future__ import annotations
 
 import contextlib
+import logging
+import os
 import sqlite3
 import time
 import uuid
 from typing import Generator
 from typing import NamedTuple
 
+import youtube_dl
+
 from threepseat.database import create_table
 from threepseat.utils import alphanumeric
+
+
+MAX_SOUND_LENGTH_SECONDS = 30
+
+logger = logging.getLogger(__name__)
 
 
 class Sound(NamedTuple):
@@ -45,6 +54,11 @@ class Sounds:
         with self.connect() as db:
             create_table(db, 'sounds', self.values)
 
+    def filepath(self, filename: str) -> str:
+        """Get filepath for filename."""
+        os.makedirs(self.data_path, exist_ok=True)
+        return os.path.join(self.data_path, filename)
+
     @contextlib.contextmanager
     def connect(self) -> Generator[sqlite3.Connection, None, None]:
         """Database connection context manager."""
@@ -68,6 +82,8 @@ class Sounds:
                 if name contains non-alphanumeric characters.
             ValueError:
                 if name is not between 1 and 12 characters long.
+            ValueError:
+                any additional errors raises by download().
         """
         if not alphanumeric(name):
             raise ValueError('Name must contain only alphanumeric characters.')
@@ -100,9 +116,60 @@ class Sounds:
                 sound._asdict(),
             )
 
+        logger.info(f'added sound to database: {sound}')
+
     def download(self, link: str, filename: str) -> None:
-        """Download sound from YouTube."""
-        ...
+        """Download sound from YouTube.
+
+        Args:
+            link (str): youtube link to download.
+            filename (str): filename for downloaded file.
+
+        Raises:
+            ValueError:
+                if the clip is longer than MAX_SOUND_LENGTH_SECONDS.
+            ValueError:
+                if there is an error downloading the clip.
+        """
+        filepath = self.filepath(filename)
+        ydl_opts = {
+            'outtmpl': filepath,
+            'format': 'worst',
+            'postprocessors': [
+                {
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '128',
+                },
+            ],
+            'logger': logger,
+            'socket_timeout': 30,
+        }
+
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            try:
+                metadata = ydl.extract_info(
+                    link,
+                    download=False,
+                    process=False,
+                )
+            except Exception as e:
+                logger.exception(
+                    f'caught error extracting sound metadata: {e}',
+                )
+                raise ValueError('Error extracting sound metadata.')
+
+            if int(metadata['duration']) > MAX_SOUND_LENGTH_SECONDS:
+                raise ValueError(
+                    f'Clip is longer than {MAX_SOUND_LENGTH_SECONDS} '
+                    'seconds.',
+                )
+
+            try:
+                ydl.download([link])
+            except Exception as e:
+                logger.exception(f'caught error downloading sound: {e}')
+                raise ValueError('Error downloading sound.')
 
     def get(self, name: str, guild_id: int) -> Sound | None:
         """Get sound in database."""
@@ -134,3 +201,8 @@ class Sounds:
                 'WHERE name = :name AND guild_id = :guild_id',
                 {'guild_id': guild_id, 'name': name},
             )
+
+        logger.info(
+            'removed sound from database: '
+            f'(name={name}, guild_id={guild_id})',
+        )
