@@ -2,18 +2,24 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import NamedTuple
 from typing import TypeAlias
 
+import discord
 import quart
 from quart_discord import DiscordOAuth2Session
+from quart_discord import models
 from quart_discord import requires_authorization
 from quart_discord import Unauthorized
 from werkzeug.wrappers.response import Response as werkseug_Response
 
 from threepseat.bot import Bot
 from threepseat.sounds.data import Sounds
+from threepseat.utils import cached_load
+from threepseat.utils import play_sound
+from threepseat.utils import voice_channel
 
-Response: TypeAlias = quart.Response | werkseug_Response
+Response: TypeAlias = str | quart.Response | werkseug_Response
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +27,28 @@ logger = logging.getLogger(__name__)
 quart.logging.default_handler = logging.NullHandler()  # type: ignore
 quart.logging.serving_handler = logging.NullHandler()  # type: ignore
 
-sounds_blueprint = quart.Blueprint('sounds', __name__)
+sounds_blueprint = quart.Blueprint(
+    'sounds',
+    __name__,
+    template_folder='sounds/templates',
+)
+
+
+class GuildData(NamedTuple):
+    """Guild data passed to guilds template."""
+
+    name: str
+    icon: str
+    url: str
+
+
+class SoundData(NamedTuple):
+    """Sound data passed to sounds template."""
+
+    name: str
+    description: str
+    youtube_link: str
+    url: str
 
 
 def create_app(
@@ -75,23 +102,116 @@ def create_app(
     return app
 
 
+def get_mutual_guilds(
+    client: discord.Client,
+    user: models.User,
+) -> list[discord.Guild]:
+    """Get mutual guilds between user and client.
+
+    Args:
+        client (discord.Client)
+        user (model.User)
+
+    Returns:
+        list of Guilds.
+    """
+    user_ = client.get_user(user.id)
+    if user_ is None:
+        raise ValueError(f'Cannot find user {user.username}')
+    return user_.mutual_guilds
+
+
+def get_member(
+    client: discord.Client,
+    user: models.User,
+    guild_id: int,
+) -> discord.Member | None:
+    """Convert user to guild member."""
+    guild = client.get_guild(guild_id)
+    if guild is None:
+        return None
+    return guild.get_member(user.id)
+
+
 @sounds_blueprint.route('/')
 @requires_authorization
 async def index() -> Response:
     """Sounds home."""
     discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
+    bot = quart.current_app.config['bot']
     user = await discord.fetch_user()
 
-    return quart.jsonify(
-        {
-            'id': user.id,
-            'username': user.username,
-            'discriminator': user.discriminator,
-            'bot': user.bot,
-            'avatar_url': user.avatar_url,
-            'default_avatar_url': user.default_avatar_url,
-        },
+    guilds = get_mutual_guilds(bot, user)
+
+    guild_data = [
+        GuildData(
+            guild.name,
+            guild.icon.url if guild.icon is not None else '',
+            quart.url_for('sounds.sound_grid', guild_id=guild.id),
+        )
+        for guild in guilds
+    ]
+
+    return await quart.render_template('guilds.html', guilds=guild_data)
+
+
+@sounds_blueprint.route('/sounds/<int:guild_id>')
+@requires_authorization
+async def sound_grid(guild_id: int) -> Response:
+    """Display grid of available sounds in guild."""
+    sounds = quart.current_app.config['sounds']
+    sound_list = sounds.list(guild_id)
+
+    sound_data = [
+        SoundData(
+            sound.name,
+            sound.description,
+            sound.link,
+            quart.url_for(
+                'sounds.sound_play',
+                guild_id=guild_id,
+                sound_name=sound.name,
+            ),
+        )
+        for sound in sound_list
+    ]
+
+    return await quart.render_template('sounds.html', sounds=sound_data)
+
+
+@sounds_blueprint.route('/play/<int:guild_id>/<sound_name>')
+@requires_authorization
+async def sound_play(guild_id: int, sound_name: str) -> Response:
+    """Play a sound and redirect back to grid."""
+    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
+    bot = quart.current_app.config['bot']
+    sounds = quart.current_app.config['sounds']
+    member = get_member(bot, await discord.fetch_user(), guild_id)
+
+    redirect = quart.redirect(
+        quart.url_for('sounds.sound_grid', guild_id=guild_id),
     )
+
+    # TODO: handle error with popup
+    if member is None:
+        return redirect
+
+    sound = sounds.get(sound_name, guild_id=guild_id)
+
+    if sound is None:
+        return redirect
+
+    channel = voice_channel(member)
+    if channel is None:
+        return redirect
+
+    sound_data = cached_load(sounds.filepath(sound.filename))
+    try:
+        await play_sound(sound_data, channel)
+    except Exception as e:
+        logger.exception(f'Error playing sound: {e}')
+
+    return redirect
 
 
 @sounds_blueprint.route('/login/')
