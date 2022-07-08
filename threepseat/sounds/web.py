@@ -31,6 +31,7 @@ sounds_blueprint = quart.Blueprint(
     'sounds',
     __name__,
     template_folder='sounds/templates',
+    static_folder='sounds/static',
 )
 
 
@@ -159,8 +160,10 @@ async def index() -> Response:
 @requires_authorization
 async def sound_grid(guild_id: int) -> Response:
     """Display grid of available sounds in guild."""
+    bot = quart.current_app.config['bot']
     sounds = quart.current_app.config['sounds']
     sound_list = sounds.list(guild_id)
+    guild = bot.get_guild(guild_id)
 
     sound_data = [
         SoundData(
@@ -176,7 +179,11 @@ async def sound_grid(guild_id: int) -> Response:
         for sound in sound_list
     ]
 
-    return await quart.render_template('sounds.html', sounds=sound_data)
+    return await quart.render_template(
+        'sounds.html',
+        guild=guild,
+        sounds=sound_data,
+    )
 
 
 @sounds_blueprint.route('/play/<int:guild_id>/<sound_name>')
