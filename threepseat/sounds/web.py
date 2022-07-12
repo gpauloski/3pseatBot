@@ -84,7 +84,7 @@ def create_app(
 
     app.secret_key = os.urandom(128)
 
-    if 'http://' in redirect_uri:
+    if 'http://' in redirect_uri:  # pragma: no branch
         os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = 'true'
 
     app.config['DISCORD_CLIENT_ID'] = client_id
@@ -192,7 +192,8 @@ async def sound_play(guild_id: int, sound_name: str) -> Response:
     discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
     bot = quart.current_app.config['bot']
     sounds = quart.current_app.config['sounds']
-    member = get_member(bot, await discord.fetch_user(), guild_id)
+    user = await discord.fetch_user()
+    member = get_member(bot, user, guild_id)
 
     redirect = quart.redirect(
         quart.url_for('sounds.sound_grid', guild_id=guild_id),
@@ -213,21 +214,21 @@ async def sound_play(guild_id: int, sound_name: str) -> Response:
 
     try:
         await play_sound(sounds.filepath(sound.filename), channel)
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         logger.exception(f'Error playing sound: {e}')
 
     return redirect
 
 
 @sounds_blueprint.route('/login/')
-async def login() -> Response:
+async def login() -> Response:  # pragma: no cover
     """Login with discord OAuth."""
     discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
     return await discord.create_session()
 
 
 @sounds_blueprint.route('/callback/')
-async def callback() -> Response:
+async def callback() -> Response:  # pragma: no cover
     """Discord OAuth callback route."""
     discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
     await discord.callback()
@@ -235,6 +236,6 @@ async def callback() -> Response:
 
 
 @sounds_blueprint.errorhandler(Unauthorized)
-async def redirect_unauthorized(e: Exception) -> Response:
+async def redirect_unauthorized(e: Exception) -> Response:  # pragma: no cover
     """Redirect to login if unauthorized."""
     return quart.redirect(quart.url_for('sounds.login'))

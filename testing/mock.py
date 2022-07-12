@@ -77,6 +77,7 @@ class MockGuild(discord.Guild):
     def __init__(self, name: str, id: int) -> None:
         self.name = name
         self.id = id
+        self._icon = None
 
 
 class MockMessage(discord.Message):
