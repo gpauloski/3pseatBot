@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import os
 import sqlite3
 import time
 from typing import Any
@@ -50,6 +51,9 @@ class CustomCommands(app_commands.Group):
             '(name TEXT, description TEXT, body TEXT, author INTEGER, '
             'guild INTEGER, time REAL)'
         )
+
+        if len(os.path.dirname(self.db_path)) > 0:
+            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
         with self.connect() as db:
             create_table(db, 'custom_commands', self.values)

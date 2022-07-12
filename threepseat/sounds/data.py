@@ -51,6 +51,9 @@ class Sounds:
             'filename TEXT)'
         )
 
+        if len(os.path.dirname(self.db_path)) > 0:
+            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+
         with self.connect() as db:
             create_table(db, 'sounds', self.values)
 
