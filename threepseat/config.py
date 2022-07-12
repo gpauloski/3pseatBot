@@ -16,6 +16,8 @@ class Config:
     sounds_path: str
     sqlite_database: str
     sounds_port: int = 5001
+    sounds_certfile: str | None = None
+    sounds_keyfile: str | None = None
     playing_title: str = '3pseat Simulator 2022'
 
     def __post_init__(self) -> None:
@@ -45,6 +47,8 @@ class Config:
                 value = f'"{field.default}"'
             elif isinstance(field.default, int):
                 value = f'{field.default}'
+            elif field.default is None:
+                value = 'null'
             else:
                 # Note: if this line is ever reached, it is because a new field
                 # was added to Config with a default type not handled in this

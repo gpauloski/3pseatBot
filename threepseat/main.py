@@ -46,6 +46,8 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
         webapp.run_task(
             host='0.0.0.0',
             port=cfg.sounds_port,
+            certfile=cfg.sounds_certfile,
+            keyfile=cfg.sounds_keyfile,
             # mypy disagrees but this is what the docs say to do
             # https://pgjones.gitlab.io/hypercorn/how_to_guides/api_usage.html?highlight=shutdown_trigger#graceful-shutdown  # noqa: E501
             shutdown_trigger=shutdown_event.wait,  # type: ignore

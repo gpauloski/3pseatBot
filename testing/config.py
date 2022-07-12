@@ -18,6 +18,8 @@ TEMPLATE_CONFIG = """\
     "sounds_path": <str>,
     "sqlite_database": <str>,
     "sounds_port": 5001,
+    "sounds_certfile": null,
+    "sounds_keyfile": null,
     "playing_title": "3pseat Simulator 2022"
 }
 """
