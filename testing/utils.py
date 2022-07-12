@@ -21,7 +21,8 @@ def tmp_file(tmp_path: pathlib.Path) -> Generator[str, None, None]:
     """Fixture that random file path."""
     filepath = os.path.join(tmp_path, str(uuid.uuid4()))
     yield filepath
-    os.remove(filepath)
+    if os.path.exists(filepath):  # pragma: no branch
+        os.remove(filepath)
 
 
 @pytest.fixture()

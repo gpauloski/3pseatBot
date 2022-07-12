@@ -5,6 +5,7 @@ import io
 import logging
 import re
 import warnings
+from typing import cast
 
 import discord
 import discord.ext.tasks as tasks
@@ -33,11 +34,20 @@ def voice_channel(member: discord.Member) -> discord.VoiceChannel | None:
     return None
 
 
-async def play_sound(sound: io.BytesIO, channel: discord.VoiceChannel) -> None:
+async def play_sound(sound: str, channel: discord.VoiceChannel) -> None:
     """Play a sound in the voice channel."""
-    voice_client: discord.VoiceClient = await channel.connect()
+    voice_client: discord.VoiceClient
+    if channel.guild.voice_client is not None:
+        await channel.guild.voice_client.move_to(channel)  # type: ignore
+        voice_client = cast(discord.VoiceClient, channel.guild.voice_client)
+    else:
+        voice_client = await channel.connect()
 
-    source = discord.FFmpegPCMAudio(sound, pipe=True)
+    source = discord.FFmpegPCMAudio(sound)
+
+    if voice_client.is_playing():
+        voice_client.stop()
+
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
         voice_client.play(source, after=None)

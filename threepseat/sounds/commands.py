@@ -10,7 +10,6 @@ from discord import app_commands
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
 from threepseat.sounds.data import Sounds
-from threepseat.utils import cached_load
 from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 
@@ -153,10 +152,8 @@ class SoundCommands(app_commands.Group):
             )
             return
 
-        sound_data = cached_load(self.sounds.filepath(sound.filename))
-
         try:
-            await play_sound(sound_data, channel)
+            await play_sound(self.sounds.filepath(sound.filename), channel)
         except Exception as e:
             await interaction.followup.send(
                 'Failed to play the sound. Sorry.',

@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import asyncio
-import io
 import pathlib
 from unittest import mock
 
 import discord
 import pytest
 
+from testing.mock import MockClient
 from testing.mock import MockGuild
 from testing.mock import MockMember
+from testing.mock import MockUser
 from testing.mock import MockVoiceChannel
 from threepseat.bot import Bot
 from threepseat.utils import alphanumeric
@@ -55,11 +56,46 @@ def test_voice_channel() -> None:
 
 
 @pytest.mark.asyncio
-async def test_play_sound() -> None:
-    sound = io.BytesIO(b'abcdefghijklmnopqrstuvwxyz')
+@mock.patch('discord.FFmpegPCMAudio')
+async def test_play_sound(mock_audio) -> None:
+    sound = 'filepath'
     channel = MockVoiceChannel()
 
-    with mock.patch.object(channel, 'connect', mock.AsyncMock()):
+    client = MockClient(MockUser('name', 1234))
+    voice_client = discord.VoiceProtocol(client=client, channel=channel)
+    voice_client.move_to = mock.AsyncMock()  # type: ignore
+    voice_client.play = mock.AsyncMock()  # type: ignore
+
+    voice_client.is_playing = mock.MagicMock(return_value=True)  # type: ignore
+    voice_client.stop = mock.AsyncMock()  # type: ignore
+
+    with (
+        mock.patch.object(channel, 'guild', mock.PropertyMock()),
+        mock.patch.object(
+            channel.guild,
+            'voice_client',
+            new_callable=mock.PropertyMock(return_value=voice_client),
+        ),
+    ):
+        await play_sound(sound, channel)
+
+    voice_client.is_playing = mock.MagicMock(  # type: ignore
+        return_value=False,
+    )
+
+    with (
+        mock.patch.object(
+            channel,
+            'connect',
+            mock.AsyncMock(return_value=voice_client),
+        ),
+        mock.patch.object(channel, 'guild', mock.PropertyMock()),
+        mock.patch.object(
+            channel.guild,
+            'voice_client',
+            new_callable=mock.PropertyMock(return_value=None),
+        ),
+    ):
         await play_sound(sound, channel)
 
 
