@@ -12,6 +12,7 @@ from typing import NamedTuple
 import youtube_dl
 
 from threepseat.database import create_table
+from threepseat.database import named_tuple_parameters
 from threepseat.utils import alphanumeric
 
 
@@ -45,17 +46,12 @@ class Sounds:
         """
         self.db_path = db_path
         self.data_path = data_path
-        self.values = (
-            '(uuid TEXT, name TEXT, description TEXT, link TEXT, '
-            'author_id INTEGER, guild_id INTEGER, created_time REAL, '
-            'filename TEXT)'
-        )
 
         if len(os.path.dirname(self.db_path)) > 0:
             os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
         with self.connect() as db:
-            create_table(db, 'sounds', self.values)
+            create_table(db, 'sounds', Sound)
 
     def filepath(self, filename: str) -> str:
         """Get filepath for filename."""
@@ -113,9 +109,7 @@ class Sounds:
 
         with self.connect() as db:
             db.execute(
-                'INSERT INTO sounds VALUES '
-                '(:uuid, :name, :description, :link, :author_id, :guild_id, '
-                ':created_time, :filename)',
+                f'INSERT INTO sounds VALUES {named_tuple_parameters(Sound)}',
                 sound._asdict(),
             )
 

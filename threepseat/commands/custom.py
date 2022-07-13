@@ -16,6 +16,7 @@ from discord.ext import commands as ext_commands
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
 from threepseat.database import create_table
+from threepseat.database import named_tuple_parameters
 from threepseat.utils import alphanumeric
 
 logger = logging.getLogger(__name__)
@@ -47,16 +48,12 @@ class CustomCommands(app_commands.Group):
             db_path (str): path to database file.
         """
         self.db_path = db_path
-        self.values = (
-            '(name TEXT, description TEXT, body TEXT, author INTEGER, '
-            'guild INTEGER, time REAL)'
-        )
 
         if len(os.path.dirname(self.db_path)) > 0:
             os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
         with self.connect() as db:
-            create_table(db, 'custom_commands', self.values)
+            create_table(db, 'custom_commands', CustomCommand)
 
         super().__init__(
             name='commands',
@@ -133,18 +130,11 @@ class CustomCommands(app_commands.Group):
 
     def add_to_db(self, command: CustomCommand) -> None:
         """Add command to the table."""
+        params = named_tuple_parameters(CustomCommand)
         with self.connect() as db:
             db.execute(
-                'INSERT INTO custom_commands VALUES '
-                '(:name, :description, :body, :author, :guild, :time)',
-                {
-                    'name': command.name,
-                    'description': command.description,
-                    'body': command.body,
-                    'author': command.author_id,
-                    'guild': command.guild_id,
-                    'time': command.creation_time,
-                },
+                f'INSERT INTO custom_commands VALUES {params}',
+                command._asdict(),
             )
 
     def list_in_db(self, guild_id: int | None = None) -> list[CustomCommand]:
@@ -152,8 +142,8 @@ class CustomCommands(app_commands.Group):
         with self.connect() as db:
             if guild_id is not None:
                 rows = db.execute(
-                    'SELECT * FROM custom_commands WHERE guild = :guild',
-                    {'guild': guild_id},
+                    'SELECT * FROM custom_commands WHERE guild_id = :guild_id',
+                    {'guild_id': guild_id},
                 ).fetchall()
             else:
                 rows = db.execute('SELECT * FROM custom_commands').fetchall()
@@ -164,8 +154,8 @@ class CustomCommands(app_commands.Group):
         with self.connect() as db:
             db.execute(
                 'DELETE FROM custom_commands '
-                'WHERE guild = :guild AND name = :name',
-                {'guild': guild_id, 'name': name},
+                'WHERE guild_id = :guild_id AND name = :name',
+                {'guild_id': guild_id, 'name': name},
             )
 
     @app_commands.command(name='create', description='Create a custom command')
