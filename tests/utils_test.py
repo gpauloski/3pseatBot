@@ -67,7 +67,7 @@ async def test_play_sound(mock_audio) -> None:
     voice_client.play = mock.AsyncMock()  # type: ignore
 
     voice_client.is_playing = mock.MagicMock(return_value=True)  # type: ignore
-    voice_client.stop = mock.AsyncMock()  # type: ignore
+    voice_client.stop = mock.MagicMock()  # type: ignore
 
     with (
         mock.patch.object(channel, 'guild', mock.PropertyMock()),

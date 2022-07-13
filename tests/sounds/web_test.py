@@ -67,7 +67,6 @@ async def test_sound_grid(quart_app) -> None:
 
     bot = quart_app.app.config['bot']
     sounds = quart_app.app.config['sounds']
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
 
     guild = MockGuild('name', 1)
     sound = Sound(
@@ -83,11 +82,6 @@ async def test_sound_grid(quart_app) -> None:
     sound_list = [sound, sound, sound]
 
     with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
         mock.patch.object(sounds, 'list', return_value=sound_list),
         mock.patch.object(bot, 'get_guild', return_value=guild),
     ):
