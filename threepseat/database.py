@@ -63,3 +63,18 @@ def named_tuple_parameters(namedtuple: type[NamedTuple]) -> str:
         params.append(f':{field_name}')
     params_str = ', '.join(params)
     return f'({params_str})'
+
+
+def named_tuple_parameters_update(namedtuple: type[NamedTuple]) -> str:
+    """Convert fields of NamedTuple type to sqlite3 update records.
+
+    Args:
+        namedtuple (type[NamedTuple]): named tuple to extract parameters of.
+
+    Returns:
+        string of fields in format for sqlite3 update statement.
+    """
+    params: list[str] = []
+    for field_name in get_type_hints(namedtuple):
+        params.append(f'{field_name} = :{field_name}')
+    return ', '.join(params)

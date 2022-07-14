@@ -8,6 +8,7 @@ import pytest
 from threepseat.database import create_table
 from threepseat.database import named_tuple_fields
 from threepseat.database import named_tuple_parameters
+from threepseat.database import named_tuple_parameters_update
 
 
 def test_db_create_table(database: sqlite3.Connection) -> None:
@@ -90,3 +91,19 @@ def test_named_tuple_parameters(
 ) -> None:
     tupletype = NamedTuple('TupleType', fields)  # type: ignore
     assert named_tuple_parameters(tupletype) == expected
+
+
+@pytest.mark.parametrize(
+    'fields,expected',
+    (
+        ([], ''),
+        ([('abc', bytes)], 'abc = :abc'),
+        ([('c', str), ('b', int), ('a', str)], 'c = :c, b = :b, a = :a'),
+    ),
+)
+def test_named_tuple_parameters_update(
+    fields: list[tuple[str, type]],
+    expected: str,
+) -> None:
+    tupletype = NamedTuple('TupleType', fields)  # type: ignore
+    assert named_tuple_parameters_update(tupletype) == expected
