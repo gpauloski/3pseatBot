@@ -38,7 +38,7 @@ def test_table_created(tmp_path: pathlib.Path) -> None:
             'SELECT COUNT(*) FROM sqlite_master '
             'WHERE type="table" AND name="sounds"',
         ).fetchone()
-        return res[0] == 1
+        assert res[0] == 1
 
 
 def test_filepath(tmp_path: pathlib.Path) -> None:
