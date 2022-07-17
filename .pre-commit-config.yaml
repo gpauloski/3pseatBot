@@ -57,5 +57,6 @@ repos:
         # Add any additional typed package dependencies here
         additional_dependencies: [
             'git+https://github.com/Rapptz/discord.py.git@b7dd97dca997fcb7b9648dab0df826a56a1ebe53',
-            'quart'
+            'quart',
+            'types-emoji'
         ]
