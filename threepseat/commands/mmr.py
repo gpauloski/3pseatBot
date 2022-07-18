@@ -140,14 +140,13 @@ def get_stats(summoner: str, gamemode: GameMode) -> Stats:
     summoners='Comma separated list of summoner names',
     gamemode='Gamemode to check MMR for (default: ARAM)',
 )
+@app_commands.check(log_interaction)
 async def mmr(
     interaction: discord.Interaction,
     summoners: str,
     gamemode: GameMode = GameMode.ARAM,
 ) -> None:
     """MMR command."""
-    log_interaction(interaction)
-
     await interaction.response.defer(thinking=True)
 
     sum_names = split_strings(summoners, delimiter=',')

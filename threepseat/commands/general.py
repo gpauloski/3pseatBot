@@ -15,12 +15,12 @@ from threepseat.commands.commands import register
 @register
 @app_commands.command(description='flip a coin')
 @app_commands.describe(user='specify a user to flip for (defaults to self)')
+@app_commands.check(log_interaction)
 async def flip(
     interaction: discord.Interaction,
     user: discord.Member | discord.User | None = None,
 ) -> Literal['heads', 'tails']:
     """Flip a coin."""
-    log_interaction(interaction)
     result = ('heads', 'tails')[random.randint(0, 1)]
 
     if user is None:
@@ -37,6 +37,7 @@ async def flip(
 @app_commands.describe(start='min value in range')
 @app_commands.describe(end='max value in range')
 @app_commands.describe(user='specify a user to roll for (defaults to self)')
+@app_commands.check(log_interaction)
 async def roll(
     interaction: discord.Interaction,
     start: int,
@@ -44,7 +45,6 @@ async def roll(
     user: discord.Member | discord.User | None = None,
 ) -> int:
     """Roll a number."""
-    log_interaction(interaction)
     if start > end:
         start, end = end, start
     num = random.randint(start, end)
@@ -60,9 +60,9 @@ async def roll(
 
 @register
 @app_commands.command(description='3pseatBot source code')
+@app_commands.check(log_interaction)
 async def source(interaction: discord.Interaction) -> None:
     """Get 3pseatBot's source code link."""
-    log_interaction(interaction)
     name = (
         'Bot'
         if interaction.client.user is None

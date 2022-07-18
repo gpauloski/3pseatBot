@@ -45,6 +45,7 @@ class SoundCommands(app_commands.Group):
     @app_commands.describe(
         description='Sound description (max 100 characters)',
     )
+    @app_commands.check(log_interaction)
     async def add(
         self,
         interaction: discord.Interaction,
@@ -53,8 +54,6 @@ class SoundCommands(app_commands.Group):
         description: str,
     ) -> None:
         """Add a new sound."""
-        log_interaction(interaction)
-
         await interaction.response.defer(thinking=True)
 
         assert interaction.guild is not None
@@ -87,10 +86,9 @@ class SoundCommands(app_commands.Group):
         ]
 
     @app_commands.command(name='list', description='List available sounds')
+    @app_commands.check(log_interaction)
     async def list(self, interaction: discord.Interaction) -> None:
         """List available sounds."""
-        log_interaction(interaction)
-
         await interaction.response.defer(thinking=True)
         assert interaction.guild is not None
         sounds = self.sounds.list(interaction.guild.id)
@@ -104,10 +102,9 @@ class SoundCommands(app_commands.Group):
     @app_commands.command(name='info', description='Information about a sound')
     @app_commands.describe(name='Name of sound to query')
     @app_commands.autocomplete(name=autocomplete)
+    @app_commands.check(log_interaction)
     async def info(self, interaction: discord.Interaction, name: str) -> None:
         """Information about a sound."""
-        log_interaction(interaction)
-
         assert interaction.guild is not None
         sound = self.sounds.get(name, guild_id=interaction.guild.id)
         if sound is None:
@@ -129,10 +126,9 @@ class SoundCommands(app_commands.Group):
     @app_commands.command(name='play', description='Play a sound')
     @app_commands.describe(name='Name of sound to play')
     @app_commands.autocomplete(name=autocomplete)
+    @app_commands.check(log_interaction)
     async def play(self, interaction: discord.Interaction, name: str) -> None:
         """Play a sound."""
-        log_interaction(interaction)
-
         assert interaction.guild is not None
         sound = self.sounds.get(name, guild_id=interaction.guild.id)
         if sound is None:
@@ -166,14 +162,13 @@ class SoundCommands(app_commands.Group):
     @app_commands.describe(name='Name of sound to remove')
     @app_commands.autocomplete(name=autocomplete)
     @app_commands.check(admin_or_owner)
+    @app_commands.check(log_interaction)
     async def remove(
         self,
         interaction: discord.Interaction,
         name: str,
     ) -> None:
         """Remove a sound."""
-        log_interaction(interaction)
-
         assert interaction.guild is not None
         self.sounds.remove(name, interaction.guild.id)
         self.sounds_list_cached.cache_clear()
@@ -188,7 +183,6 @@ class SoundCommands(app_commands.Group):
         error: app_commands.AppCommandError,
     ) -> None:
         """Callback for errors in child functions."""
-        log_interaction(interaction)
         if isinstance(error, app_commands.CheckFailure):
             await interaction.response.send_message(str(error), ephemeral=True)
             logger.info(f'app command check failed: {error}')

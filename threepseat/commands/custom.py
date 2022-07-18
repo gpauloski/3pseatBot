@@ -84,6 +84,7 @@ class CustomCommands(app_commands.Group):
         """
 
         @app_commands.guild_only
+        @app_commands.check(log_interaction)
         async def _callback(
             interaction: discord.Interaction,
         ) -> None:  # pragma: no cover
@@ -163,6 +164,7 @@ class CustomCommands(app_commands.Group):
     @app_commands.describe(description='Command description')
     @app_commands.describe(body='Body of command')
     @app_commands.check(admin_or_owner)
+    @app_commands.check(log_interaction)
     async def create(
         self,
         interaction: discord.Interaction,
@@ -171,8 +173,6 @@ class CustomCommands(app_commands.Group):
         body: str,
     ) -> None:
         """Create a custom command."""
-        log_interaction(interaction)
-
         if not alphanumeric(name) or len(name) == 0:
             await interaction.response.send_message(
                 'The command name must be a single word with only '
@@ -198,10 +198,9 @@ class CustomCommands(app_commands.Group):
         await interaction.followup.send(f'Created /{name}')
 
     @app_commands.command(name='list', description='List custom commands')
+    @app_commands.check(log_interaction)
     async def list(self, interaction: discord.Interaction) -> None:
         """List custom commands."""
-        log_interaction(interaction)
-
         assert interaction.guild is not None
         commands = self.list_in_db(interaction.guild.id)
 
@@ -220,14 +219,13 @@ class CustomCommands(app_commands.Group):
     @app_commands.command(name='remove', description='Remove a custom command')
     @app_commands.describe(name='Name of command to remove')
     @app_commands.check(admin_or_owner)
+    @app_commands.check(log_interaction)
     async def remove(
         self,
         interaction: discord.Interaction,
         name: str,
     ) -> None:
         """Remove a custom command."""
-        log_interaction(interaction)
-
         await interaction.response.defer(thinking=True)
 
         assert interaction.guild is not None
@@ -242,7 +240,6 @@ class CustomCommands(app_commands.Group):
         error: app_commands.AppCommandError,
     ) -> None:
         """Callback for errors in child functions."""
-        log_interaction(interaction)
         if isinstance(error, app_commands.CheckFailure):
             await interaction.response.send_message(str(error), ephemeral=True)
             logger.info(f'app command check failed: {error}')

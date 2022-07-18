@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import discord
 import pytest
 from discord import app_commands
@@ -8,6 +10,7 @@ from testing.mock import MockClient
 from testing.mock import MockInteraction
 from testing.mock import MockUser
 from threepseat.commands.commands import admin_or_owner
+from threepseat.commands.commands import log_interaction
 from threepseat.commands.commands import registered_commands
 
 
@@ -46,3 +49,15 @@ async def test_admin_or_owner() -> None:
         user=Admin(),
     )
     assert await admin_or_owner(interaction)
+
+
+@pytest.mark.asyncio
+async def test_log_interaction(caplog) -> None:
+    caplog.set_level(logging.INFO)
+    interaction = MockInteraction(
+        command=None,  # type: ignore
+        user=MockUser('user1', 1234),
+    )
+    await log_interaction(interaction)
+    assert any(['user1' in record.message for record in caplog.records])
+    assert any(['1234' in record.message for record in caplog.records])

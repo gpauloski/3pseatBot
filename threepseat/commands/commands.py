@@ -36,11 +36,17 @@ def registered_commands() -> list[Command | Group]:
     return _app_commands[:]
 
 
-def log_interaction(
-    interaction: discord.Interaction,
-    level: int = logging.INFO,
-) -> None:
-    """Log that an interaction occurred."""
+async def log_interaction(interaction: discord.Interaction) -> bool:
+    """Log that an interaction occurred.
+
+    Note:
+        This is hacked as a command check that always succeeds.
+
+    Usage:
+        >>> @app_commands.command()
+        >>> @app_commands.check(log_interaction)
+        >>> def mycommand(...): ...
+    """
     channel = interaction.channel
     channel_name = (
         None if not hasattr(channel, 'name') else channel.name  # type: ignore
@@ -54,11 +60,13 @@ def log_interaction(
     guild = None if interaction.guild is None else interaction.guild.name
     command = None if interaction.command is None else interaction.command.name
 
-    logger.log(
-        level,
+    logger.info(
         f'[Channel: {channel_name}, Guild: {guild}] '
-        f'{interaction.user.name} ({interaction.user.id}) called /{command}',
+        f'{interaction.user.name} ({interaction.user.id}) called '
+        f'/{command}: {interaction.message}',
     )
+
+    return True
 
 
 async def admin_or_owner(interaction: discord.Interaction) -> bool:
