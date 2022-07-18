@@ -6,6 +6,7 @@ import discord
 import pytest
 from discord import app_commands
 
+from testing.mock import MockChannel
 from testing.mock import MockClient
 from testing.mock import MockInteraction
 from testing.mock import MockUser
@@ -57,6 +58,7 @@ async def test_log_interaction(caplog) -> None:
     interaction = MockInteraction(
         command=None,  # type: ignore
         user=MockUser('user1', 1234),
+        channel=MockChannel('channel', 3),
     )
     await log_interaction(interaction)
     assert any(['user1' in record.message for record in caplog.records])

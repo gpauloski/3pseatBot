@@ -53,7 +53,7 @@ async def log_interaction(interaction: discord.Interaction) -> bool:
     )
     channel_name = (
         channel_name
-        if not hasattr(channel, 'id')
+        if channel_name is not None
         else channel.id  # type: ignore
     )
 
