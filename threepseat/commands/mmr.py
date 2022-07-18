@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import collections
 import enum
+import functools
 import logging
 import time
 from datetime import datetime
+from typing import Callable
+from typing import cast
 from typing import NamedTuple
 
 import discord
@@ -15,6 +19,13 @@ from threepseat.commands.commands import register_app_command
 
 
 logger = logging.getLogger(__name__)
+
+DequeMaker = Callable[[], collections.deque[str]]
+
+# Mapping[{Guild, Channel, User} ID, Deque[str]]
+caches: dict[int, collections.deque[str]] = collections.defaultdict(
+    cast(DequeMaker, functools.partial(collections.deque, maxlen=10)),
+)
 
 API_URL = 'https://na.whatismymmr.com/api/v1/summoner'
 
@@ -134,12 +145,53 @@ def get_stats(summoner: str, gamemode: GameMode) -> Stats:
         )
 
 
+def cache_add(
+    item: str,
+    guild: discord.Guild | None,
+    channel: discord.interactions.InteractionChannel | None,
+    user: discord.User | discord.Member,
+) -> None:
+    """Add item to cache.
+
+    Preference is to first try adding to guild cache, then channel cache, and
+    defaulting to user cache if neither of the previous exist.
+    """
+    if guild is not None:
+        cache = caches[guild.id]
+    elif channel is not None:
+        cache = caches[channel.id]
+    else:
+        cache = caches[user.id]
+    if item in cache:
+        cache.remove(item)
+    cache.appendleft(item)
+
+
+async def autocomplete_summoners(
+    interaction: discord.Interaction,
+    current: str,
+) -> list[app_commands.Choice[str]]:
+    """Return items in cache matching current."""
+    if interaction.guild is not None:
+        cache = caches[interaction.guild.id]
+    elif interaction.channel is not None:
+        cache = caches[interaction.channel.id]
+    else:
+        cache = caches[interaction.user.id]
+    return [
+        app_commands.Choice(name=item, value=item)
+        for item in cache
+        if current.lower() in item.lower()
+    ]
+
+
 @register_app_command
 @app_commands.command(description='Check League of Legends MMR')
 @app_commands.describe(
     summoners='Comma separated list of summoner names',
     gamemode='Gamemode to check MMR for (default: ARAM)',
 )
+@app_commands.autocomplete(summoners=autocomplete_summoners)
 @app_commands.check(log_interaction)
 async def mmr(
     interaction: discord.Interaction,
@@ -149,7 +201,7 @@ async def mmr(
     """MMR command."""
     await interaction.response.defer(thinking=True)
 
-    sum_names = split_strings(summoners, delimiter=',')
+    sum_names = sorted(split_strings(summoners, delimiter=','))
     sum_stats: list[Stats] = []
     for summoner in sum_names:
         stats = get_stats(summoner, gamemode)
@@ -162,6 +214,15 @@ async def mmr(
             )
             return
         sum_stats.append(stats)
+
+    # At this point no critical errors so we will save input to cache
+    # for future autocomplete
+    cache_add(
+        ', '.join(sum_names),
+        guild=interaction.guild,
+        channel=interaction.channel,
+        user=interaction.user,
+    )
 
     available_sums = [x for x in sum_stats if x.status == Status.AVAILABLE]
     unavailable_sums = [x for x in sum_stats if x.status == Status.UNAVAILABLE]

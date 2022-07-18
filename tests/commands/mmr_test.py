@@ -6,8 +6,13 @@ from unittest import mock
 
 import pytest
 
+from testing.mock import MockChannel
+from testing.mock import MockGuild
 from testing.mock import MockInteraction
+from testing.mock import MockUser
 from testing.utils import extract
+from threepseat.commands.mmr import autocomplete_summoners
+from threepseat.commands.mmr import cache_add
 from threepseat.commands.mmr import days_since
 from threepseat.commands.mmr import GameMode
 from threepseat.commands.mmr import get_stats
@@ -178,3 +183,60 @@ async def test_mmr_summoner_does_not_exist() -> None:
         interaction.followup_message is not None
         and 'does not exist' in interaction.followup_message
     )
+
+
+@pytest.mark.asyncio
+async def test_cache() -> None:
+    user = MockUser('user', 1)
+
+    # Test guild cache
+    guild = MockGuild('guild', 1234)
+    interaction = MockInteraction(None, user=user, guild=guild)  # type: ignore
+    cache_add('test', guild=guild, channel=None, user=user)
+    options = await autocomplete_summoners(interaction, current='test')
+    assert any(['test' in option.value for option in options])
+    assert len(await autocomplete_summoners(interaction, current='abc')) == 0
+    assert len(await autocomplete_summoners(interaction, current='')) == 1
+
+    # Test channel cache
+    channel = MockChannel('channel', 4321)
+    interaction = MockInteraction(
+        None,  # type: ignore
+        user=user,
+        channel=channel,
+    )
+    cache_add('foo', guild=None, channel=channel, user=user)
+    options = await autocomplete_summoners(interaction, current='foo')
+    assert any(['foo' in option.value for option in options])
+    assert len(await autocomplete_summoners(interaction, current='abc')) == 0
+    assert len(await autocomplete_summoners(interaction, current='')) == 1
+
+    # Test users cache
+    interaction = MockInteraction(None, user=user)  # type: ignore
+    cache_add('bar', guild=None, channel=None, user=user)
+    options = await autocomplete_summoners(interaction, current='bar')
+    assert any(['bar' in option.value for option in options])
+    assert len(await autocomplete_summoners(interaction, current='abc')) == 0
+    assert len(await autocomplete_summoners(interaction, current='')) == 1
+
+
+@pytest.mark.asyncio
+async def test_cache_duplicates() -> None:
+    user = MockUser('user', 1)
+    interaction = MockInteraction(None, user=user)  # type: ignore
+    cache_add('bar', guild=None, channel=None, user=user)
+    assert len(await autocomplete_summoners(interaction, current='')) == 1
+    cache_add('bar', guild=None, channel=None, user=user)
+    assert len(await autocomplete_summoners(interaction, current='')) == 1
+
+
+@pytest.mark.asyncio
+async def test_cache_eviction() -> None:
+    user = MockUser('user', 1)
+    interaction = MockInteraction(None, user=user)  # type: ignore
+    for i in range(11):
+        cache_add(str(i), guild=None, channel=None, user=user)
+    options = await autocomplete_summoners(interaction, current='')
+    assert len(options) == 10
+    # 0, the first value added, should be evicted
+    assert all([int(option.value) > 0 for option in options])

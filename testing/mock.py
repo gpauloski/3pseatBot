@@ -46,8 +46,9 @@ class MockMember(discord.Member):
 
 
 class MockChannel(discord.TextChannel):
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, id_: int = 0) -> None:
         self.name = name
+        self.id = id_
 
 
 class MockVoiceChannel(discord.VoiceChannel):
