@@ -84,6 +84,7 @@ class MockGuild(discord.Guild):
 
 class MockMessage(discord.Message):
     def __init__(self, message: str):
+        self.content = message
         self.clean_content = message
 
 

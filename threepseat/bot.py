@@ -7,6 +7,7 @@ from discord.ext import commands
 
 from threepseat.commands.commands import registered_app_commands
 from threepseat.commands.custom import CustomCommands
+from threepseat.listeners.listeners import registered_listeners
 from threepseat.sounds.commands import SoundCommands
 from threepseat.utils import leave_on_empty
 
@@ -43,6 +44,7 @@ class Bot(commands.Bot):
             members=True,
             voice_states=True,
             messages=True,
+            message_content=True,
         )
 
         super().__init__(
@@ -72,8 +74,12 @@ class Bot(commands.Bot):
         commands = registered_app_commands()
         for command in commands:
             self.tree.add_command(command)
-
         logger.info(f'registered {len(commands)} app commands')
+
+        listeners = registered_listeners()
+        for listener in listeners:
+            self.add_listener(listener.func, listener.event)
+        logger.info(f'registered {len(listeners)} listeners')
 
         if self.custom_commands is not None:
             self.tree.add_command(self.custom_commands)
