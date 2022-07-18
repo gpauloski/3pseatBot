@@ -5,7 +5,7 @@ import logging
 import discord
 from discord.ext import commands
 
-from threepseat.commands.commands import registered_commands
+from threepseat.commands.commands import registered_app_commands
 from threepseat.commands.custom import CustomCommands
 from threepseat.sounds.commands import SoundCommands
 from threepseat.utils import leave_on_empty
@@ -69,10 +69,11 @@ class Bot(commands.Bot):
         for guild in self.guilds:
             self.tree.clear_commands(guild=guild)
 
-        for command in registered_commands():
+        commands = registered_app_commands()
+        for command in commands:
             self.tree.add_command(command)
 
-        logger.info(f'registered {len(registered_commands())} app commands')
+        logger.info(f'registered {len(commands)} app commands')
 
         if self.custom_commands is not None:
             self.tree.add_command(self.custom_commands)

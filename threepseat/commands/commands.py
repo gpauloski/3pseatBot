@@ -18,7 +18,7 @@ _app_commands: list[Command | Group] = []
 logger = logging.getLogger(__name__)
 
 
-def register(command: CommandType) -> CommandType:
+def register_app_command(command: CommandType) -> CommandType:
     """Register the app command.
 
     Usage:
@@ -30,7 +30,7 @@ def register(command: CommandType) -> CommandType:
     return command
 
 
-def registered_commands() -> list[Command | Group]:
+def registered_app_commands() -> list[Command | Group]:
     """Get list of registered application commands."""
     # Shallow copy here so caller does not mess up our list by accident
     return _app_commands[:]

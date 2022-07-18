@@ -11,7 +11,7 @@ import requests
 from discord import app_commands
 
 from threepseat.commands.commands import log_interaction
-from threepseat.commands.commands import register
+from threepseat.commands.commands import register_app_command
 
 
 logger = logging.getLogger(__name__)
@@ -134,7 +134,7 @@ def get_stats(summoner: str, gamemode: GameMode) -> Stats:
         )
 
 
-@register
+@register_app_command
 @app_commands.command(description='Check League of Legends MMR')
 @app_commands.describe(
     summoners='Comma separated list of summoner names',

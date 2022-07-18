@@ -11,11 +11,11 @@ from testing.mock import MockInteraction
 from testing.mock import MockUser
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
-from threepseat.commands.commands import registered_commands
+from threepseat.commands.commands import registered_app_commands
 
 
-def test_commands_registered() -> None:
-    assert len(registered_commands()) > 0
+def test_app_commands_registered() -> None:
+    assert len(registered_app_commands()) > 0
 
 
 @pytest.mark.asyncio

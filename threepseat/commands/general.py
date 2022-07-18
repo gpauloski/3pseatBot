@@ -9,10 +9,10 @@ from discord import app_commands
 
 import threepseat
 from threepseat.commands.commands import log_interaction
-from threepseat.commands.commands import register
+from threepseat.commands.commands import register_app_command
 
 
-@register
+@register_app_command
 @app_commands.command(description='flip a coin')
 @app_commands.describe(user='specify a user to flip for (defaults to self)')
 @app_commands.check(log_interaction)
@@ -32,7 +32,7 @@ async def flip(
     return cast(Literal['heads', 'tails'], result)
 
 
-@register
+@register_app_command
 @app_commands.command(description='roll a number in the range')
 @app_commands.describe(start='min value in range')
 @app_commands.describe(end='max value in range')
@@ -58,7 +58,7 @@ async def roll(
     return num
 
 
-@register
+@register_app_command
 @app_commands.command(description='3pseatBot source code')
 @app_commands.check(log_interaction)
 async def source(interaction: discord.Interaction) -> None:
