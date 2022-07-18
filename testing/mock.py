@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 from typing import cast
+from unittest import mock
 
 import discord
 from discord.app_commands.commands import Command
@@ -108,9 +109,15 @@ class Followup:
         self.followed = False
         self.message: str | None = None
 
-    async def send(self, message: str, *args: Any, **kwargs: Any) -> None:
+    async def send(
+        self,
+        message: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> discord.webhook.WebhookMessage:
         self.followed = True
         self.message = message
+        return mock.AsyncMock()
 
 
 class MockInteraction(Interaction):
