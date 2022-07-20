@@ -203,7 +203,7 @@ async def test_sound_play_error(quart_app) -> None:
 
     with (
         mock.patch.object(sounds, 'get'),
-        mock.patch.object(sounds, 'filepath', side_effect=Exception()),
+        mock.patch.object(sounds, 'filepath'),
         mock.patch.object(
             discord,
             'fetch_user',
@@ -211,7 +211,10 @@ async def test_sound_play_error(quart_app) -> None:
         ),
         mock.patch('threepseat.sounds.web.get_member'),
         mock.patch('threepseat.sounds.web.voice_channel', return_value=None),
-        mock.patch('threepseat.sounds.web.play_sound') as mocked,
+        mock.patch(
+            'threepseat.sounds.web.play_sound',
+            mock.AsyncMock(side_effect=Exception()),
+        ) as mocked,
     ):
         # Should not raise an error
         response = await client.get('/play/1234/mysound')
