@@ -16,6 +16,7 @@ from discord import app_commands
 
 from threepseat.commands.commands import log_interaction
 from threepseat.commands.commands import register_app_command
+from threepseat.utils import split_strings
 
 
 logger = logging.getLogger(__name__)
@@ -77,21 +78,6 @@ def days_since(target: int, current: int | None = None) -> int:
     )
     diff = current_dt - target_dt
     return diff.days
-
-
-def split_strings(text: str, delimiter: str = ',') -> list[str]:
-    """Get non-empty parts in string list.
-
-    Args:
-        text (str): text to split.
-        delimiter (str): delimter to split using.
-
-    Returns:
-        list of stripped substrings.
-    """
-    parts = text.split(delimiter)
-    parts = [part.strip() for part in parts]
-    return [part for part in parts if len(part) > 0]
 
 
 def get_stats(summoner: str, gamemode: GameMode) -> Stats:

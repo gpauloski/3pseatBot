@@ -25,6 +25,36 @@ def cached_load(filepath: str) -> io.BytesIO:
         return io.BytesIO(f.read())
 
 
+def split_strings(text: str, delimiter: str = ',') -> list[str]:
+    """Get non-empty parts in string list.
+
+    Args:
+        text (str): text to split.
+        delimiter (str): delimter to split using.
+
+    Returns:
+        list of stripped substrings.
+    """
+    parts = text.split(delimiter)
+    parts = [part.strip() for part in parts]
+    return [part for part in parts if len(part) > 0]
+
+
+def primary_channel(guild: discord.Guild) -> discord.TextChannel | None:
+    """Get the primary text channel for a guild."""
+    if guild.system_channel is not None:
+        return guild.system_channel
+
+    for channel_candidate in guild.channels:
+        if (
+            isinstance(channel_candidate, discord.TextChannel)
+            and channel_candidate.permissions_for(guild.me).send_messages
+        ):
+            return channel_candidate
+
+    return None
+
+
 def voice_channel(member: discord.Member) -> discord.VoiceChannel | None:
     """Get current voice channel of a member."""
     if member.voice is None or member.voice.channel is None:

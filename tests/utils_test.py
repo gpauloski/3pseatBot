@@ -17,6 +17,7 @@ from threepseat.utils import alphanumeric
 from threepseat.utils import cached_load
 from threepseat.utils import leave_on_empty
 from threepseat.utils import play_sound
+from threepseat.utils import split_strings
 from threepseat.utils import voice_channel
 
 
@@ -34,6 +35,14 @@ def test_cached_load(tmp_path: pathlib.Path) -> None:
 
     found = cached_load(test_file)
     assert found.getvalue() == data
+
+
+def test_split_strings() -> None:
+    assert split_strings('') == []
+    assert split_strings('     ') == []
+    assert split_strings('abc') == ['abc']
+    assert split_strings(' abc, def ') == ['abc', 'def']
+    assert split_strings('axbxcx', delimiter='x') == ['a', 'b', 'c']
 
 
 def test_voice_channel() -> None:

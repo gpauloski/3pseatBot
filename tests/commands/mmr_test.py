@@ -17,7 +17,6 @@ from threepseat.commands.mmr import days_since
 from threepseat.commands.mmr import GameMode
 from threepseat.commands.mmr import get_stats
 from threepseat.commands.mmr import mmr
-from threepseat.commands.mmr import split_strings
 from threepseat.commands.mmr import Stats
 from threepseat.commands.mmr import Status
 
@@ -36,14 +35,6 @@ def test_days_since() -> None:
     assert days_since(int(time.time())) == 0
     assert days_since(int(time.time()) - (60 * 60 * 26)) == 1
     assert days_since(1657494029, 1658098989) == 7
-
-
-def test_split_strings() -> None:
-    assert split_strings('') == []
-    assert split_strings('     ') == []
-    assert split_strings('abc') == ['abc']
-    assert split_strings(' abc, def ') == ['abc', 'def']
-    assert split_strings('axbxcx', delimiter='x') == ['a', 'b', 'c']
 
 
 def test_get_stats_404() -> None:
