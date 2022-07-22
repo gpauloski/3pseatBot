@@ -36,6 +36,22 @@ def registered_app_commands() -> list[Command | Group]:
     return _app_commands[:]
 
 
+def extract_command_options(
+    interaction: discord.Interaction,
+) -> dict[str, Any] | None:
+    """Extract options from command interaction."""
+    if interaction.data is None or 'options' not in interaction.data:
+        return None
+    options: dict[str, Any] = {}
+    for option in interaction.data['options']:  # type: ignore
+        if 'options' in option:
+            for suboption in option['options']:  # type: ignore
+                options[suboption['name']] = suboption['value']
+        else:
+            options[option['name']] = option['value']  # type: ignore
+    return options
+
+
 async def log_interaction(interaction: discord.Interaction) -> bool:
     """Log that an interaction occurred.
 
@@ -59,11 +75,12 @@ async def log_interaction(interaction: discord.Interaction) -> bool:
 
     guild = None if interaction.guild is None else interaction.guild.name
     command = None if interaction.command is None else interaction.command.name
+    options = extract_command_options(interaction)
 
     logger.info(
         f'[Channel: {channel_name}, Guild: {guild}] '
         f'{interaction.user.name} ({interaction.user.id}) called '
-        f'/{command}: {interaction.message}',
+        f'/{command}: {options}',
     )
 
     return True
