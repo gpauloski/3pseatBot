@@ -8,6 +8,7 @@ from discord.ext import commands
 from threepseat.commands.commands import registered_app_commands
 from threepseat.commands.custom import CustomCommands
 from threepseat.listeners.listeners import registered_listeners
+from threepseat.rules.commands import RulesCommands
 from threepseat.sounds.commands import SoundCommands
 from threepseat.utils import leave_on_empty
 
@@ -23,6 +24,7 @@ class Bot(commands.Bot):
         *,
         playing_title: str | None = None,
         custom_commands: CustomCommands | None = None,
+        rules_commands: RulesCommands | None = None,
         sound_commands: SoundCommands | None = None,
     ) -> None:
         """Init Bot.
@@ -32,11 +34,14 @@ class Bot(commands.Bot):
                 (default: None).
             custom_commands (CustomCommands, optional): custom commands
                 object to register with bot (default: None).
+            rules_commands (RulesCommands, optional): rules commands
+                object to register with bot (default: None).
             sound_commands (SoundCommands, optional): sound commands
                 object to register with bot (default: None).
         """
         self.playing_title = playing_title
         self.custom_commands = custom_commands
+        self.rules_commands = rules_commands
         self.sound_commands = sound_commands
 
         intents = discord.Intents(
@@ -84,13 +89,23 @@ class Bot(commands.Bot):
         if self.custom_commands is not None:
             self.tree.add_command(self.custom_commands)
             await self.custom_commands.register_all(self)
-            logger.info('registered custom commands')
+            logger.info('registered custom command group')
+
+        if self.rules_commands is not None:
+            self.tree.add_command(self.rules_commands)
+            self.add_listener(self.rules_commands.on_message, 'on_message')
+            self.rule_event_starter = self.rules_commands.event_starter(
+                self,
+                5,
+            )
+            self.rule_event_starter.start()
+            logger.info('registered rules command group')
 
         if self.sound_commands is not None:
             self.tree.add_command(self.sound_commands)
-            logger.info('registered sound commands')
-            self.voice_channel_checker = leave_on_empty(self, 30)
+            self.voice_channel_checker = leave_on_empty(self, 10)
             self.voice_channel_checker.start()
+            logger.info('registered sound command group')
 
         await self.tree.sync()
         for guild in self.guilds:

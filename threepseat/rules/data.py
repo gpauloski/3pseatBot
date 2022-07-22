@@ -4,12 +4,15 @@ import contextlib
 import functools
 import os
 import sqlite3
+import time
 from typing import Generator
 from typing import NamedTuple
 
 from threepseat.database import create_table
 from threepseat.database import named_tuple_parameters
 from threepseat.database import named_tuple_parameters_update
+from threepseat.rules.exceptions import GuildNotConfiguredError
+from threepseat.rules.exceptions import MaxOffensesExceededError
 
 
 class GuildConfig(NamedTuple):
@@ -159,3 +162,44 @@ class Rules:
                 )
             self.get_user.cache_clear()
             self.get_users.cache_clear()
+
+    def add_offense(self, guild_id: int, user_id: int) -> int:
+        """Add offense to user in guild."""
+        config = self.get_config(guild_id)
+        if config is None:
+            raise GuildNotConfiguredError()
+        user = self.get_user(guild_id, user_id)
+        if user is None:
+            user = UserOffenses(
+                guild_id=guild_id,
+                user_id=user_id,
+                current_offenses=1,
+                total_offenses=1,
+                last_offense=time.time(),
+            )
+        else:
+            user = user._replace(
+                current_offenses=user.current_offenses + 1,
+                total_offenses=user.total_offenses + 1,
+            )
+        self.update_user(user)
+        if user.current_offenses >= config.max_offenses:
+            raise MaxOffensesExceededError()
+        return user.current_offenses
+
+    def remove_offense(self, guild_id: int, user_id: int) -> None:
+        """Remove offense from user in guild."""
+        user = self.get_user(guild_id, user_id)
+        if user is not None:
+            user = user._replace(
+                current_offenses=max(0, user.current_offenses - 1),
+                total_offenses=max(0, user.total_offenses - 1),
+            )
+            self.update_user(user)
+
+    def reset_current_offenses(self, guild_id: int, user_id: int) -> None:
+        """Reset current offenses for user in guild."""
+        user = self.get_user(guild_id, user_id)
+        if user is not None:
+            user = user._replace(current_offenses=0)
+            self.update_user(user)

@@ -29,11 +29,11 @@ class MockMember(discord.Member):
         self._voice: discord.VoiceState | None = None
 
     @property
-    def name(self) -> str:  # type: ignore
+    def name(self) -> str:  # type: ignore # pragma: no cover
         return self._name
 
     @property
-    def id(self) -> int:  # type: ignore
+    def id(self) -> int:  # type: ignore # pragma: no cover
         return self._id
 
     @property

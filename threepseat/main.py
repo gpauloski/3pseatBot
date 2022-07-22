@@ -13,6 +13,7 @@ from threepseat import config
 from threepseat.bot import Bot
 from threepseat.commands.custom import CustomCommands
 from threepseat.logging import configure_logging
+from threepseat.rules.commands import RulesCommands
 from threepseat.sounds.commands import SoundCommands
 from threepseat.sounds.data import Sounds
 from threepseat.sounds.web import create_app
@@ -24,12 +25,14 @@ logger = logging.getLogger(__name__)
 async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
     """Run asyncio services."""
     custom_commands = CustomCommands(cfg.sqlite_database)
+    rules_commands = RulesCommands(cfg.sqlite_database)
     sounds = Sounds(cfg.sqlite_database, cfg.sounds_path)
     sound_commands = SoundCommands(sounds)
 
     bot = Bot(
         playing_title=cfg.playing_title,
         custom_commands=custom_commands,
+        rules_commands=rules_commands,
         sound_commands=sound_commands,
     )
     webapp = create_app(
