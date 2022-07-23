@@ -33,6 +33,7 @@ async def quart_app(
         mock.patch('threepseat.bot.Bot.wait_until_ready'),
         mock.patch('discord.app_commands.tree.CommandTree.sync'),
         mock.patch('quart_discord._http.OAuth2Session'),
+        mock.patch('quart_discord.client.DiscordOAuth2Session.fetch_user'),
     ):
         bot = Bot()
         app = create_app(
