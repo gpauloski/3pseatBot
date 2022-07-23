@@ -17,6 +17,7 @@ from threepseat.utils import alphanumeric
 from threepseat.utils import cached_load
 from threepseat.utils import leave_on_empty
 from threepseat.utils import play_sound
+from threepseat.utils import primary_channel
 from threepseat.utils import split_strings
 from threepseat.utils import voice_channel
 
@@ -43,6 +44,40 @@ def test_split_strings() -> None:
     assert split_strings('abc') == ['abc']
     assert split_strings(' abc, def ') == ['abc', 'def']
     assert split_strings('axbxcx', delimiter='x') == ['a', 'b', 'c']
+
+
+def test_primary_channel() -> None:
+    guild = MockGuild('myguild', 5678)
+    with mock.patch('discord.TextChannel'):
+        channel = discord.TextChannel()  # type: ignore
+    with mock.patch(
+        'discord.Guild.system_channel',
+        mock.PropertyMock(return_value=channel),
+    ):
+        assert primary_channel(guild) == channel
+
+    with (
+        mock.patch(
+            'discord.Guild.system_channel',
+            mock.PropertyMock(return_value=None),
+        ),
+        mock.patch(
+            'discord.Guild.me',
+            mock.PropertyMock(),
+        ),
+    ):
+        guild._channels = {}
+        assert primary_channel(guild) is None
+
+        guild._channels = {'c1': channel}  # type: ignore
+        with mock.patch('threepseat.utils.isinstance', return_value=True):
+            assert primary_channel(guild) == channel
+
+        with mock.patch('discord.VoiceChannel'):
+            channel = discord.VoiceChannel()  # type: ignore
+        guild._channels = {'c1': channel}  # type: ignore
+        with mock.patch('threepseat.utils.isinstance', return_value=False):
+            assert primary_channel(guild) is None
 
 
 def test_voice_channel() -> None:

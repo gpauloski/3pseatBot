@@ -340,7 +340,6 @@ class RulesCommands(app_commands.Group):
                     'Started an event.',
                     ephemeral=True,
                 )
-            return
         else:
             config = self.database.get_config(guild_id=interaction.guild.id)
             if config is None:
@@ -403,7 +402,7 @@ class RulesCommands(app_commands.Group):
     async def offenses(
         self,
         interaction: discord.Interaction,
-        user: discord.Member | None,
+        user: discord.Member | None = None,
     ) -> None:
         """Check offenses in the guild."""
         assert interaction.guild is not None
@@ -492,7 +491,8 @@ class RulesCommands(app_commands.Group):
             await interaction.response.send_message(msg)
         else:
             await interaction.response.send_message(
-                f'Added a offense to {user.mention}. They now have {current}.',
+                f'Added an offense to {user.mention}. '
+                f'They now have {current}.',
             )
 
     @app_commands.command(
