@@ -159,7 +159,10 @@ class CustomCommands(app_commands.Group):
                 {'guild_id': guild_id, 'name': name},
             )
 
-    @app_commands.command(name='create', description='Create a custom command')
+    @app_commands.command(
+        name='create',
+        description='[Admin Only] Create a custom command',
+    )
     @app_commands.describe(name='Name of command (must be a single word)')
     @app_commands.describe(description='Command description')
     @app_commands.describe(body='Body of command')
@@ -216,7 +219,10 @@ class CustomCommands(app_commands.Group):
                 f'This guild has these custom commands: {name_list}.',
             )
 
-    @app_commands.command(name='remove', description='Remove a custom command')
+    @app_commands.command(
+        name='remove',
+        description='[Admin Only] Remove a custom command',
+    )
     @app_commands.describe(name='Name of command to remove')
     @app_commands.check(admin_or_owner)
     @app_commands.check(log_interaction)

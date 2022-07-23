@@ -233,7 +233,9 @@ class RulesCommands(app_commands.Group):
 
     @app_commands.command(
         name='configure',
-        description='Configure legacy 3pseat events for this guild',
+        description=(
+            '[Admin Only] Configure legacy 3pseat events for this guild'
+        ),
     )
     @app_commands.describe(
         prefixes='Comma-separated list of prefixes',
@@ -282,7 +284,6 @@ class RulesCommands(app_commands.Group):
         name='configuration',
         description='View the event configuration for this channel',
     )
-    @app_commands.check(admin_or_owner)
     @app_commands.check(log_interaction)
     async def configuration(self, interaction: discord.Interaction) -> None:
         """Check the configuration for the guild."""
@@ -314,7 +315,7 @@ class RulesCommands(app_commands.Group):
 
     @app_commands.command(
         name='enable',
-        description='Enable legacy 3pseat events for the guild',
+        description='[Admin Only] Enable legacy 3pseat events for the guild',
     )
     @app_commands.describe(immediate='Optionally start event immediately')
     @app_commands.check(admin_or_owner)
@@ -357,7 +358,7 @@ class RulesCommands(app_commands.Group):
 
     @app_commands.command(
         name='disable',
-        description='Disable legacy 3pseat events for the guild',
+        description='[Admin Only] Disable legacy 3pseat events for the guild',
     )
     @app_commands.describe(current='Optionally only stop the current event')
     @app_commands.check(admin_or_owner)
@@ -458,7 +459,10 @@ class RulesCommands(app_commands.Group):
                 f'Their last offense was on {last_offense}.',
             )
 
-    @app_commands.command(name='add', description='Add an offense to the user')
+    @app_commands.command(
+        name='add',
+        description='[Admin Only] Add an offense to the user',
+    )
     @app_commands.describe(user='User to add offense to')
     @app_commands.check(admin_or_owner)
     @app_commands.check(log_interaction)
@@ -493,7 +497,7 @@ class RulesCommands(app_commands.Group):
 
     @app_commands.command(
         name='remove',
-        description='Remove an offense from the user',
+        description='[Admin Only] Remove an offense from the user',
     )
     @app_commands.describe(user='User to remove offense from')
     @app_commands.check(admin_or_owner)
@@ -512,7 +516,7 @@ class RulesCommands(app_commands.Group):
 
     @app_commands.command(
         name='reset',
-        description='Reset a user\'s offense count',
+        description='[Admin Only] Reset a user\'s offense count',
     )
     @app_commands.describe(user='User to reset')
     @app_commands.check(admin_or_owner)

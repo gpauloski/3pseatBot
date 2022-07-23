@@ -158,7 +158,10 @@ class SoundCommands(app_commands.Group):
         else:
             await interaction.followup.send('Played!')
 
-    @app_commands.command(name='remove', description='Remove a sound')
+    @app_commands.command(
+        name='remove',
+        description='[Admin Only] Remove a sound',
+    )
     @app_commands.describe(name='Name of sound to remove')
     @app_commands.autocomplete(name=autocomplete)
     @app_commands.check(admin_or_owner)
