@@ -100,7 +100,7 @@ class Bot(commands.Bot):
 
         if self.sound_commands is not None:
             self.tree.add_command(self.sound_commands)
-            self.voice_channel_checker = leave_on_empty(self, 10)
+            self.voice_channel_checker = leave_on_empty(self, 60)
             self.voice_channel_checker.start()
             logger.info('registered sound command group')
 
