@@ -94,10 +94,7 @@ class Bot(commands.Bot):
         if self.rules_commands is not None:
             self.tree.add_command(self.rules_commands)
             self.add_listener(self.rules_commands.on_message, 'on_message')
-            self.rule_event_starter = self.rules_commands.event_starter(
-                self,
-                5,
-            )
+            self.rule_event_starter = self.rules_commands.event_starter(self)
             self.rule_event_starter.start()
             logger.info('registered rules command group')
 
