@@ -5,7 +5,7 @@ import functools
 import os
 import sqlite3
 import time
-from typing import Generator
+from collections.abc import Generator
 from typing import NamedTuple
 
 from threepseat.database import create_table
@@ -67,10 +67,10 @@ class Rules:
         if len(os.path.dirname(self.db_path)) > 0:
             os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
-        self.get_config = functools.lru_cache(maxsize=None)(self._get_config)
-        self.get_configs = functools.lru_cache(maxsize=None)(self._get_configs)
-        self.get_user = functools.lru_cache(maxsize=None)(self._get_user)
-        self.get_users = functools.lru_cache(maxsize=None)(self._get_users)
+        self.get_config = functools.cache(self._get_config)
+        self.get_configs = functools.cache(self._get_configs)
+        self.get_user = functools.cache(self._get_user)
+        self.get_users = functools.cache(self._get_users)
 
         with self.connect() as db:
             create_table(db, 'guild_configs', GuildConfig)

@@ -5,10 +5,10 @@ import os
 import pathlib
 import sqlite3
 import uuid
+from collections.abc import Awaitable
+from collections.abc import Callable
+from collections.abc import Generator
 from typing import Any
-from typing import Awaitable
-from typing import Callable
-from typing import Generator
 from unittest import mock
 
 import pytest

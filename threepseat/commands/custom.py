@@ -5,8 +5,8 @@ import logging
 import os
 import sqlite3
 import time
+from collections.abc import Generator
 from typing import Any
-from typing import Generator
 from typing import NamedTuple
 
 import discord

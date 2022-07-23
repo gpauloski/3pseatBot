@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pathlib
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from unittest import mock
 
 import pytest

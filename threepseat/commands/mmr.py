@@ -5,8 +5,8 @@ import enum
 import functools
 import logging
 import time
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable
 from typing import cast
 from typing import NamedTuple
 

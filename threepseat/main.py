@@ -5,8 +5,8 @@ import asyncio
 import logging
 import signal
 import sys
+from collections.abc import Sequence
 from typing import Any
-from typing import Sequence
 
 import threepseat
 from threepseat import config
