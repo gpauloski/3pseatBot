@@ -1,148 +1,120 @@
-"""Utility functions and classes"""
-import discord
-import emoji
-import json
+from __future__ import annotations
+
+import functools
+import io
 import logging
-import os
 import re
+import warnings
+from typing import cast
 
-from typing import Any, Dict, Optional
+import discord
+import discord.ext.tasks as tasks
 
-logger = logging.getLogger()
-
-URL_RE = (
-    r'((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.'
-    '([a-zA-Z]){2,6}([a-zA-Z0-9\\.\\&\\/\\?\\:@\\-_=#])*'
-)
-DISCORD_EMOTE_RE = r'<.*:\w*:\d*>'
+logger = logging.getLogger(__name__)
 
 
-def is_emoji(text: str) -> bool:
-    """Is string whitespace and unicode/Discord emojis
+def alphanumeric(s: str) -> bool:
+    """Check if string is alphanumeric characters only."""
+    return len(re.findall(r'[^A-Za-z0-9]', s)) == 0
+
+
+@functools.lru_cache(maxsize=16)
+def cached_load(filepath: str) -> io.BytesIO:
+    """Load file as bytes (cached)."""
+    with open(filepath, 'rb') as f:
+        return io.BytesIO(f.read())
+
+
+def split_strings(text: str, delimiter: str = ',') -> list[str]:
+    """Get non-empty parts in string list.
 
     Args:
-        text (str)
+        text (str): text to split.
+        delimiter (str): delimter to split using.
 
     Returns:
-        True if `test` is only some combination of unicode emojis,
-        Discord emotes, and whitespace. Note there must be at least
-        one emoji present.
+        list of stripped substrings.
     """
-    if text.strip() == '':
-        return False
-    text = emoji.get_emoji_regexp().sub(r'', text)
-    # unicode emojis are now removed
-    text = re.sub(DISCORD_EMOTE_RE, '', text)
-    # Discord emojis are now removed so we can just check to see
-    # if whitespace is left
-    return text.strip() == ''
+    parts = text.split(delimiter)
+    parts = [part.strip() for part in parts]
+    return [part for part in parts if len(part) > 0]
 
 
-def is_admin(member: discord.Member) -> bool:
-    """Returns true if guild member is an admin of the guild"""
-    return member.guild_permissions.administrator
+def primary_channel(guild: discord.Guild) -> discord.TextChannel | None:
+    """Get the primary text channel for a guild."""
+    if guild.system_channel is not None:
+        return guild.system_channel
+
+    for channel_candidate in guild.channels:
+        if (
+            isinstance(channel_candidate, discord.TextChannel)
+            and channel_candidate.permissions_for(guild.me).send_messages
+        ):
+            return channel_candidate
+
+    return None
 
 
-def is_booster(member: discord.Member) -> bool:
-    """Returns true is member is a booster for the guild"""
-    return member.guild.premium_subscriber_role in member.roles
-
-
-def is_url(text: str) -> bool:
-    """Returns true if text is a single url"""
-    return re.match(URL_RE, text) and len(text.split(' ')) == 1
-
-
-def keys_to_int(d: Dict[Any, Any]) -> Dict[int, Any]:
-    """Converts str keys of dict to int"""
-    return {int(k): v for k, v in d.items()}
-
-
-class GuildDatabase:
-    """Database abstraction for guild
-
-    'Tables' are created on a per guild basis, indexed by guild ID.
-    Each table contains a set of key: values.
-    """
-
-    def __init__(self, db_file: str) -> None:
-        """Init GuildDatabase
-
-        Args:
-            db_file (str): file to save database to
-        """
-        self.db_file = db_file
-        if not os.path.exists(os.path.dirname(self.db_file)):
-            os.makedirs(os.path.dirname(self.db_file))
-        if os.path.exists(self.db_file):
-            with open(self.db_file) as f:
-                self.db = keys_to_int(json.load(f))
-        else:
-            self.db = {}
-
-    def clear(self, guild: discord.Guild, key: str) -> None:
-        """Clear value corresponding to key in guild table"""
-        tb = self.table(guild)
-        if key in tb:
-            del tb[key]
-        self.save()
-
-    def drop_table(self, guild: discord.Guild) -> None:
-        """Drops guild table from database"""
-        if guild.id in self.db:
-            del self.db[guild.id]
-        self.save()
-
-    def save(self) -> None:
-        """Save in memory database to file"""
-        with open(self.db_file, 'w') as f:
-            json.dump(self.db, f, indent=4, sort_keys=True)
-
-    def set(self, guild: discord.Guild, key: str, value: Any) -> None:
-        """Sets value for key in guild table
-
-        Args:
-            guild (discord.Guild): guild to get table for
-            key (str): key to search table for
-            value: any jsonable object
-        """
-        tb = self.table(guild)
-        tb[key] = value
-        self.save()
-
-    def table(self, guild: discord.Guild) -> Dict:
-        """Get table for guild
-
-        Tables are indexed by guild ID. Makes the table if it does not exist.
-        Tables have columns ['key', 'value'].
-
-        Args:
-            guild (discord.Guild)
-
-        Returns:
-            `dict`
-        """
-        if guild.id not in self.db:
-            self.db[guild.id] = {}
-            self.save()
-        return self.db[guild.id]
-
-    def tables(self) -> Dict[int, Dict]:
-        """Get all tables in database"""
-        return self.db
-
-    def value(self, guild: discord.Guild, key: str) -> Optional[Any]:
-        """Get value for key in guild table
-
-        Args:
-            guild (discord.Guild): guild to get table for
-            key (str): key to search table for
-
-        Returns:
-            `None` if key does not exist in table else the value for
-            `key` in the `guild` table.
-        """
-        tb = self.table(guild)
-        if key in tb:
-            return tb[key]
+def voice_channel(member: discord.Member) -> discord.VoiceChannel | None:
+    """Get current voice channel of a member."""
+    if member.voice is None or member.voice.channel is None:
         return None
+    if isinstance(member.voice.channel, discord.VoiceChannel):
+        return member.voice.channel
+    return None
+
+
+async def play_sound(sound: str, channel: discord.VoiceChannel) -> None:
+    """Play a sound in the voice channel."""
+    voice_client: discord.VoiceClient
+    if channel.guild.voice_client is not None:
+        await channel.guild.voice_client.move_to(channel)  # type: ignore
+        voice_client = cast(discord.VoiceClient, channel.guild.voice_client)
+    else:
+        voice_client = await channel.connect()
+
+    source = discord.FFmpegPCMAudio(sound)
+
+    if voice_client.is_playing():
+        voice_client.stop()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        voice_client.play(source, after=None)
+
+
+def leave_on_empty(
+    client: discord.Client,
+    interval: float = 30,
+) -> tasks.Loop[tasks.LF]:
+    """Returns a task that when started will leave empty voice channels.
+
+    This will periodically check if the client is in an empty voice
+    channel and have the client leave.
+
+    Usage:
+        >>> checker = leave_on_empty(bot, 30)
+        >>> checker.start()
+
+    Args:
+        client (Client): client to check for active voice channels.
+        interval (float): time in seconds between checking.
+
+    Returns:
+        discord.ext.tasks.Loop
+    """
+
+    @tasks.loop(seconds=interval)
+    async def _leaver() -> None:
+        for voice_client in client.voice_clients:
+            if (
+                isinstance(voice_client, discord.VoiceClient)
+                and len(voice_client.channel.members) <= 1
+            ):
+                logger.info(
+                    f'leaving voice channel {voice_client.channel.name} in '
+                    f'{voice_client.channel.guild.name} due to inactivity',
+                )
+                await voice_client.disconnect()
+
+    return _leaver

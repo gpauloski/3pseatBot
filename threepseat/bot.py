@@ -1,240 +1,109 @@
-"""3pseatBot base class"""
-import discord
+from __future__ import annotations
+
 import logging
-import threepseat
-import traceback
 
+import discord
 from discord.ext import commands
-from typing import Union, Optional, List, Dict
+
+from threepseat.commands.commands import registered_app_commands
+from threepseat.commands.custom import CustomCommands
+from threepseat.listeners.listeners import registered_listeners
+from threepseat.rules.commands import RulesCommands
+from threepseat.sounds.commands import SoundCommands
+from threepseat.utils import leave_on_empty
 
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class Bot(commands.Bot):
-    """3pseatBot
-
-    This class manages cogs/extensions and implements some minimal
-    functionality needed by the cogs.
-    """
+    """3pseatBot."""
 
     def __init__(
         self,
-        token: str,
         *,
-        command_prefix: str = '!',
-        bot_admins: List[int] = [],
-        playing_title: Optional[str] = None,
-        use_extensions: List[str] = [],
-        extension_configs: Dict[str, Dict],
+        playing_title: str | None = None,
+        custom_commands: CustomCommands | None = None,
+        rules_commands: RulesCommands | None = None,
+        sound_commands: SoundCommands | None = None,
     ) -> None:
-        """Init Bot
+        """Init Bot.
 
         Args:
-            token (int): Discord bot token needed for authentication
-            command_prefix (str): prefix for all bot commands (including
-                extensions).
-            bot_admins (list[int]): list of Discord user IDs for admins of
-                this bot. Note that bot admins are different from Discord
-                admins.
-            playing_title (str): if not None, the game displayed as what the
-                bot is playing.
-            use_extensions (list[str]): list of extension names to load
-            extension_configs (dict[str, dict]): dict containing arguments
-                to cogs where the keys to the dict are cog names. For example,
-                if the cog 'games' is loaded, then `**extension_configs[games]`
-                will be passed to the `Games` constructor. Note that a config
-                does not have to be provided (i.e. default values will be used
-                if a config is not present for a loaded cog).
+            playing_title (str, optional): set bot as playing this title
+                (default: None).
+            custom_commands (CustomCommands, optional): custom commands
+                object to register with bot (default: None).
+            rules_commands (RulesCommands, optional): rules commands
+                object to register with bot (default: None).
+            sound_commands (SoundCommands, optional): sound commands
+                object to register with bot (default: None).
         """
-        self.token = token
-        self.command_prefix = command_prefix
-        self.bot_admins = bot_admins
         self.playing_title = playing_title
-        self.use_extensions = use_extensions
-        self.extension_configs = extension_configs
-        self.guild_message_prefix = ''
+        self.custom_commands = custom_commands
+        self.rules_commands = rules_commands
+        self.sound_commands = sound_commands
 
-        intents = discord.Intents.default()
-        intents.members = True
-
-        super().__init__(command_prefix=self.command_prefix, intents=intents)
-
-    def is_bot_admin(self, user: Union[discord.User, discord.Member]) -> bool:
-        """Is user an admin of this bot"""
-        return user.id in self.bot_admins
-
-    async def message_user(
-        self,
-        message: str,
-        user: Union[discord.User, discord.Member],
-        react: Optional[Union[str, List[str]]] = None,
-    ) -> discord.Message:
-        """Message user
-
-        Args:
-            message (str)
-            user (`User` or `Member`)
-            react (str, list[str], optional): reactions to add to message
-                (default: None)
-
-        Returns:
-            `Message`
-        """
-        logger.info('Direct message {}: {}'.format(user, message))
-        channel = await user.create_dm()
-        return await self._message(message, channel, react)
-
-    async def message_guild(
-        self,
-        message: str,
-        channel: discord.TextChannel,
-        react: Optional[Union[str, List[str]]] = None,
-        ignore_prefix: bool = False,
-    ) -> discord.Message:
-        """Message Guild Channel
-
-        Args:
-            message (str)
-            channel (`Channel`)
-            react (str, list[str], optional): reactions to add to message
-                (default: None)
-
-        Returns:
-            `Message`
-        """
-        if not ignore_prefix:
-            message = self.guild_message_prefix + ' ' + message
-        logger.info(
-            'Message guild={}, channel={}: {}'.format(
-                channel.guild, channel, message
-            )
+        intents = discord.Intents(
+            guilds=True,
+            members=True,
+            voice_states=True,
+            messages=True,
+            message_content=True,
         )
-        return await self._message(message, channel, react)
 
-    async def _message(
-        self,
-        message: str,
-        channel: discord.abc.Messageable,
-        react: Optional[Union[str, List[str]]] = None,
-    ) -> discord.Message:
-        """Send message in channel
+        super().__init__(
+            # We are not using command prefixes right now
+            command_prefix='???',
+            description=None,
+            intents=intents,
+        )
 
-        Args:
-            message (str)
-            channel (`Messageable`)
-            react (str, list[str], optional): reactions to add to message
-                (default: None)
+    async def on_ready(self) -> None:
+        """Bot on ready event."""
+        await self.setup()
+        await self.wait_until_ready()
+        logger.info(f'{self.user.name} (Client ID: {self.user.id}) is ready!')
 
-        Returns:
-            `Message`
-        """
-        msg = await channel.send(message)
-        if react is not None:
-            if isinstance(react, str):
-                await msg.add_reaction(react)
-            elif isinstance(react, list):
-                for r in react:
-                    await msg.add_reaction(r)
-        return msg
-
-    async def on_ready(self):
-        """Called when the bot has successfully connected to Discord"""
+    async def setup(self) -> None:
+        """Setup operations to perform once bot is ready."""
         if self.playing_title is not None:
             await self.change_presence(
-                activity=discord.Game(name=self.playing_title)
+                activity=discord.Game(name=self.playing_title),
             )
 
-        logger.info(
-            'Logged in as {} (ID={})'.format(self.user.name, self.user.id)
-        )
+        self.tree.clear_commands(guild=None)
+        for guild in self.guilds:
+            self.tree.clear_commands(guild=guild)
 
-        # Load extensions/cogs
-        for ext in self.use_extensions:
-            if ext in threepseat.cogs.EXTENSIONS:
-                # Load a cog we know
-                _class = threepseat.cogs.EXTENSIONS[ext]
+        commands = registered_app_commands()
+        for command in commands:
+            self.tree.add_command(command)
+        logger.info(f'registered {len(commands)} app commands')
 
-                if ext in self.extension_configs:
-                    config = self.extension_configs[ext]
-                else:
-                    config = {}
+        listeners = registered_listeners()
+        for listener in listeners:
+            self.add_listener(listener.func, listener.event)
+        logger.info(f'registered {len(listeners)} listeners')
 
-                self.add_cog(_class(self, **config))
-            else:
-                # Try and load custom cog with setup()
-                try:
-                    self.load_extension(ext)
-                except Exception as e:
-                    logger.warning(
-                        'Failed to load extension {}. '
-                        'Does this file exist in the '
-                        'cogs/ directory?'.format(ext)
-                    )
-                    raise e
+        if self.custom_commands is not None:
+            self.tree.add_command(self.custom_commands)
+            await self.custom_commands.register_all(self)
+            logger.info('registered custom command group')
 
-            logger.info('Loaded extension: {}'.format(ext))
-        await self.wait_until_ready()
-        logger.info('Bot is ready!')
+        if self.rules_commands is not None:
+            self.tree.add_command(self.rules_commands)
+            self.add_listener(self.rules_commands.on_message, 'on_message')
+            self.rule_event_starter = self.rules_commands.event_starter(self)
+            self.rule_event_starter.start()
+            logger.info('registered rules command group')
 
-    async def on_command_error(
-        self, ctx: commands.Context, error: commands.CommandError
-    ) -> None:
-        """Handle common command errors
+        if self.sound_commands is not None:
+            self.tree.add_command(self.sound_commands)
+            self.voice_channel_checker = leave_on_empty(self, 10)
+            self.voice_channel_checker.start()
+            logger.info('registered sound command group')
 
-        Catches `MissingRequiredArgument`, `TooManyArguments`, and
-        `BadArgument` errors.
-
-        Args:
-            ctx (Context): context from command call
-            error (CommandError): error raised by the API
-        """
-        cmd = ctx.invoked_with
-        if ctx.invoked_subcommand is not None:
-            cmd = (
-                ctx.invoked_subcommand.full_parent_name
-                + ' '
-                + ctx.invoked_with
-            )
-        if isinstance(error, commands.MissingRequiredArgument):
-            msg = (
-                'missing required options for command. '
-                'Try `?help {}` for more info'.format(cmd)
-            )
-        elif isinstance(error, commands.TooManyArguments):
-            msg = (
-                'too many options for command. '
-                'Try `?help {}` for more info'.format(cmd)
-            )
-        elif isinstance(error, commands.BadArgument):
-            msg = (
-                'invalid option for command. '
-                'Try `?help {}` for more info'.format(cmd)
-            )
-        elif isinstance(error, commands.ExpectedClosingQuoteError):
-            msg = 'missing closing quotation mark in command'
-        elif isinstance(error, commands.CommandNotFound):
-            msg = 'I do not know that command. Try `?help` for a list of commands'
-        elif isinstance(error, commands.BadBoolArgument):
-            msg = 'unable to convert the option to true or false'
-        elif isinstance(error, commands.MissingPermissions):
-            msg = (
-                '{}, you do not have permission to use that '
-                'command'.format(ctx.message.author.mention)
-            )
-        elif isinstance(error, commands.BotMissingPermissions):
-            msg = 'I do not have permission to run this command on this guild'
-        else:
-            msg = 'oops command failed. See the logs for more info'
-            logger.exception(
-                ''.join(
-                    traceback.format_exception(
-                        type(error), error, error.__traceback__
-                    )
-                )
-            )
-        await self.message_guild(msg, ctx.channel)
-
-    def run(self):
-        """Start the bot"""
-        super().run(self.token, reconnect=True)
+        await self.tree.sync()
+        for guild in self.guilds:
+            await self.tree.sync(guild=guild)

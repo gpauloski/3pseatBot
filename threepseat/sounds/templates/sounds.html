@@ -1,0 +1,11 @@
+<html>
+<head>
+    <title>{{ guild.name }} SoundBoard</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('sounds.static', filename='css/main.css') }}">
+</head>
+<body>
+    {% for sound in sounds %}
+    <a class="card" href="{{ sound.url }}">{{ sound.name }}</a>
+    {% endfor %}
+</body>
+</html>

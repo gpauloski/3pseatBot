@@ -1,0 +1,39 @@
+name: Bug Report
+description: Report errors or unexpected results.
+labels: ["bug"]
+assignees:
+  - gpauloski
+body:
+  - type: textarea
+    id: freeform
+    attributes:
+      label: Describe the problem.
+      description: >
+        Please provide directions to reproducing your problem and what you
+        expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: install
+    attributes:
+      label: (Optional) How did you install and run 3pseatBot?
+      description: >
+        E.g., install via pip, install from source, etc. **Note:** this will
+        be rendered as console text automatically. If you did not install
+        3pseatBot yourself, skip this.
+      placeholder: |
+        $ git clone ...
+        $ cd 3pseatBot
+        $ pip install -e .
+        $ ...
+      render: console
+
+  - type: input
+    id: version
+    attributes:
+      label: (Optional) What version of 3pseatBot are you using?
+      description: >
+        Package version if installed via Pip or commit ID if installed
+        from source. If you did not install 3pseatBot yourself, skip this.
+      placeholder: v1.1.0
