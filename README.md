@@ -1,10 +1,20 @@
 # 3pseatBot
 
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/gpauloski/3pseatBot/main.svg)](https://results.pre-commit.ci/latest/github/gpauloski/3pseatBot/main)
+[![Tests](https://github.com/gpauloski/3pseatBot/actions/workflows/tests.yml/badge.svg)](https://github.com/gpauloski/3pseatBot/actions)
+
 3pseatBot started as a bot that enforced the arbitrary rule on a Discord
 server that all messages start with "3pseat". 3pseatBot has since developed
 into a multipurpose bot with useful features and not-so-useful features.
 3pseatBot includes a number of cogs (extensions) that extend the base
 functionality of a bot and support for adding your own cogs.
+
+Features include:
+
+- Voice channel sound board with web interface
+- Custom slash command creation
+- Random events that enforce arbitrary message rules
+- Useful commands: MMR for games, coin flip, etc.
 
 ## Getting Started
 

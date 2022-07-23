@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Generator
+from collections.abc import Generator
 from unittest import mock
 
 import pytest
@@ -263,3 +263,38 @@ def test_db_remove_command(tmp_file: str) -> None:
             {'name': command.name},
         ).fetchall()
     assert len(rows) == 0
+
+
+@pytest.mark.asyncio
+async def test_autocomplete(tmp_file: str) -> None:
+    custom = CustomCommands(tmp_file)
+    command = CustomCommand(
+        name='mycommand',
+        description='a command',
+        body='this is my command',
+        author_id=1234,
+        guild_id=5678,
+        creation_time=0,
+    )
+    custom.add_to_db(command)
+
+    interaction = MockInteraction(
+        None,  # type: ignore
+        user='calling-user',
+        guild=MockGuild('guild', 5678),
+    )
+
+    options = await custom.autocomplete(interaction, current='')
+    assert len(options) == 1
+
+    options = await custom.autocomplete(interaction, current='other')
+    assert len(options) == 0
+
+    interaction = MockInteraction(
+        None,  # type: ignore
+        user='calling-user',
+        guild=MockGuild('guild', 42),
+    )
+
+    options = await custom.autocomplete(interaction, current='')
+    assert len(options) == 0

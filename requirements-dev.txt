@@ -12,4 +12,5 @@ pytest-asyncio
 pytest-cov
 tox
 types-emoji
+types-requests
 virtualenv

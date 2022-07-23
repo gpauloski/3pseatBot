@@ -5,8 +5,8 @@ import logging
 import os
 import sqlite3
 import time
+from collections.abc import Generator
 from typing import Any
-from typing import Generator
 from typing import NamedTuple
 
 import discord
@@ -159,6 +159,20 @@ class CustomCommands(app_commands.Group):
                 {'guild_id': guild_id, 'name': name},
             )
 
+    async def autocomplete(
+        self,
+        interaction: discord.Interaction,
+        current: str,
+    ) -> list[app_commands.Choice[str]]:
+        """Return list of custom commands in the guild matching current."""
+        assert interaction.guild is not None
+        commands = self.list_in_db(interaction.guild.id)
+        return [
+            app_commands.Choice(name=command.name, value=command.name)
+            for command in commands
+            if current.lower() in command.name.lower()
+        ]
+
     @app_commands.command(
         name='create',
         description='[Admin Only] Create a custom command',
@@ -224,6 +238,7 @@ class CustomCommands(app_commands.Group):
         description='[Admin Only] Remove a custom command',
     )
     @app_commands.describe(name='Name of command to remove')
+    @app_commands.autocomplete(name=autocomplete)
     @app_commands.check(admin_or_owner)
     @app_commands.check(log_interaction)
     async def remove(

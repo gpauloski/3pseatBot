@@ -6,7 +6,7 @@ import os
 import sqlite3
 import time
 import uuid
-from typing import Generator
+from collections.abc import Generator
 from typing import NamedTuple
 
 import youtube_dl
