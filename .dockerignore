@@ -1,0 +1,26 @@
+# Common local files
+data
+venv
+config.json
+
+# https://github.com/GoogleCloudPlatform/getting-started-python/blob/d1fc85eb9a108799e4f37ea07e47a3c4b2a747bd/optional-kubernetes-engine/.dockerignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
