@@ -185,7 +185,10 @@ async def sound_grid(guild_id: int) -> Response:
     )
 
 
-@sounds_blueprint.route('/play/<int:guild_id>/<sound_name>')
+@sounds_blueprint.route(
+    '/play/<int:guild_id>/<sound_name>',
+    methods=['GET', 'POST'],
+)
 @requires_authorization
 async def sound_play(guild_id: int, sound_name: str) -> Response:
     """Play a sound and redirect back to grid."""
