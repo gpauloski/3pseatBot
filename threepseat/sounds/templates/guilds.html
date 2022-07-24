@@ -1,11 +1,72 @@
+ <!DOCTYPE html>
 <html>
+
 <head>
-    <title>3pseat SoundBoard</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('sounds.static', filename='css/main.css') }}">
+    <title>3pseatBot Soundboard</title>
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <!-- JS Stuff -->
+    <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+    <!-- Compiled and minified JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <!--Let browser know website is optimized for mobile-->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+      $(document).ready(function(){
+        $('.sidenav').sidenav();
+      });
+    </script>
+
+    <style>
+      @media only screen and (max-width: 600px) {
+        .brand-logo {
+          font-size: 24px !important;
+          width: 300px;
+          text-align: center;
+        }
+      }
+    </style>
 </head>
-<body>
-    {% for guild in guilds %}
-    <a class="card" href="{{ guild.url }}">{{ guild.name }}</a>
-    {% endfor %}
+
+<body class="blue-grey darken-4">
+  <!-- Nav Bar -->
+  <nav class="blue-grey darken-3">
+    <div class="nav-wrapper">
+      <div style="padding-left: 12px;">
+        <a href="/" class="brand-logo blue-grey-text text-lighten-5">3pseat Soundboard</a>
+      </div>
+      <a href="#" data-target="mobile" class="sidenav-trigger">
+        <i class="material-icons blue-grey-text text-lighten-1">menu</i>
+      </a>
+      <ul id="nav-mobile" class="right hide-on-med-and-down">
+          <li><a href="https://github.com/gpauloski/3pseatBot">GitHub</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <ul class="sidenav blue-grey darken-4 blue-grey darken-3" id="mobile" style="font-size: 24px;">
+      <li><a href="https://github.com/gpauloski/3pseatBot" class="blue-grey-text text-lighten-5">GitHub</a></li>
+  </ul>
+
+  <div class="container">
+    <div>
+      <h5 class="center-align blue-grey-text text-lighten-5">Select a Discord Server</h5>
+    </div>
+    <ul class="collection blue-grey darken-4" style="border-color: #37474f; margin-top: 32px;">
+      {% for guild in guilds %}
+      <li class="collection-item blue-grey darken-2 blue-grey-text text-lighten-4" style="border-bottom-color: #37474f; height: 60px;">
+        <div style="font-size: 24px; margin-top: 4px; line-height: 30px">
+          {{ guild.name }}
+          <a href="{{ guild.url }}" class="secondary-content">
+            <i class="small material-icons light-green-text text-accent-1">send</i>
+          </a>
+        </div>
+      </li>
+      {% endfor %}
+    <ul>
+  </div>
+
 </body>
+
 </html>
