@@ -152,6 +152,8 @@ async def index() -> Response:
         for guild in guilds
     ]
 
+    guild_data.sort(key=lambda x: x.name)
+
     return await quart.render_template('guilds.html', guilds=guild_data)
 
 
@@ -177,6 +179,8 @@ async def sound_grid(guild_id: int) -> Response:
         )
         for sound in sound_list
     ]
+
+    sound_data.sort(key=lambda x: x.name)
 
     return await quart.render_template(
         'sounds.html',
