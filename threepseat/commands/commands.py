@@ -94,10 +94,10 @@ async def admin_or_owner(interaction: discord.Interaction) -> bool:
         >>> @app_commands.check(admin_or_owner)
         >>> def mycommand(...): ...
     """
-    if (
-        isinstance(interaction.client, commands.Bot)
-        and interaction.user.id == interaction.client.owner_id
-    ):
+    if isinstance(
+        interaction.client,
+        commands.Bot,
+    ) and await interaction.client.is_owner(interaction.user):
         return True
     elif (
         isinstance(interaction.user, discord.Member)
