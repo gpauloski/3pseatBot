@@ -173,12 +173,18 @@ class SoundCommands(app_commands.Group):
     ) -> None:
         """Remove a sound."""
         assert interaction.guild is not None
-        self.sounds.remove(name, interaction.guild.id)
-        self.sounds_list_cached.cache_clear()
-
-        await interaction.response.send_message(
-            f'Removed *{name}* if it existed.',
-        )
+        sound = self.sounds.get(name, guild_id=interaction.guild.id)
+        if sound is None:
+            await interaction.response.send_message(
+                f'A sound named *{name}* does not exist.',
+                ephemeral=True,
+            )
+        else:
+            self.sounds.remove(name, interaction.guild.id)
+            self.sounds_list_cached.cache_clear()
+            await interaction.response.send_message(
+                f'Removed the *{name}* sound.',
+            )
 
     async def on_error(
         self,
