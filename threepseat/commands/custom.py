@@ -138,6 +138,16 @@ class CustomCommands(app_commands.Group):
                 command._asdict(),
             )
 
+    def exists_in_db(self, guild_id: int, name: str) -> bool:
+        """Check if guild has a command with name."""
+        with self.connect() as db:
+            count = db.execute(
+                'SELECT COUNT(*) FROM custom_commands '
+                'WHERE guild_id = :guild_id AND name = :name',
+                {'guild_id': guild_id, 'name': name},
+            ).fetchone()[0]
+        return bool(count)
+
     def list_in_db(self, guild_id: int | None = None) -> list[CustomCommand]:
         """Get list of custom commands in guild."""
         with self.connect() as db:
@@ -212,7 +222,7 @@ class CustomCommands(app_commands.Group):
         self.add_to_db(command)
         await self.register(command, interaction.client)
 
-        await interaction.followup.send(f'Created /{name}')
+        await interaction.followup.send(f'Created /{name}.', ephemeral=True)
 
     @app_commands.command(name='list', description='List custom commands')
     @app_commands.check(log_interaction)
@@ -224,6 +234,7 @@ class CustomCommands(app_commands.Group):
         if len(commands) == 0:
             await interaction.response.send_message(
                 'The guild has no custom commands.',
+                ephemeral=True,
             )
         else:
             names = [command.name for command in commands]
@@ -231,6 +242,7 @@ class CustomCommands(app_commands.Group):
 
             await interaction.response.send_message(
                 f'This guild has these custom commands: {name_list}.',
+                ephemeral=True,
             )
 
     @app_commands.command(
@@ -250,10 +262,19 @@ class CustomCommands(app_commands.Group):
         await interaction.response.defer(thinking=True)
 
         assert interaction.guild is not None
-        self.remove_from_db(name, interaction.guild.id)
-        await self.unregister(name, interaction.guild, interaction.client)
 
-        await interaction.followup.send(f'Removed /{name}')
+        if self.exists_in_db(interaction.guild.id, name):
+            self.remove_from_db(name, interaction.guild.id)
+            await self.unregister(name, interaction.guild, interaction.client)
+            await interaction.followup.send(
+                f'Removed /{name}.',
+                ephemeral=True,
+            )
+        else:
+            await interaction.followup.send(
+                f'The command /{name} does not exist.',
+                ephemeral=True,
+            )
 
     async def on_error(
         self,

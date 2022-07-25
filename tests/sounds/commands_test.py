@@ -406,7 +406,7 @@ async def test_remove_command_missing(mockbot: Bot) -> None:
     assert interaction.responded
     assert (
         interaction.response_message is not None
-        and 'Removed' in interaction.response_message
+        and 'does not exist' in interaction.response_message
     )
 
 

@@ -139,17 +139,45 @@ async def test_remove(mockbot: Bot) -> None:
     assert custom is not None
     remove_ = extract(custom.remove)
 
+    command = CustomCommand(
+        name='mycommand',
+        description='a command',
+        body='this is my command',
+        author_id=1234,
+        guild_id=5678,
+        creation_time=0,
+    )
+    custom.add_to_db(command)
+
     interaction = MockInteraction(
         custom.remove,
         user='calling-user',
         channel='mychannel',
-        guild='myguild',
+        guild=MockGuild('guild', 5678),
         client=mockbot,
     )
 
-    await remove_(custom, interaction, 'command1')
+    await remove_(custom, interaction, 'mycommand')
     assert interaction.followed
-    assert interaction.followup_message is not None
+    assert (
+        interaction.followup_message is not None
+        and 'Removed' in interaction.followup_message
+    )
+
+    interaction = MockInteraction(
+        custom.remove,
+        user='calling-user',
+        channel='mychannel',
+        guild=MockGuild('guild', 5678),
+        client=mockbot,
+    )
+
+    await remove_(custom, interaction, 'mycommand')
+    assert interaction.followed
+    assert (
+        interaction.followup_message is not None
+        and 'does not exist' in interaction.followup_message
+    )
 
 
 @pytest.mark.asyncio
@@ -263,6 +291,22 @@ def test_db_remove_command(tmp_file: str) -> None:
             {'name': command.name},
         ).fetchall()
     assert len(rows) == 0
+
+
+def test_exists_in_db(tmp_file: str) -> None:
+    custom = CustomCommands(tmp_file)
+
+    assert not custom.exists_in_db(5678, 'mycommand')
+    command = CustomCommand(
+        name='mycommand',
+        description='a command',
+        body='this is my command',
+        author_id=1234,
+        guild_id=5678,
+        creation_time=0,
+    )
+    custom.add_to_db(command)
+    assert custom.exists_in_db(5678, 'mycommand')
 
 
 @pytest.mark.asyncio
