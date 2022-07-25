@@ -3,6 +3,7 @@
 
 <head>
     <title>{{ guild.name }} Soundboard</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <!-- Compiled and minified CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
@@ -46,17 +47,17 @@
     </style>
 </head>
 
-<body class="blue-grey darken-4">
+<body class="blue-grey darken-4" style="padding-bottom: 24px;">
   <!-- Nav Bar -->
   <nav class="blue-grey darken-3">
     <div class="nav-wrapper">
-      <div style="padding-left: 12px;">
+      <div style="padding-left: 24px;">
         <a href="/" class="brand-logo blue-grey-text text-lighten-5">3pseat Soundboard</a>
       </div>
       <a href="#" data-target="mobile" class="sidenav-trigger">
         <i class="material-icons blue-grey-text text-lighten-1">menu</i>
       </a>
-      <ul id="nav-mobile" class="right hide-on-med-and-down">
+      <ul id="nav-mobile" class="right hide-on-med-and-down" style="padding-right: 18px">
           <li><a href="https://github.com/gpauloski/3pseatBot">GitHub</a></li>
       </ul>
     </div>
@@ -68,7 +69,7 @@
 
   <div style="padding-left: 40px; padding-right: 40px;">
     <div>
-      <h5 class="center-align blue-grey-text text-lighten-5">Play Sounds</h5>
+      <h5 class="center-align blue-grey-text text-lighten-5">Play Sounds in {{ guild.name }}</h5>
     </div>
     <div style="display: grid; grid-gap: 24px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: stretch; margin-top: 24px;">
       {% for sound in sounds %}
