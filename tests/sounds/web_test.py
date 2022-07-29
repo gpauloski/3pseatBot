@@ -50,14 +50,41 @@ async def quart_app(
 
 
 @pytest.mark.asyncio
-async def test_index(quart_app) -> None:
+async def test_index_authorized(quart_app) -> None:
+    # Our test configuration sets authorized by default
+    client = quart_app.test_client()
+
+    response = await client.get('/')
+    # Redirect to /guilds/
+    assert response.status_code == 302
+    location = [h for h in response.headers if 'location' in h].pop()
+    assert location[1] == '/guilds/'
+
+
+@pytest.mark.asyncio
+async def test_index_unauthorized(quart_app) -> None:
+    client = quart_app.test_client()
+
+    # Note: we use mock.AsyncMock(...)() because we are mocking an async
+    # property so we want to mock with a coroutine that is awaitable rather
+    # than a callable that will return a coroutine
+    with mock.patch(
+        'quart_discord.client.DiscordOAuth2Session.authorized',
+        mock.AsyncMock(return_value=False)(),
+    ):
+        response = await client.get('/')
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_guilds(quart_app) -> None:
     client = quart_app.test_client()
 
     with mock.patch(
         'threepseat.sounds.web.get_mutual_guilds',
         return_value=[MockGuild('guild1', 1), MockGuild('guild2', 2)],
     ):
-        response = await client.get('/')
+        response = await client.get('/guilds/')
 
     assert response.status_code == 200
 

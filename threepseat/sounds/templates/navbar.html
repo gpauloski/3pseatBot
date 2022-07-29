@@ -9,12 +9,26 @@
     <a href="#" data-target="mobile" class="sidenav-trigger">
       <i class="material-icons blue-grey-text text-lighten-1">menu</i>
     </a>
+    {% if login_url %}
     <ul id="nav-mobile" class="right hide-on-med-and-down" style="padding-right: 18px">
+      <li><a href="{{ login_url }}">Login</a></li>
+    </ul>
+    {% elif logout_url %}
+    <ul id="nav-mobile" class="right hide-on-med-and-down" style="padding-right: 18px">
+      <li><a href="{{ logout_url }}">Logout</a></li>
+    </ul>
+    {% endif %}
+    <ul id="nav-mobile" class="right hide-on-med-and-down">
       <li><a href="https://github.com/gpauloski/3pseatBot">GitHub</a></li>
     </ul>
   </div>
 </nav>
 
-<ul class="sidenav blue-grey darken-4 blue-grey darken-3" id="mobile" style="font-size: 24px;">
-  <li><a href="https://github.com/gpauloski/3pseatBot" class="blue-grey-text text-lighten-5">GitHub</a></li>
+<ul class="sidenav blue-grey darken-4 blue-grey darken-2" id="mobile" style="padding-top: 24px; padding-bottom: 18px; border-color: #37474f;">
+  <li><a href="https://github.com/gpauloski/3pseatBot" class="blue-grey-text text-lighten-5 center-align" style="font-size: 24px;">GitHub</a></li>
+  {% if login_url %}
+  <li><a href="{{ login_url }}" class="blue-grey-text text-lighten-5 center-align" style="font-size: 24px;">Login</a></li>
+  {% elif logout_url %}
+  <li><a href="{{ logout_url }}" class="blue-grey-text text-lighten-5 center-align" style="font-size: 24px;">Logout</a></li>
+  {% endif %}
 </ul>
