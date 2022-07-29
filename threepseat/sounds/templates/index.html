@@ -30,26 +30,21 @@
     </style>
 </head>
 
-<body class="blue-grey darken-4">
+<body class="blue-grey darken-4" style="height: 100%;">
 
   {% include 'navbar.html' %}
 
-  <div class="container">
+  <div class="container center-align">
     <div>
-      <h5 class="center-align blue-grey-text text-lighten-5">Select a Discord Server</h5>
+      <h5 class="center-align blue-grey-text text-lighten-5">Login with Discord to Get Started</h5>
     </div>
-    <ul class="collection blue-grey darken-4" style="border-color: #37474f; margin-top: 32px;">
-      {% for guild in guilds %}
-      <li class="collection-item blue-grey darken-2 blue-grey-text text-lighten-4" style="border-bottom-color: #37474f; height: 60px;">
-        <div style="font-size: 24px; margin-top: 4px; line-height: 30px">
-          {{ guild.name }}
-          <a href="{{ guild.url }}" class="secondary-content">
-            <i class="small material-icons light-green-text text-accent-1">send</i>
-          </a>
-        </div>
-      </li>
-      {% endfor %}
-    <ul>
+
+    <a class="waves-effect waves-light btn-large blue-grey darken-2 blue-grey-text text-lighten-4" href="{{ login_url }}" style="font-size: 24px; margin-top: 32px; margin-bottom: 32px">
+        Login
+        <i class="large material-icons right light-green-text text-accent-1">
+            keyboard_arrow_right
+        </i>
+    </a>
   </div>
 
 </body>

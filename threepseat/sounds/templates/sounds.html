@@ -22,6 +22,11 @@
         $.ajax({
           type: "POST",
           url: val,
+          statusCode: {
+            400: function (response) {
+              alert(response.responseText);
+            }
+          }
         });
       }
     </script>
@@ -48,24 +53,8 @@
 </head>
 
 <body class="blue-grey darken-4" style="padding-bottom: 24px;">
-  <!-- Nav Bar -->
-  <nav class="blue-grey darken-3">
-    <div class="nav-wrapper">
-      <div style="padding-left: 24px;">
-        <a href="/" class="brand-logo blue-grey-text text-lighten-5">3pseat Soundboard</a>
-      </div>
-      <a href="#" data-target="mobile" class="sidenav-trigger">
-        <i class="material-icons blue-grey-text text-lighten-1">menu</i>
-      </a>
-      <ul id="nav-mobile" class="right hide-on-med-and-down" style="padding-right: 18px">
-          <li><a href="https://github.com/gpauloski/3pseatBot">GitHub</a></li>
-      </ul>
-    </div>
-  </nav>
 
-  <ul class="sidenav blue-grey darken-4 blue-grey darken-3" id="mobile" style="font-size: 24px;">
-      <li><a href="https://github.com/gpauloski/3pseatBot" class="blue-grey-text text-lighten-5">GitHub</a></li>
-  </ul>
+    {% include 'navbar.html' %}
 
   <div style="padding-left: 40px; padding-right: 40px;">
     <div>
@@ -80,12 +69,11 @@
           </span>
           <p>{{ sound.description }}</p>
         </div>
-        <div class="card-action">
+        <div class="card-action valign-wrapper">
           <div onclick="play('{{ sound.url }}')" class="waves-effect waves-light btn">
             <i class="medium material-icons blue-grey-text text-darken-4">play_arrow</i>
           </div>
-          &nbsp;&nbsp;
-          <a href="{{ sound.youtube_link }}" class="light-green-text text-accent-1">
+          <a href="{{ sound.youtube_link }}" class="light-green-text text-accent-1" style="margin-left: auto; margin-right: 0px">
             Watch on YouTube
           </a>
         </div>

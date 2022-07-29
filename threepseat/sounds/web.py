@@ -134,9 +134,20 @@ def get_member(
 
 
 @sounds_blueprint.route('/')
-@requires_authorization
 async def index() -> Response:
-    """Sounds home."""
+    """Home page."""
+    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
+    if not await discord.authorized:
+        login_url = quart.url_for('sounds.login')
+        return await quart.render_template('index.html', login_url=login_url)
+    else:
+        return quart.redirect(quart.url_for('sounds.guilds'))
+
+
+@sounds_blueprint.route('/guilds/')
+@requires_authorization
+async def guilds() -> Response:
+    """Select guild page."""
     discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
     bot = quart.current_app.config['bot']
     user = await discord.fetch_user()
@@ -154,7 +165,11 @@ async def index() -> Response:
 
     guild_data.sort(key=lambda x: x.name)
 
-    return await quart.render_template('guilds.html', guilds=guild_data)
+    return await quart.render_template(
+        'guilds.html',
+        guilds=guild_data,
+        logout_url=quart.url_for('sounds.logout'),
+    )
 
 
 @sounds_blueprint.route('/sounds/<int:guild_id>')
@@ -186,13 +201,11 @@ async def sound_grid(guild_id: int) -> Response:
         'sounds.html',
         guild=guild,
         sounds=sound_data,
+        logout_url=quart.url_for('sounds.logout'),
     )
 
 
-@sounds_blueprint.route(
-    '/play/<int:guild_id>/<sound_name>',
-    methods=['GET', 'POST'],
-)
+@sounds_blueprint.route('/play/<int:guild_id>/<sound_name>', methods=['POST'])
 @requires_authorization
 async def sound_play(guild_id: int, sound_name: str) -> Response:
     """Play a sound and redirect back to grid."""
@@ -201,31 +214,28 @@ async def sound_play(guild_id: int, sound_name: str) -> Response:
     sounds = quart.current_app.config['sounds']
     user = await discord.fetch_user()
     member = get_member(bot, user, guild_id)
-
-    redirect = quart.redirect(
-        quart.url_for('sounds.sound_grid', guild_id=guild_id),
-    )
-
-    # TODO: handle error with popup
     if member is None:
-        return redirect
+        return quart.Response('Cannot find your membership in the Guild.', 400)
 
     sound = sounds.get(sound_name, guild_id=guild_id)
-
     if sound is None:
-        return redirect
+        return quart.Response(
+            f'Unable to locate a sound named {sound_name}.',
+            400,
+        )
 
     channel = voice_channel(member)
     if channel is None:
-        return redirect
+        return quart.Response('You are not in a voice channel.', 400)
 
     sound_file = sounds.filepath(sound.filename)
     try:
         await play_sound(sound_file, channel)
-    except Exception as e:  # pragma: no cover
-        logger.exception(f'Error playing sound: {e}')
-
-    return redirect
+    except Exception as e:
+        logger.exception(f'Error playing sound: {e}.')
+        return quart.Response(str(e), 400)
+    else:
+        return quart.Response('', 200)
 
 
 @sounds_blueprint.route('/login/')
@@ -235,15 +245,23 @@ async def login() -> Response:  # pragma: no cover
     return await discord.create_session()
 
 
+@sounds_blueprint.route('/logout/')
+async def logout() -> Response:  # pragma: no cover
+    """Revoke discord OAuth."""
+    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
+    discord.revoke()
+    return quart.redirect(quart.url_for('sounds.index'))
+
+
 @sounds_blueprint.route('/callback/')
 async def callback() -> Response:  # pragma: no cover
     """Discord OAuth callback route."""
     discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
     await discord.callback()
-    return quart.redirect(quart.url_for('sounds.index'))
+    return quart.redirect(quart.url_for('sounds.guilds'))
 
 
 @sounds_blueprint.errorhandler(Unauthorized)
 async def redirect_unauthorized(e: Exception) -> Response:  # pragma: no cover
-    """Redirect to login if unauthorized."""
-    return quart.redirect(quart.url_for('sounds.login'))
+    """Redirect to home if unauthorized."""
+    return quart.redirect(quart.url_for('sounds.index'))
