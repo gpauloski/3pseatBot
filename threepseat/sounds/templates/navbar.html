@@ -24,11 +24,32 @@
   </div>
 </nav>
 
-<ul class="sidenav blue-grey darken-4 blue-grey darken-2" id="mobile" style="padding-top: 24px; padding-bottom: 18px; border-color: #37474f;">
-  <li><a href="https://github.com/gpauloski/3pseatBot" class="blue-grey-text text-lighten-5 center-align" style="font-size: 24px;">GitHub</a></li>
+<ul class="sidenav blue-grey darken-3" id="mobile" style="padding-top: 18px; padding-bottom: 18px; border-color: #37474f; border: 1px; width: 240px">
+  <li style="margin-bottom: 4px;">
+    <a href="https://github.com/gpauloski/3pseatBot" class="blue-grey-text text-lighten-5" style="font-size: 24px;">
+      <i class="small material-icons right-align light-green-text text-accent-1">
+          code
+      </i>
+      GitHub
+    </a>
+  </li>
   {% if login_url %}
-  <li><a href="{{ login_url }}" class="blue-grey-text text-lighten-5 center-align" style="font-size: 24px;">Login</a></li>
+  <li style="margin-bottom: 4px;">
+    <a href="{{ login_url }}" class="blue-grey-text text-lighten-5" style="font-size: 24px;">
+      <i class="small material-icons right-align light-green-text text-accent-1">
+          keyboard_arrow_right
+      </i>
+      Login
+    </a>
+  </li>
   {% elif logout_url %}
-  <li><a href="{{ logout_url }}" class="blue-grey-text text-lighten-5 center-align" style="font-size: 24px;">Logout</a></li>
+  <li style="margin-bottom: 4px;">
+    <a href="{{ logout_url }}" class="blue-grey-text text-lighten-5" style="font-size: 24px;">
+      <i class="small material-icons right-align light-green-text text-accent-1">
+          keyboard_arrow_left
+      </i>
+      Logout
+    </a>
+  </li>
   {% endif %}
 </ul>
