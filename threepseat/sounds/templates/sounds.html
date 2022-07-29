@@ -22,6 +22,11 @@
         $.ajax({
           type: "POST",
           url: val,
+          statusCode: {
+            400: function (response) {
+              alert(response.responseText);
+            }
+          }
         });
       }
     </script>

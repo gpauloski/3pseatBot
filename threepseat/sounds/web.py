@@ -205,10 +205,7 @@ async def sound_grid(guild_id: int) -> Response:
     )
 
 
-@sounds_blueprint.route(
-    '/play/<int:guild_id>/<sound_name>',
-    methods=['GET', 'POST'],
-)
+@sounds_blueprint.route('/play/<int:guild_id>/<sound_name>', methods=['POST'])
 @requires_authorization
 async def sound_play(guild_id: int, sound_name: str) -> Response:
     """Play a sound and redirect back to grid."""
@@ -217,31 +214,28 @@ async def sound_play(guild_id: int, sound_name: str) -> Response:
     sounds = quart.current_app.config['sounds']
     user = await discord.fetch_user()
     member = get_member(bot, user, guild_id)
-
-    redirect = quart.redirect(
-        quart.url_for('sounds.sound_grid', guild_id=guild_id),
-    )
-
-    # TODO: handle error with popup
     if member is None:
-        return redirect
+        return quart.Response('Cannot find your membership in the Guild.', 400)
 
     sound = sounds.get(sound_name, guild_id=guild_id)
-
     if sound is None:
-        return redirect
+        return quart.Response(
+            f'Unable to locate a sound named {sound_name}.',
+            400,
+        )
 
     channel = voice_channel(member)
     if channel is None:
-        return redirect
+        return quart.Response('You are not in a voice channel.', 400)
 
     sound_file = sounds.filepath(sound.filename)
     try:
         await play_sound(sound_file, channel)
-    except Exception as e:  # pragma: no cover
-        logger.exception(f'Error playing sound: {e}')
-
-    return redirect
+    except Exception as e:
+        logger.exception(f'Error playing sound: {e}.')
+        return quart.Response(str(e), 400)
+    else:
+        return quart.Response('', 200)
 
 
 @sounds_blueprint.route('/login/')

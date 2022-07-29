@@ -131,14 +131,10 @@ async def test_sound_play(quart_app) -> None:
         mock.patch('threepseat.sounds.web.voice_channel'),
         mock.patch('threepseat.sounds.web.play_sound') as mocked,
     ):
-        response = await client.get('/play/1234/mysound')
+        response = await client.post('/play/1234/mysound')
         assert mocked.await_count == 1
 
-    # Should redirect
-    assert response.status_code == 302
-    location = [v for k, v in response.headers if k == 'location']
-    assert len(location) == 1
-    assert location[0] == '/sounds/1234'
+    assert response.status_code == 200
 
 
 @pytest.mark.asyncio
@@ -156,14 +152,10 @@ async def test_sound_play_no_member(quart_app) -> None:
         mock.patch('threepseat.sounds.web.get_member', return_value=None),
         mock.patch('threepseat.sounds.web.play_sound') as mocked,
     ):
-        response = await client.get('/play/1234/mysound')
+        response = await client.post('/play/1234/mysound')
         assert mocked.await_count == 0
 
-    # Should redirect
-    assert response.status_code == 302
-    location = [v for k, v in response.headers if k == 'location']
-    assert len(location) == 1
-    assert location[0] == '/sounds/1234'
+    assert response.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -183,14 +175,10 @@ async def test_sound_play_no_sound(quart_app) -> None:
         mock.patch('threepseat.sounds.web.get_member'),
         mock.patch('threepseat.sounds.web.play_sound') as mocked,
     ):
-        response = await client.get('/play/1234/mysound')
+        response = await client.post('/play/1234/mysound')
         assert mocked.await_count == 0
 
-    # Should redirect
-    assert response.status_code == 302
-    location = [v for k, v in response.headers if k == 'location']
-    assert len(location) == 1
-    assert location[0] == '/sounds/1234'
+    assert response.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -212,14 +200,10 @@ async def test_sound_play_no_channel(quart_app) -> None:
         mock.patch('threepseat.sounds.web.voice_channel', return_value=None),
         mock.patch('threepseat.sounds.web.play_sound') as mocked,
     ):
-        response = await client.get('/play/1234/mysound')
+        response = await client.post('/play/1234/mysound')
         assert mocked.await_count == 0
 
-    # Should redirect
-    assert response.status_code == 302
-    location = [v for k, v in response.headers if k == 'location']
-    assert len(location) == 1
-    assert location[0] == '/sounds/1234'
+    assert response.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -238,21 +222,17 @@ async def test_sound_play_error(quart_app) -> None:
             mock.AsyncMock(return_value=object()),
         ),
         mock.patch('threepseat.sounds.web.get_member'),
-        mock.patch('threepseat.sounds.web.voice_channel', return_value=None),
+        mock.patch('threepseat.sounds.web.voice_channel'),
         mock.patch(
             'threepseat.sounds.web.play_sound',
             mock.AsyncMock(side_effect=Exception()),
         ) as mocked,
     ):
         # Should not raise an error
-        response = await client.get('/play/1234/mysound')
-        assert mocked.await_count == 0
+        response = await client.post('/play/1234/mysound')
+        assert mocked.await_count == 1
 
-    # Should redirect
-    assert response.status_code == 302
-    location = [v for k, v in response.headers if k == 'location']
-    assert len(location) == 1
-    assert location[0] == '/sounds/1234'
+    assert response.status_code == 400
 
 
 def test_get_mutual_guilds() -> None:
