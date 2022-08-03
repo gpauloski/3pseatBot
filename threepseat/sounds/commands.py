@@ -49,9 +49,9 @@ class SoundCommands(app_commands.Group):
     async def add(
         self,
         interaction: discord.Interaction,
-        name: str,
+        name: app_commands.Range[str, 1, 18],
         link: str,
-        description: str,
+        description: app_commands.Range[str, 1, 100],
     ) -> None:
         """Add a new sound."""
         await interaction.response.defer(thinking=True)
@@ -82,7 +82,7 @@ class SoundCommands(app_commands.Group):
         return [
             app_commands.Choice(name=sound.name, value=sound.name)
             for sound in sounds
-            if current.lower() in sound.name.lower()
+            if current.lower() in sound.name.lower() or current == ''
         ]
 
     @app_commands.command(name='list', description='List available sounds')

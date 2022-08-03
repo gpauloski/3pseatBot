@@ -180,7 +180,7 @@ class CustomCommands(app_commands.Group):
         return [
             app_commands.Choice(name=command.name, value=command.name)
             for command in commands
-            if current.lower() in command.name.lower()
+            if current.lower() in command.name.lower() or current == ''
         ]
 
     @app_commands.command(
@@ -195,8 +195,8 @@ class CustomCommands(app_commands.Group):
     async def create(
         self,
         interaction: discord.Interaction,
-        name: str,
-        description: str,
+        name: app_commands.Range[str, 1, 18],
+        description: app_commands.Range[str, 1, 50],
         body: str,
     ) -> None:
         """Create a custom command."""

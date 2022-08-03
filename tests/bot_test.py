@@ -9,6 +9,7 @@ from testing.mock import MockGuild
 from testing.mock import MockUser
 from threepseat.bot import Bot
 from threepseat.commands.custom import CustomCommands
+from threepseat.reminders.commands import ReminderCommands
 from threepseat.rules.commands import RulesCommands
 from threepseat.sounds.commands import SoundCommands
 from threepseat.sounds.data import Sounds
@@ -59,6 +60,7 @@ async def test_bot_startup(tmp_file: str, caplog) -> None:
                 custom_commands=CustomCommands(tmp_file),
                 sound_commands=SoundCommands(sounds),
                 rules_commands=RulesCommands(tmp_file),
+                reminder_commands=ReminderCommands(tmp_file),
             )
             await bot.on_ready()
 

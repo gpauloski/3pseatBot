@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import functools
 import io
 import logging
@@ -64,8 +65,19 @@ def voice_channel(member: discord.Member) -> discord.VoiceChannel | None:
     return None
 
 
-async def play_sound(sound: str, channel: discord.VoiceChannel) -> None:
-    """Play a sound in the voice channel."""
+async def play_sound(
+    sound: str,
+    channel: discord.VoiceChannel,
+    wait: bool = False,
+) -> None:
+    """Play a sound in the voice channel.
+
+    Args:
+        sound (filepath): filepath to MP3 file to play.
+        channel (discord.VoiceChannel): voice channel to play sound in.
+        wait (bool): wait for sound to finish playing before exiting. Otherwise
+            the coroutine may return before the sound has finished.
+    """
     voice_client: discord.VoiceClient
     if channel.guild.voice_client is not None:
         await channel.guild.voice_client.move_to(channel)  # type: ignore
@@ -81,6 +93,10 @@ async def play_sound(sound: str, channel: discord.VoiceChannel) -> None:
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
         voice_client.play(source, after=None)
+
+    if wait:
+        while voice_client.is_playing():
+            await asyncio.sleep(0.1)
 
 
 def leave_on_empty(

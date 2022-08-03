@@ -110,7 +110,11 @@ async def test_play_sound(mock_audio) -> None:
     voice_client.move_to = mock.AsyncMock()  # type: ignore
     voice_client.play = mock.AsyncMock()  # type: ignore
 
-    voice_client.is_playing = mock.MagicMock(return_value=True)  # type: ignore
+    # Note: first True to see if there is a current sound to be stopped,
+    # then True to allow wait to happen, then False to exit wait loop
+    voice_client.is_playing = mock.MagicMock(  # type: ignore
+        side_effect=[True, True, False],
+    )
     voice_client.stop = mock.MagicMock()  # type: ignore
 
     with (
@@ -121,7 +125,7 @@ async def test_play_sound(mock_audio) -> None:
             new_callable=mock.PropertyMock(return_value=voice_client),
         ),
     ):
-        await play_sound(sound, channel)
+        await play_sound(sound, channel, wait=True)
 
     voice_client.is_playing = mock.MagicMock(  # type: ignore
         return_value=False,

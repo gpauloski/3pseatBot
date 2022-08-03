@@ -167,7 +167,7 @@ async def autocomplete_summoners(
     return [
         app_commands.Choice(name=item, value=item)
         for item in cache
-        if current.lower() in item.lower()
+        if current.lower() in item.lower() or current == ''
     ]
 
 
