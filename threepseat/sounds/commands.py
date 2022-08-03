@@ -49,9 +49,9 @@ class SoundCommands(app_commands.Group):
     async def add(
         self,
         interaction: discord.Interaction,
-        name: str,
+        name: app_commands.Range[str, 1, 18],
         link: str,
-        description: str,
+        description: app_commands.Range[str, 1, 100],
     ) -> None:
         """Add a new sound."""
         await interaction.response.defer(thinking=True)

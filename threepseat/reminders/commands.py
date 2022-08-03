@@ -139,7 +139,7 @@ class ReminderCommands(app_commands.Group):
         self,
         interaction: discord.Interaction,
         kind: ReminderType,
-        name: str,
+        name: app_commands.Range[str, 1, 18],
         text: app_commands.Range[str, 1, MAX_TEXT_LENGTH],
         channel: discord.TextChannel | discord.VoiceChannel,
         delay: app_commands.Range[int, 1, None],
@@ -147,9 +147,10 @@ class ReminderCommands(app_commands.Group):
         """Create a new reminder."""
         assert interaction.guild is not None
 
-        if not alphanumeric(name):
+        if not alphanumeric(name) or len(name) == 0:
             await interaction.response.send_message(
-                'The reminder name must contain alphanumeric characters only',
+                'The reminder must be a single word with only '
+                'alphanumeric characters.',
                 ephemeral=True,
             )
             return

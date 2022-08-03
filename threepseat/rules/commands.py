@@ -253,10 +253,10 @@ class RulesCommands(app_commands.Group):
         self,
         interaction: discord.Interaction,
         prefixes: str,
-        expectancy: float = 2 / 7,
-        duration: float = 60.0,
-        max_offenses: int = 3,
-        timeout: float = 3.0,
+        expectancy: app_commands.Range[float, 0.0, None] = 2 / 7,
+        duration: app_commands.Range[float, 1.0, None] = 60.0,
+        max_offenses: app_commands.Range[int, 1, None] = 3,
+        timeout: app_commands.Range[float, 0.0, None] = 3.0,
     ) -> None:
         """Configure events for a guild."""
         assert interaction.guild is not None

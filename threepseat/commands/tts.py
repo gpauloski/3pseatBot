@@ -12,6 +12,7 @@ from threepseat.tts import tts_as_mp3
 from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 
+MAX_TTS_CHARACTERS = 200
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 @app_commands.guild_only()
 async def tts(
     interaction: discord.Interaction,
-    text: str,
+    text: app_commands.Range[str, 1, MAX_TTS_CHARACTERS],
     accent: Accent = Accent.UNITED_STATES,
     slow: bool = False,
 ) -> None:

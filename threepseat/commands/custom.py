@@ -195,8 +195,8 @@ class CustomCommands(app_commands.Group):
     async def create(
         self,
         interaction: discord.Interaction,
-        name: str,
-        description: str,
+        name: app_commands.Range[str, 1, 18],
+        description: app_commands.Range[str, 1, 50],
         body: str,
     ) -> None:
         """Create a custom command."""
