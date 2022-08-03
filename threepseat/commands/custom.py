@@ -180,7 +180,7 @@ class CustomCommands(app_commands.Group):
         return [
             app_commands.Choice(name=command.name, value=command.name)
             for command in commands
-            if current.lower() in command.name.lower()
+            if current.lower() in command.name.lower() or current == ''
         ]
 
     @app_commands.command(

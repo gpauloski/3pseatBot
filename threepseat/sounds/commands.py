@@ -82,7 +82,7 @@ class SoundCommands(app_commands.Group):
         return [
             app_commands.Choice(name=sound.name, value=sound.name)
             for sound in sounds
-            if current.lower() in sound.name.lower()
+            if current.lower() in sound.name.lower() or current == ''
         ]
 
     @app_commands.command(name='list', description='List available sounds')
