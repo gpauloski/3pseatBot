@@ -56,10 +56,11 @@ class MockVoiceChannel(discord.VoiceChannel):
         self.name = 'voice-channel'
         self.id = 9876
         self.guild = MockGuild('guild', 4567)
+        self._members: list[discord.Member] = []
 
     @property
     def members(self) -> list[discord.Member]:
-        return []
+        return self._members
 
 
 class MockClient(commands.Bot):

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import enum
+import random
 import tempfile
 from collections.abc import Generator
 
@@ -18,6 +19,30 @@ class Accent(enum.Enum):
     INDIA = 'co.in'
     IRELAND = 'ie'
     SOUTH_AFRICA = 'co.za'
+
+    @classmethod
+    def from_str(cls, name: str, random_if_unknown: bool = False) -> Accent:
+        """Convert string name to Accent.
+
+        Args:
+            name (str): name of accent.
+            random_if_unknown (bool): return a random accent rather than
+                raising an error if name is not a valid Accent name.
+
+        Returns:
+            Accent
+
+        Raises:
+            KeyError:
+                if random_if_unknown is False and name does not match an
+                Accent name.
+        """
+        try:
+            return cls[name]
+        except KeyError:
+            if random_if_unknown:
+                return random.choice(list(cls))
+            raise
 
 
 @contextlib.contextmanager
@@ -38,7 +63,6 @@ def tts_as_mp3(
         removed once the context is exited.
     """
     tts = gTTS(text, lang='en', tld=accent.value, slow=slow)
-    print(tts.write_to_fp)
     with tempfile.NamedTemporaryFile() as fp:
         tts.write_to_fp(fp)
         yield fp.name

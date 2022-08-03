@@ -8,6 +8,7 @@ from discord.ext import commands
 from threepseat.commands.commands import registered_app_commands
 from threepseat.commands.custom import CustomCommands
 from threepseat.listeners.listeners import registered_listeners
+from threepseat.reminders.commands import ReminderCommands
 from threepseat.rules.commands import RulesCommands
 from threepseat.sounds.commands import SoundCommands
 from threepseat.utils import leave_on_empty
@@ -26,6 +27,7 @@ class Bot(commands.Bot):
         custom_commands: CustomCommands | None = None,
         rules_commands: RulesCommands | None = None,
         sound_commands: SoundCommands | None = None,
+        reminder_commands: ReminderCommands | None = None,
     ) -> None:
         """Init Bot.
 
@@ -38,11 +40,14 @@ class Bot(commands.Bot):
                 object to register with bot (default: None).
             sound_commands (SoundCommands, optional): sound commands
                 object to register with bot (default: None).
+            reminder_commands (ReminderCommands, optional): reminder commands
+                object to register with bot (default: None).
         """
         self.playing_title = playing_title
         self.custom_commands = custom_commands
         self.rules_commands = rules_commands
         self.sound_commands = sound_commands
+        self.reminder_commands = reminder_commands
 
         intents = discord.Intents(
             guilds=True,
@@ -103,6 +108,11 @@ class Bot(commands.Bot):
             self.voice_channel_checker = leave_on_empty(self, 60)
             self.voice_channel_checker.start()
             logger.info('registered sound command group')
+
+        if self.reminder_commands is not None:
+            self.tree.add_command(self.reminder_commands)
+            self.reminder_commands.start_repeating_reminders(self)
+            logger.info('registered reminders command group')
 
         await self.tree.sync()
         for guild in self.guilds:
