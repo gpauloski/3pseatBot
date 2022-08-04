@@ -10,6 +10,7 @@ from typing import Any
 
 import threepseat
 from threepseat import config
+from threepseat.birthdays.commands import BirthdayCommands
 from threepseat.bot import Bot
 from threepseat.commands.custom import CustomCommands
 from threepseat.logging import configure_logging
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
     """Run asyncio services."""
+    birthday_commands = BirthdayCommands(cfg.sqlite_database)
     custom_commands = CustomCommands(cfg.sqlite_database)
     rules_commands = RulesCommands(cfg.sqlite_database)
     sounds = Sounds(cfg.sqlite_database, cfg.sounds_path)
@@ -33,6 +35,7 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
 
     bot = Bot(
         playing_title=cfg.playing_title,
+        birthday_commands=birthday_commands,
         custom_commands=custom_commands,
         rules_commands=rules_commands,
         sound_commands=sound_commands,
