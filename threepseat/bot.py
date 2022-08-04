@@ -5,6 +5,7 @@ import logging
 import discord
 from discord.ext import commands
 
+from threepseat.birthdays.commands import BirthdayCommands
 from threepseat.commands.commands import registered_app_commands
 from threepseat.commands.custom import CustomCommands
 from threepseat.listeners.listeners import registered_listeners
@@ -24,6 +25,7 @@ class Bot(commands.Bot):
         self,
         *,
         playing_title: str | None = None,
+        birthday_commands: BirthdayCommands | None = None,
         custom_commands: CustomCommands | None = None,
         rules_commands: RulesCommands | None = None,
         sound_commands: SoundCommands | None = None,
@@ -34,6 +36,8 @@ class Bot(commands.Bot):
         Args:
             playing_title (str, optional): set bot as playing this title
                 (default: None).
+            birthday_commands (BirthdayCommands, optional): birthday commands
+                object to register with bot (default: None).
             custom_commands (CustomCommands, optional): custom commands
                 object to register with bot (default: None).
             rules_commands (RulesCommands, optional): rules commands
@@ -44,6 +48,7 @@ class Bot(commands.Bot):
                 object to register with bot (default: None).
         """
         self.playing_title = playing_title
+        self.birthday_commands = birthday_commands
         self.custom_commands = custom_commands
         self.rules_commands = rules_commands
         self.sound_commands = sound_commands
@@ -90,6 +95,12 @@ class Bot(commands.Bot):
         for listener in listeners:
             self.add_listener(listener.func, listener.event)
         logger.info(f'registered {len(listeners)} listeners')
+
+        if self.birthday_commands is not None:
+            self.tree.add_command(self.birthday_commands)
+            self.birthday_checker = self.birthday_commands.birthday_task(self)
+            self.birthday_checker.start()
+            logger.info('registered birthday command group')
 
         if self.custom_commands is not None:
             self.tree.add_command(self.custom_commands)

@@ -7,6 +7,7 @@ import pytest
 
 from testing.mock import MockGuild
 from testing.mock import MockUser
+from threepseat.birthdays.commands import BirthdayCommands
 from threepseat.bot import Bot
 from threepseat.commands.custom import CustomCommands
 from threepseat.reminders.commands import ReminderCommands
@@ -57,6 +58,7 @@ async def test_bot_startup(tmp_file: str, caplog) -> None:
         ):
             sounds = Sounds(tmp_file, data_path='/tmp/threepseat-test')
             bot = Bot(
+                birthday_commands=BirthdayCommands(tmp_file),
                 custom_commands=CustomCommands(tmp_file),
                 sound_commands=SoundCommands(sounds),
                 rules_commands=RulesCommands(tmp_file),
