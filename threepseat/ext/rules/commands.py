@@ -443,7 +443,7 @@ class RulesCommands(CommandGroupExtension):
             users_.sort()
             users_str = '\n'.join(users_)
             await interaction.response.send_message(
-                f'Current offenses in this guild:\n```{users_str}```',
+                f'Current offenses in this guild:\n```\n{users_str}\n```',
             )
         else:
             user_data = self.database.get_user(
