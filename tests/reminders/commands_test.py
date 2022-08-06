@@ -39,8 +39,8 @@ def reminders(tmp_file: str) -> Generator[ReminderCommands, None, None]:
 
 @pytest.mark.asyncio
 async def test_start_repeating_reminders(reminders) -> None:
-    reminders.database.update(REMINDER._replace(name='a'))
-    reminders.database.update(REMINDER._replace(name='b'))
+    reminders.table.update(REMINDER._replace(name='a'))
+    reminders.table.update(REMINDER._replace(name='b'))
 
     with mock.patch('discord.Client'):
         client = discord.Client()  # type: ignore
@@ -179,7 +179,7 @@ async def test_create_one_time(reminders) -> None:
             REMINDER.delay_minutes,
         )
 
-    assert reminders.database.get(REMINDER.guild_id, REMINDER.name) is None
+    assert reminders.table.get(REMINDER.guild_id, REMINDER.name) is None
 
     assert interaction.responded
     assert (
@@ -209,7 +209,7 @@ async def test_create_repeating(reminders) -> None:
             REMINDER.delay_minutes,
         )
 
-    assert reminders.database.get(REMINDER.guild_id, REMINDER.name) is not None
+    assert reminders.table.get(REMINDER.guild_id, REMINDER.name) is not None
 
     assert interaction.responded
     assert (
@@ -409,7 +409,7 @@ async def test_list_empty(reminders) -> None:
 
 
 @pytest.mark.asyncio
-async def test_remove(reminders) -> None:
+async def test_remove_one_time(reminders) -> None:
     remove_ = extract(reminders.remove)
 
     interaction = MockInteraction(
@@ -429,6 +429,57 @@ async def test_remove(reminders) -> None:
     assert key in reminders._tasks
     await remove_(reminders, interaction, REMINDER.name)
     assert key not in reminders._tasks
+
+    assert interaction.responded
+    assert (
+        interaction.response_message is not None
+        and 'Removed' in interaction.response_message
+    )
+
+
+@pytest.mark.asyncio
+async def test_remove_repeating(reminders) -> None:
+    create_ = extract(reminders.create)
+    remove_ = extract(reminders.remove)
+
+    interaction = MockInteraction(
+        reminders.create,
+        user='user',
+        guild=MockGuild('guild', REMINDER.guild_id),
+    )
+
+    with mock.patch.object(reminders, 'start_reminder'):
+        await create_(
+            reminders,
+            interaction,
+            ReminderType.REPEATING,
+            REMINDER.name,
+            REMINDER.text,
+            MockChannel('channel', 42),
+            REMINDER.delay_minutes,
+        )
+
+    interaction = MockInteraction(
+        reminders.remove,
+        user='user',
+        guild=MockGuild('guild', REMINDER.guild_id),
+    )
+
+    key = ReminderTaskKey(REMINDER.guild_id, REMINDER.name)
+    value = ReminderTask(
+        ReminderType.REPEATING,
+        REMINDER,
+        mock.MagicMock(),
+    )
+    reminders._tasks[key] = value
+
+    assert key in reminders._tasks
+    assert reminders.table.get(REMINDER.guild_id, REMINDER.name) is not None
+
+    await remove_(reminders, interaction, REMINDER.name)
+
+    assert key not in reminders._tasks
+    assert reminders.table.get(REMINDER.guild_id, REMINDER.name) is None
 
     assert interaction.responded
     assert (

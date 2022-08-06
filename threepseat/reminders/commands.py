@@ -12,7 +12,7 @@ from discord.ext import tasks
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
 from threepseat.reminders.data import Reminder
-from threepseat.reminders.data import Reminders
+from threepseat.reminders.data import RemindersTable
 from threepseat.reminders.data import ReminderType
 from threepseat.reminders.utils import reminder_task
 from threepseat.utils import alphanumeric
@@ -49,7 +49,7 @@ class ReminderCommands(app_commands.Group):
         """
         # The database is just used for storing repeating tasks between
         # bot restarts
-        self.database = Reminders(db_path)
+        self.table = RemindersTable(db_path)
 
         # Finished tasks should be removed from this dict
         self._tasks: dict[ReminderTaskKey, ReminderTask] = {}
@@ -63,7 +63,7 @@ class ReminderCommands(app_commands.Group):
     def start_repeating_reminders(self, client: discord.Client) -> None:
         """Start all enabled reminder tasks."""
         for guild in client.guilds:
-            for reminder in self.database.all(guild.id):
+            for reminder in self.table.all(guild.id):
                 self.start_reminder(client, reminder, ReminderType.REPEATING)
 
     def start_reminder(
@@ -174,7 +174,7 @@ class ReminderCommands(app_commands.Group):
         )
 
         if kind == ReminderType.REPEATING:
-            self.database.update(reminder)
+            self.table.update(reminder)
 
         self.start_reminder(
             interaction.client,
@@ -290,6 +290,10 @@ class ReminderCommands(app_commands.Group):
                 ephemeral=True,
             )
             return
+
+        value = self._tasks[key]
+        if value.kind == ReminderType.REPEATING:
+            self.table.remove(interaction.guild.id, name)
 
         self.stop_reminder(interaction.guild.id, name)
         await interaction.response.send_message(
