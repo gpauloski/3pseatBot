@@ -244,5 +244,5 @@ async def mmr(
 
     await interaction.followup.send(
         f'MMR ({gamemode.value.lower()}) stats on the NA server:\n'
-        f'```{output}```',
+        f'```\n{output}\n```',
     )
