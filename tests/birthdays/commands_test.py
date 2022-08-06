@@ -90,15 +90,15 @@ async def test_send_birthday_messages(birthdays) -> None:
     guild = MockGuild('guild', BIRTHDAY.guild_id)
     channel = MockChannel('channel', 42)
 
-    birthdays.database.update(BIRTHDAY._replace(user_id=1))
-    birthdays.database.update(
+    birthdays.table.update(BIRTHDAY._replace(user_id=1))
+    birthdays.table.update(
         BIRTHDAY._replace(
             user_id=2,
             birth_month=datetime.datetime.now().month,
             birth_day=datetime.datetime.now().day,
         ),
     )
-    birthdays.database.update(
+    birthdays.table.update(
         BIRTHDAY._replace(
             user_id=3,
             birth_month=datetime.datetime.now().month,
@@ -145,7 +145,7 @@ async def test_add_birthday(birthdays) -> None:
         BIRTHDAY.birth_day,
     )
 
-    birthday = birthdays.database.get(guild.id, 42)
+    birthday = birthdays.table.get(guild.id, 42)
     assert birthday is not None
     assert birthday.birth_month == BIRTHDAY.birth_month
     assert birthday.birth_day == BIRTHDAY.birth_day
@@ -186,9 +186,9 @@ async def test_list_birthdays(birthdays) -> None:
     guild = MockGuild('guild', BIRTHDAY.guild_id)
     interaction = MockInteraction(birthdays.list, user='user', guild=guild)
 
-    birthdays.database.update(BIRTHDAY._replace(user_id=1))
-    birthdays.database.update(BIRTHDAY._replace(user_id=2))
-    birthdays.database.update(BIRTHDAY._replace(guild_id=0, user_id=1))
+    birthdays.table.update(BIRTHDAY._replace(user_id=1))
+    birthdays.table.update(BIRTHDAY._replace(user_id=2))
+    birthdays.table.update(BIRTHDAY._replace(guild_id=0, user_id=1))
 
     # Mock second call to get_member to return None
     _members = [MockMember('user', 1, guild), None]
@@ -226,7 +226,7 @@ async def test_remove_birthday(birthdays) -> None:
     guild = MockGuild('guild', BIRTHDAY.guild_id)
     interaction = MockInteraction(birthdays.remove, user='user', guild=guild)
 
-    birthdays.database.update(BIRTHDAY)
+    birthdays.table.update(BIRTHDAY)
 
     await remove_(
         birthdays,
@@ -234,7 +234,7 @@ async def test_remove_birthday(birthdays) -> None:
         MockMember('user', BIRTHDAY.user_id, guild),
     )
 
-    assert birthdays.database.get(BIRTHDAY.guild_id, BIRTHDAY.user_id) is None
+    assert birthdays.table.get(BIRTHDAY.guild_id, BIRTHDAY.user_id) is None
     assert interaction.responded
     assert interaction.response_message is not None
     assert 'Removed' in interaction.response_message

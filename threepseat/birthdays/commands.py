@@ -11,7 +11,7 @@ from discord import app_commands
 from discord.ext import tasks
 
 from threepseat.birthdays.data import Birthday
-from threepseat.birthdays.data import Birthdays
+from threepseat.birthdays.data import BirthdayTable
 from threepseat.commands.commands import log_interaction
 from threepseat.utils import primary_channel
 
@@ -48,7 +48,7 @@ class BirthdayCommands(app_commands.Group):
         Args:
             db_path (str): path to database to use.
         """
-        self.database = Birthdays(db_path)
+        self.table = BirthdayTable(db_path)
 
         super().__init__(
             name='birthdays',
@@ -95,7 +95,7 @@ class BirthdayCommands(app_commands.Group):
         if channel is None:
             return
 
-        for birthday in self.database.all(guild.id):
+        for birthday in self.table.all(guild.id):
             if birthday.birth_day == day and birthday.birth_month == month:
                 member = guild.get_member(birthday.user_id)
                 if member is not None:
@@ -137,7 +137,7 @@ class BirthdayCommands(app_commands.Group):
             birth_month=month.value,
         )
 
-        self.database.update(birthday)
+        self.table.update(birthday)
 
         await interaction.response.send_message(
             f'Added birthday for {member.mention}.',
@@ -153,7 +153,7 @@ class BirthdayCommands(app_commands.Group):
         """List birthdays in the guild."""
         assert interaction.guild is not None
 
-        birthdays = self.database.all(interaction.guild.id)
+        birthdays = self.table.all(interaction.guild.id)
 
         if len(birthdays) == 0:
             await interaction.response.send_message(
@@ -186,14 +186,14 @@ class BirthdayCommands(app_commands.Group):
         """Remove a birthday from the guild."""
         assert interaction.guild is not None
 
-        if self.database.get(interaction.guild.id, member.id) is None:
+        if self.table.get(interaction.guild.id, member.id) is None:
             await interaction.response.send_message(
                 f'A birthday has not been added for {member.mention}.',
                 ephemeral=True,
             )
             return
 
-        self.database.remove(interaction.guild.id, member.id)
+        self.table.remove(interaction.guild.id, member.id)
         await interaction.response.send_message(
             f'Removed birthday for {member.mention}.',
             ephemeral=True,
