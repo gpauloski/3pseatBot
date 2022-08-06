@@ -11,8 +11,8 @@ from testing.mock import MockGuild
 from testing.mock import MockInteraction
 from testing.utils import extract
 from threepseat.bot import Bot
-from threepseat.commands.custom import CustomCommand
-from threepseat.commands.custom import CustomCommands
+from threepseat.custom.commands import CustomCommand
+from threepseat.custom.commands import CustomCommands
 
 
 @pytest.fixture

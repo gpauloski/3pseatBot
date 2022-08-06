@@ -7,7 +7,7 @@ from discord.ext import commands
 
 from threepseat.birthdays.commands import BirthdayCommands
 from threepseat.commands.commands import registered_app_commands
-from threepseat.commands.custom import CustomCommands
+from threepseat.custom.commands import CustomCommands
 from threepseat.listeners.listeners import registered_listeners
 from threepseat.reminders.commands import ReminderCommands
 from threepseat.rules.commands import RulesCommands

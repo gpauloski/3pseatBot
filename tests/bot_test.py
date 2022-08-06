@@ -9,7 +9,7 @@ from testing.mock import MockGuild
 from testing.mock import MockUser
 from threepseat.birthdays.commands import BirthdayCommands
 from threepseat.bot import Bot
-from threepseat.commands.custom import CustomCommands
+from threepseat.custom.commands import CustomCommands
 from threepseat.reminders.commands import ReminderCommands
 from threepseat.rules.commands import RulesCommands
 from threepseat.sounds.commands import SoundCommands

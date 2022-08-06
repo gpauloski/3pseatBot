@@ -12,7 +12,7 @@ import threepseat
 from threepseat import config
 from threepseat.birthdays.commands import BirthdayCommands
 from threepseat.bot import Bot
-from threepseat.commands.custom import CustomCommands
+from threepseat.custom.commands import CustomCommands
 from threepseat.logging import configure_logging
 from threepseat.reminders.commands import ReminderCommands
 from threepseat.rules.commands import RulesCommands
