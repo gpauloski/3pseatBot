@@ -11,10 +11,14 @@ functionality of a bot and support for adding your own cogs.
 
 Features include:
 
+- Simple slash command and event listener registration
+- General use slash commands: `/tts`, `/flip`, `/mmr` and more
+- Birthday messages
+- Slash commands for creating custom slash commands
+- Voice TTS and text channel reminders
 - Voice channel sound board with web interface
-- Custom slash command creation
-- Random events that enforce arbitrary message rules
-- Useful commands: MMR for games, coin flip, etc.
+
+Note: the bot is not publicly available but the code is open-source!
 
 ## Getting Started
 
