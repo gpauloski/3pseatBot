@@ -13,6 +13,7 @@ from threepseat import config
 from threepseat.bot import Bot
 from threepseat.ext.birthdays import BirthdayCommands
 from threepseat.ext.custom import CustomCommands
+from threepseat.ext.games import GamesCommands
 from threepseat.ext.reminders import ReminderCommands
 from threepseat.ext.rules import RulesCommands
 from threepseat.ext.sounds import SoundCommands
@@ -27,6 +28,7 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
     """Run asyncio services."""
     birthday_commands = BirthdayCommands(cfg.sqlite_database)
     custom_commands = CustomCommands(cfg.sqlite_database)
+    games_commands = GamesCommands(cfg.sqlite_database)
     reminder_commands = ReminderCommands(cfg.sqlite_database)
     rules_commands = RulesCommands(cfg.sqlite_database)
     sound_commands = SoundCommands(cfg.sqlite_database, cfg.sounds_path)
@@ -37,6 +39,7 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
         extensions=[
             birthday_commands,
             custom_commands,
+            games_commands,
             reminder_commands,
             rules_commands,
             sound_commands,
