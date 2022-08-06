@@ -180,6 +180,72 @@ def test_remove_without_primary_keys(table) -> None:
         table.remove(guild_id=0, user_id=0, timestamp=0.0)
 
 
+def test_get_caching(table) -> None:
+    row = ExampleRow(0, 0, 0.0, None, True)
+
+    table.update(row)
+    assert table.get.cache_info().hits == 0
+    assert table.get.cache_info().misses == 0
+
+    table.get(guild_id=0, user_id=0)
+    assert table.get.cache_info().hits == 0
+    assert table.get.cache_info().misses == 1
+
+    table.get(guild_id=0, user_id=0)
+    assert table.get.cache_info().hits == 1
+    assert table.get.cache_info().misses == 1
+
+
+def test_all_caching(table) -> None:
+    row = ExampleRow(0, 0, 0.0, None, True)
+
+    table.update(row)
+    assert table.all.cache_info().hits == 0
+    assert table.all.cache_info().misses == 0
+
+    table.all(guild_id=0)
+    assert table.all.cache_info().hits == 0
+    assert table.all.cache_info().misses == 1
+
+    table.all(guild_id=0)
+    assert table.all.cache_info().hits == 1
+    assert table.all.cache_info().misses == 1
+
+
+def test_update_resets_cache(table) -> None:
+    row = ExampleRow(0, 0, 0.0, None, True)
+
+    table.update(row)
+    assert table.get.cache_info().misses == 0
+
+    table.get(guild_id=0, user_id=0)
+    assert table.get.cache_info().misses == 1
+
+    table.all(guild_id=0)
+    assert table.all.cache_info().misses == 1
+
+    table.update(row._replace(timestamp=1.0))
+    assert table.get.cache_info().misses == 0
+    assert table.all.cache_info().misses == 0
+
+
+def test_remove_resets_cache(table) -> None:
+    row = ExampleRow(0, 0, 0.0, None, True)
+
+    table.update(row)
+    assert table.get.cache_info().misses == 0
+
+    table.get(guild_id=0, user_id=0)
+    assert table.get.cache_info().misses == 1
+
+    table.all(guild_id=0)
+    assert table.all.cache_info().misses == 1
+
+    table.remove(guild_id=0, user_id=0)
+    assert table.get.cache_info().misses == 0
+    assert table.all.cache_info().misses == 0
+
+
 @pytest.mark.parametrize(
     'fields,result',
     (
