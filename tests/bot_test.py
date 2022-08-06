@@ -7,12 +7,12 @@ import pytest
 
 from testing.mock import MockGuild
 from testing.mock import MockUser
-from threepseat.birthdays.commands import BirthdayCommands
 from threepseat.bot import Bot
-from threepseat.custom.commands import CustomCommands
-from threepseat.reminders.commands import ReminderCommands
-from threepseat.rules.commands import RulesCommands
-from threepseat.sounds.commands import SoundCommands
+from threepseat.ext.birthdays import BirthdayCommands
+from threepseat.ext.custom import CustomCommands
+from threepseat.ext.reminders import ReminderCommands
+from threepseat.ext.rules import RulesCommands
+from threepseat.ext.sounds import SoundCommands
 
 # NOTE: there is not a great way to mock the discord API/discord Bots right
 # now so these tests mock a lot of things. As a result, the quality of these

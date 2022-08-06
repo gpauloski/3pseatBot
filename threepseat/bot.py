@@ -5,13 +5,13 @@ import logging
 import discord
 from discord.ext import commands
 
-from threepseat.birthdays.commands import BirthdayCommands
 from threepseat.commands.commands import registered_app_commands
-from threepseat.custom.commands import CustomCommands
+from threepseat.ext.birthdays import BirthdayCommands
+from threepseat.ext.custom import CustomCommands
+from threepseat.ext.reminders import ReminderCommands
+from threepseat.ext.rules import RulesCommands
+from threepseat.ext.sounds import SoundCommands
 from threepseat.listeners.listeners import registered_listeners
-from threepseat.reminders.commands import ReminderCommands
-from threepseat.rules.commands import RulesCommands
-from threepseat.sounds.commands import SoundCommands
 from threepseat.utils import leave_on_empty
 
 

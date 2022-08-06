@@ -54,7 +54,7 @@ def mock_download() -> Generator[None, None, None]:
             f.write('data')
 
     with mock.patch(
-        'threepseat.sounds.data.download',
+        'threepseat.ext.sounds.data.download',
         mock.MagicMock(side_effect=_download),
     ):
         yield
