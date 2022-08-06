@@ -7,13 +7,12 @@ import pytest
 
 from testing.mock import MockGuild
 from testing.mock import MockUser
-from threepseat.birthdays.commands import BirthdayCommands
 from threepseat.bot import Bot
-from threepseat.commands.custom import CustomCommands
-from threepseat.reminders.commands import ReminderCommands
-from threepseat.rules.commands import RulesCommands
-from threepseat.sounds.commands import SoundCommands
-from threepseat.sounds.data import Sounds
+from threepseat.ext.birthdays import BirthdayCommands
+from threepseat.ext.custom import CustomCommands
+from threepseat.ext.reminders import ReminderCommands
+from threepseat.ext.rules import RulesCommands
+from threepseat.ext.sounds import SoundCommands
 
 # NOTE: there is not a great way to mock the discord API/discord Bots right
 # now so these tests mock a lot of things. As a result, the quality of these
@@ -56,11 +55,13 @@ async def test_bot_startup(tmp_file: str, caplog) -> None:
                 return_value=[MockGuild('guild', 1234)],
             ),
         ):
-            sounds = Sounds(tmp_file, data_path='/tmp/threepseat-test')
             bot = Bot(
                 birthday_commands=BirthdayCommands(tmp_file),
                 custom_commands=CustomCommands(tmp_file),
-                sound_commands=SoundCommands(sounds),
+                sound_commands=SoundCommands(
+                    tmp_file,
+                    data_path='/tmp/threepseat-test',
+                ),
                 rules_commands=RulesCommands(tmp_file),
                 reminder_commands=ReminderCommands(tmp_file),
             )

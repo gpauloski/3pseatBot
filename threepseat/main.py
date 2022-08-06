@@ -10,15 +10,14 @@ from typing import Any
 
 import threepseat
 from threepseat import config
-from threepseat.birthdays.commands import BirthdayCommands
 from threepseat.bot import Bot
-from threepseat.commands.custom import CustomCommands
+from threepseat.ext.birthdays import BirthdayCommands
+from threepseat.ext.custom import CustomCommands
+from threepseat.ext.reminders import ReminderCommands
+from threepseat.ext.rules import RulesCommands
+from threepseat.ext.sounds import SoundCommands
+from threepseat.ext.sounds.web import create_app
 from threepseat.logging import configure_logging
-from threepseat.reminders.commands import ReminderCommands
-from threepseat.rules.commands import RulesCommands
-from threepseat.sounds.commands import SoundCommands
-from threepseat.sounds.data import Sounds
-from threepseat.sounds.web import create_app
 
 
 logger = logging.getLogger(__name__)
@@ -29,8 +28,8 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
     birthday_commands = BirthdayCommands(cfg.sqlite_database)
     custom_commands = CustomCommands(cfg.sqlite_database)
     rules_commands = RulesCommands(cfg.sqlite_database)
-    sounds = Sounds(cfg.sqlite_database, cfg.sounds_path)
-    sound_commands = SoundCommands(sounds)
+    sound_commands = SoundCommands(cfg.sqlite_database, cfg.sounds_path)
+    sounds = sound_commands.table
     reminder_commands = ReminderCommands(cfg.sqlite_database)
 
     bot = Bot(
