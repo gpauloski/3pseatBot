@@ -155,7 +155,7 @@ class SQLTableInterface(Generic[RowType]):
                     f'{self.fields[field].python_type}.',
                 )
 
-    def _all(self, **kwargs: dict[str, Any]) -> list[RowType]:
+    def _all(self, **kwargs: Any) -> list[RowType]:
         """Get all rows in the table match kwargs."""
         self.validate_kwargs(kwargs)
 
@@ -172,7 +172,7 @@ class SQLTableInterface(Generic[RowType]):
             ).fetchall()
             return [self._row_type(*row) for row in rows]
 
-    def _get(self, **kwargs: dict[str, Any]) -> RowType | None:
+    def _get(self, **kwargs: Any) -> RowType | None:
         """Get the row in the table matching kwargs.
 
         Raises:
@@ -218,7 +218,7 @@ class SQLTableInterface(Generic[RowType]):
         self.all.cache_clear()
         self.get.cache_clear()
 
-    def remove(self, **kwargs: dict[str, Any]) -> int:
+    def remove(self, **kwargs: Any) -> int:
         """Remove a row from the table.
 
         Raises:
