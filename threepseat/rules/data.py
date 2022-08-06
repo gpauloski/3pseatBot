@@ -1,18 +1,11 @@
 from __future__ import annotations
 
-import contextlib
-import functools
-import os
-import sqlite3
 import time
-from collections.abc import Generator
 from typing import NamedTuple
 
-from threepseat.database import create_table
-from threepseat.database import named_tuple_parameters
-from threepseat.database import named_tuple_parameters_update
 from threepseat.rules.exceptions import GuildNotConfiguredError
 from threepseat.rules.exceptions import MaxOffensesExceededError
+from threepseat.table import SQLTableInterface
 
 
 class GuildConfig(NamedTuple):
@@ -53,115 +46,45 @@ class UserOffenses(NamedTuple):
     """Unix timestamp of last offense in the guild."""
 
 
-class Rules:
-    """Rules data manager."""
+class RulesDatabase:
+    """Rules database interface."""
 
     def __init__(self, db_path: str) -> None:
-        """Init Rules.
+        """Init RulesDatabase.
 
         Args:
             db_path (str): path to sqlite database.
         """
-        self.db_path = db_path
+        self.config_table = GuildConfigTable(db_path)
+        self.offenses_table = UserOffensesTable(db_path)
 
-        if len(os.path.dirname(self.db_path)) > 0:
-            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-
-        self.get_config = functools.cache(self._get_config)
-        self.get_configs = functools.cache(self._get_configs)
-        self.get_user = functools.cache(self._get_user)
-        self.get_users = functools.cache(self._get_users)
-
-        with self.connect() as db:
-            create_table(db, 'guild_configs', GuildConfig)
-            create_table(db, 'user_offenses', UserOffenses)
-
-    @contextlib.contextmanager
-    def connect(self) -> Generator[sqlite3.Connection, None, None]:
-        """Database connection context manager."""
-        with contextlib.closing(sqlite3.connect(self.db_path)) as db:
-            with db:
-                yield db
-
-    def _get_config(self, guild_id: int) -> GuildConfig | None:
+    def get_config(self, guild_id: int) -> GuildConfig | None:
         """Get configuration for guild."""
-        with self.connect() as db:
-            rows = db.execute(
-                'SELECT * FROM guild_configs WHERE guild_id = :guild_id',
-                {'guild_id': guild_id},
-            ).fetchall()
-            if len(rows) == 0:
-                return None
-            else:
-                return GuildConfig(*rows[0])
+        return self.config_table.get(guild_id)
 
-    def _get_configs(self) -> list[GuildConfig]:
+    def get_configs(self) -> list[GuildConfig]:
         """Get all guild configs."""
-        with self.connect() as db:
-            rows = db.execute('SELECT * FROM guild_configs').fetchall()
-            return [GuildConfig(*row) for row in rows]
+        return self.config_table.all()
 
     def update_config(self, config: GuildConfig) -> None:
         """Update config row matching guild id."""
-        with self.connect() as db:
-            res = db.execute(
-                'UPDATE guild_configs '
-                f'SET {named_tuple_parameters_update(GuildConfig)} '
-                'WHERE guild_id = :guild_id',
-                config._asdict(),
-            )
-            if res.rowcount == 0:
-                res = db.execute(
-                    'INSERT INTO guild_configs VALUES '
-                    f'{named_tuple_parameters(GuildConfig)}',
-                    config._asdict(),
-                )
-            self.get_config.cache_clear()
-            self.get_configs.cache_clear()
+        return self.config_table.update(config)
 
-    def _get_user(
+    def get_user(
         self,
         guild_id: int,
         user_id: int,
     ) -> UserOffenses | None:
         """Get the user offenses matching the guild and user id."""
-        with self.connect() as db:
-            rows = db.execute(
-                'SELECT * FROM user_offenses '
-                'WHERE guild_id = :guild_id AND user_id = :user_id',
-                {'guild_id': guild_id, 'user_id': user_id},
-            ).fetchall()
-            if len(rows) == 0:
-                return None
-            else:
-                return UserOffenses(*rows[0])
+        return self.offenses_table.get(guild_id, user_id)
 
-    def _get_users(self, guild_id: int) -> list[UserOffenses]:
+    def get_users(self, guild_id: int) -> list[UserOffenses]:
         """Get all user offenses in a guild."""
-        with self.connect() as db:
-            rows = db.execute(
-                'SELECT * FROM user_offenses WHERE guild_id = :guild_id',
-                {'guild_id': guild_id},
-            ).fetchall()
-            return [UserOffenses(*row) for row in rows]
+        return self.offenses_table.all(guild_id)
 
     def update_user(self, user: UserOffenses) -> None:
         """Update user offenses row matching the guild and user id."""
-        with self.connect() as db:
-            res = db.execute(
-                'UPDATE user_offenses '
-                f'SET {named_tuple_parameters_update(UserOffenses)} '
-                'WHERE guild_id = :guild_id AND user_id = :user_id',
-                user._asdict(),
-            )
-            if res.rowcount == 0:
-                res = db.execute(
-                    'INSERT INTO user_offenses VALUES '
-                    f'{named_tuple_parameters(UserOffenses)}',
-                    user._asdict(),
-                )
-            self.get_user.cache_clear()
-            self.get_users.cache_clear()
+        return self.offenses_table.update(user)
 
     def add_offense(self, guild_id: int, user_id: int) -> int:
         """Add offense to user in guild."""
@@ -203,3 +126,65 @@ class Rules:
         if user is not None:
             user = user._replace(current_offenses=0)
             self.update_user(user)
+
+
+class GuildConfigTable(SQLTableInterface[GuildConfig]):
+    """Guild config table interface."""
+
+    def __init__(self, db_path: str) -> None:
+        """Init GuildConfigTable.
+
+        Args:
+            db_path (str): path to sqlite database.
+        """
+        super().__init__(
+            GuildConfig,
+            'guild_configs',
+            db_path,
+            primary_keys=('guild_id',),
+        )
+
+    def _all(self) -> list[GuildConfig]:  # type: ignore
+        """Get guild configs."""
+        return super()._all()
+
+    def _get(self, guild_id: int) -> GuildConfig | None:  # type: ignore
+        """Get guild config."""
+        return super()._get(guild_id=guild_id)
+
+    def remove(self, guild_id: int) -> int:  # type: ignore
+        """Remove a guild config from the table."""
+        raise NotImplementedError
+
+
+class UserOffensesTable(SQLTableInterface[UserOffenses]):
+    """User offenses table interface."""
+
+    def __init__(self, db_path: str) -> None:
+        """Init GuildConfigTable.
+
+        Args:
+            db_path (str): path to sqlite database.
+        """
+        super().__init__(
+            UserOffenses,
+            'user_offenses',
+            db_path,
+            primary_keys=('guild_id', 'user_id'),
+        )
+
+    def _all(self, guild_id: int) -> list[UserOffenses]:  # type: ignore
+        """Get all user offenses in the guild."""
+        return super()._all(guild_id=guild_id)
+
+    def _get(  # type: ignore
+        self,
+        guild_id: int,
+        user_id: int,
+    ) -> UserOffenses | None:
+        """Get user offenses."""
+        return super()._get(guild_id=guild_id, user_id=user_id)
+
+    def remove(self, guild_id: int, user_id: int) -> int:  # type: ignore
+        """Remove a row."""
+        raise NotImplementedError

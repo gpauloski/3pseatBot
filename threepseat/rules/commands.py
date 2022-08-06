@@ -12,7 +12,7 @@ from discord.ext import tasks
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
 from threepseat.rules.data import GuildConfig
-from threepseat.rules.data import Rules
+from threepseat.rules.data import RulesDatabase
 from threepseat.rules.exceptions import EventStartError
 from threepseat.rules.exceptions import GuildNotConfiguredError
 from threepseat.rules.exceptions import MaxOffensesExceededError
@@ -37,7 +37,7 @@ class RulesCommands(app_commands.Group):
         Args:
             db_path (str): path to database to use.
         """
-        self.database = Rules(db_path=db_path)
+        self.database = RulesDatabase(db_path=db_path)
 
         # Mapping of guild IDs to the current task handling the event
         self.event_handlers: dict[int, asyncio.Task[None]] = {}
