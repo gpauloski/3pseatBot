@@ -110,7 +110,7 @@ async def test_list(mockbot: Bot) -> None:
         guild_id=5678,
         creation_time=0,
     )
-    custom.add_to_db(command)
+    custom.table.update(command)
     with mock.patch.object(
         mockbot,
         'get_guild',
@@ -147,7 +147,7 @@ async def test_remove(mockbot: Bot) -> None:
         guild_id=5678,
         creation_time=0,
     )
-    custom.add_to_db(command)
+    custom.table.update(command)
 
     interaction = MockInteraction(
         custom.remove,
@@ -208,107 +208,6 @@ async def test_on_error(mockbot: Bot, caplog) -> None:
     assert any(['test1' in record.message for record in caplog.records])
 
 
-def test_db_create_command(tmp_file: str) -> None:
-    custom = CustomCommands(tmp_file)
-    command = CustomCommand(
-        name='mycommand',
-        description='a command',
-        body='this is my command',
-        author_id=1234,
-        guild_id=5678,
-        creation_time=0,
-    )
-    custom.add_to_db(command)
-
-    with custom.connect() as db:
-        rows = db.execute(
-            'SELECT * FROM custom_commands WHERE name = :name',
-            {'name': command.name},
-        ).fetchall()
-    assert len(rows) == 1
-
-
-def test_db_list_commands(tmp_file: str) -> None:
-    custom = CustomCommands(tmp_file)
-    commands = [
-        CustomCommand(
-            name='mycommand1',
-            description='a command',
-            body='this is my command',
-            author_id=1234,
-            guild_id=1,
-            creation_time=0,
-        ),
-        CustomCommand(
-            name='mycommand2',
-            description='a command',
-            body='this is my command',
-            author_id=1234,
-            guild_id=1,
-            creation_time=0,
-        ),
-        CustomCommand(
-            name='mycommand3',
-            description='a command',
-            body='this is my command',
-            author_id=1234,
-            guild_id=2,
-            creation_time=0,
-        ),
-    ]
-    for command in commands:
-        custom.add_to_db(command)
-
-    found = custom.list_in_db(guild_id=1)
-    assert len(found) == 2
-    assert commands[0] in found
-    assert commands[1] in found
-
-
-def test_db_remove_command(tmp_file: str) -> None:
-    custom = CustomCommands(tmp_file)
-    command = CustomCommand(
-        name='mycommand',
-        description='a command',
-        body='this is my command',
-        author_id=1234,
-        guild_id=5678,
-        creation_time=0,
-    )
-    custom.add_to_db(command)
-
-    with custom.connect() as db:
-        rows = db.execute(
-            'SELECT * FROM custom_commands WHERE name = :name',
-            {'name': command.name},
-        ).fetchall()
-    assert len(rows) == 1
-
-    custom.remove_from_db(command.name, command.guild_id)
-    with custom.connect() as db:
-        rows = db.execute(
-            'SELECT * FROM custom_commands WHERE name = :name',
-            {'name': command.name},
-        ).fetchall()
-    assert len(rows) == 0
-
-
-def test_exists_in_db(tmp_file: str) -> None:
-    custom = CustomCommands(tmp_file)
-
-    assert not custom.exists_in_db(5678, 'mycommand')
-    command = CustomCommand(
-        name='mycommand',
-        description='a command',
-        body='this is my command',
-        author_id=1234,
-        guild_id=5678,
-        creation_time=0,
-    )
-    custom.add_to_db(command)
-    assert custom.exists_in_db(5678, 'mycommand')
-
-
 @pytest.mark.asyncio
 async def test_autocomplete(tmp_file: str) -> None:
     custom = CustomCommands(tmp_file)
@@ -320,7 +219,7 @@ async def test_autocomplete(tmp_file: str) -> None:
         guild_id=5678,
         creation_time=0,
     )
-    custom.add_to_db(command)
+    custom.table.update(command)
 
     interaction = MockInteraction(
         None,  # type: ignore

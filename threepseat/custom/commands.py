@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-import contextlib
 import logging
-import os
-import sqlite3
 import time
-from collections.abc import Generator
 from typing import Any
-from typing import NamedTuple
 
 import discord
 from discord import app_commands
@@ -15,22 +10,11 @@ from discord.ext import commands as ext_commands
 
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
-from threepseat.database import create_table
-from threepseat.database import named_tuple_parameters
+from threepseat.custom.data import CustomCommand
+from threepseat.custom.data import CustomCommandTable
 from threepseat.utils import alphanumeric
 
 logger = logging.getLogger(__name__)
-
-
-class CustomCommand(NamedTuple):
-    """Row for custom command in database."""
-
-    name: str
-    description: str
-    body: str
-    author_id: int
-    guild_id: int
-    creation_time: float
 
 
 class CustomCommands(app_commands.Group):
@@ -47,27 +31,13 @@ class CustomCommands(app_commands.Group):
         Args:
             db_path (str): path to database file.
         """
-        self.db_path = db_path
-
-        if len(os.path.dirname(self.db_path)) > 0:
-            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-
-        with self.connect() as db:
-            create_table(db, 'custom_commands', CustomCommand)
+        self.table = CustomCommandTable(db_path)
 
         super().__init__(
             name='commands',
             description='Create custom commands',
             guild_only=True,
         )
-
-    @contextlib.contextmanager
-    def connect(self) -> Generator[sqlite3.Connection, None, None]:
-        """Database connection context manager."""
-        # Source: https://github.com/pre-commit/pre-commit/blob/354b900f15e88a06ce8493e0316c288c44777017/pre_commit/store.py#L91  # noqa: E501
-        with contextlib.closing(sqlite3.connect(self.db_path)) as db:
-            with db:
-                yield db
 
     async def register(
         self,
@@ -126,48 +96,8 @@ class CustomCommands(app_commands.Group):
         sync: bool = False,
     ) -> None:
         """Register all commands in the database."""
-        for command in self.list_in_db():
+        for command in self.table.all():
             await self.register(command, bot, sync)
-
-    def add_to_db(self, command: CustomCommand) -> None:
-        """Add command to the table."""
-        params = named_tuple_parameters(CustomCommand)
-        with self.connect() as db:
-            db.execute(
-                f'INSERT INTO custom_commands VALUES {params}',
-                command._asdict(),
-            )
-
-    def exists_in_db(self, guild_id: int, name: str) -> bool:
-        """Check if guild has a command with name."""
-        with self.connect() as db:
-            count = db.execute(
-                'SELECT COUNT(*) FROM custom_commands '
-                'WHERE guild_id = :guild_id AND name = :name',
-                {'guild_id': guild_id, 'name': name},
-            ).fetchone()[0]
-        return bool(count)
-
-    def list_in_db(self, guild_id: int | None = None) -> list[CustomCommand]:
-        """Get list of custom commands in guild."""
-        with self.connect() as db:
-            if guild_id is not None:
-                rows = db.execute(
-                    'SELECT * FROM custom_commands WHERE guild_id = :guild_id',
-                    {'guild_id': guild_id},
-                ).fetchall()
-            else:
-                rows = db.execute('SELECT * FROM custom_commands').fetchall()
-        return [CustomCommand(*row) for row in rows]
-
-    def remove_from_db(self, name: str, guild_id: int) -> None:
-        """Remove a custom command from the guild."""
-        with self.connect() as db:
-            db.execute(
-                'DELETE FROM custom_commands '
-                'WHERE guild_id = :guild_id AND name = :name',
-                {'guild_id': guild_id, 'name': name},
-            )
 
     async def autocomplete(
         self,
@@ -176,10 +106,9 @@ class CustomCommands(app_commands.Group):
     ) -> list[app_commands.Choice[str]]:
         """Return list of custom commands in the guild matching current."""
         assert interaction.guild is not None
-        commands = self.list_in_db(interaction.guild.id)
         return [
             app_commands.Choice(name=command.name, value=command.name)
-            for command in commands
+            for command in self.table.all(interaction.guild.id)
             if current.lower() in command.name.lower() or current == ''
         ]
 
@@ -219,7 +148,7 @@ class CustomCommands(app_commands.Group):
             creation_time=time.time(),
         )
 
-        self.add_to_db(command)
+        self.table.update(command)
         await self.register(command, interaction.client)
 
         await interaction.followup.send(f'Created /{name}.', ephemeral=True)
@@ -229,7 +158,7 @@ class CustomCommands(app_commands.Group):
     async def list(self, interaction: discord.Interaction) -> None:
         """List custom commands."""
         assert interaction.guild is not None
-        commands = self.list_in_db(interaction.guild.id)
+        commands = self.table.all(interaction.guild.id)
 
         if len(commands) == 0:
             await interaction.response.send_message(
@@ -263,8 +192,8 @@ class CustomCommands(app_commands.Group):
 
         assert interaction.guild is not None
 
-        if self.exists_in_db(interaction.guild.id, name):
-            self.remove_from_db(name, interaction.guild.id)
+        removed = bool(self.table.remove(interaction.guild.id, name))
+        if removed:
             await self.unregister(name, interaction.guild, interaction.client)
             await interaction.followup.send(
                 f'Removed /{name}.',
