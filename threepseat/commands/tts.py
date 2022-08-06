@@ -18,7 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 @register_app_command
-@app_commands.command(description='Read message as TTS in voice channel')
+@app_commands.command(
+    name='speak',
+    description='Read message as TTS in voice channel',
+)
 @app_commands.describe(text='Text to convert to speech (max characters: 200)')
 @app_commands.describe(accent='Optional regional accent to use')
 @app_commands.describe(slow='Optionally read message slowly')

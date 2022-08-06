@@ -65,4 +65,5 @@ def tts_as_mp3(
     tts = gTTS(text, lang='en', tld=accent.value, slow=slow)
     with tempfile.NamedTemporaryFile() as fp:
         tts.write_to_fp(fp)
+        fp.flush()
         yield fp.name
