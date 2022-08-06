@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import sqlite3
 import uuid
 from collections.abc import Awaitable
 from collections.abc import Callable
@@ -23,13 +22,6 @@ def tmp_file(tmp_path: pathlib.Path) -> Generator[str, None, None]:
     yield filepath
     if os.path.exists(filepath):  # pragma: no branch
         os.remove(filepath)
-
-
-@pytest.fixture()
-def database() -> Generator[sqlite3.Connection, None, None]:
-    con = sqlite3.connect(':memory:')
-    yield con
-    con.close()
 
 
 @pytest.fixture()
