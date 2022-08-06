@@ -132,7 +132,7 @@ class ReminderCommands(CommandGroupExtension):
         name='Name of the reminder (alphanumeric characters only)',
         text=f'Reminder body text (max {MAX_TEXT_LENGTH} character)',
         channel='Channel to send the reminder in',
-        delay='Delay before sending reminder/delay before repeating',
+        delay='Minutes before sending reminder/delay before repeating',
     )
     @app_commands.check(admin_or_owner)
     @app_commands.check(log_interaction)
