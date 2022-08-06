@@ -27,19 +27,22 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
     """Run asyncio services."""
     birthday_commands = BirthdayCommands(cfg.sqlite_database)
     custom_commands = CustomCommands(cfg.sqlite_database)
+    reminder_commands = ReminderCommands(cfg.sqlite_database)
     rules_commands = RulesCommands(cfg.sqlite_database)
     sound_commands = SoundCommands(cfg.sqlite_database, cfg.sounds_path)
     sounds = sound_commands.table
-    reminder_commands = ReminderCommands(cfg.sqlite_database)
 
     bot = Bot(
         playing_title=cfg.playing_title,
-        birthday_commands=birthday_commands,
-        custom_commands=custom_commands,
-        rules_commands=rules_commands,
-        sound_commands=sound_commands,
-        reminder_commands=reminder_commands,
+        extensions=[
+            birthday_commands,
+            custom_commands,
+            reminder_commands,
+            rules_commands,
+            sound_commands,
+        ],
     )
+
     webapp = create_app(
         bot=bot,
         sounds=sounds,

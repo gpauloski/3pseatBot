@@ -18,22 +18,21 @@ from threepseat.ext.sounds.commands import SoundCommands
 
 
 @pytest.fixture
-def mockbot(
+def sound_fixtures(
     tmp_path: pathlib.Path,
     mock_download,
-) -> Generator[Bot, None, None]:
+) -> Generator[tuple[Bot, SoundCommands], None, None]:
     db_file = os.path.join(tmp_path, 'data.db')
     data_path = os.path.join(tmp_path, 'data')
     sound_commands = SoundCommands(db_path=db_file, data_path=data_path)
-    bot = Bot(sound_commands=sound_commands)
+    bot = Bot(extensions=[sound_commands])
     with mock.patch.object(bot.tree, 'sync', mock.AsyncMock()):
-        yield bot
+        yield bot, sound_commands
 
 
 @pytest.mark.asyncio
-async def test_add_command(mockbot: Bot) -> None:
-    sounds = mockbot.sound_commands
-    assert sounds is not None
+async def test_add_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
+    mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
 
     interaction = MockInteraction(
@@ -60,9 +59,10 @@ async def test_add_command(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_add_command_failure(mockbot: Bot) -> None:
-    sounds = mockbot.sound_commands
-    assert sounds is not None
+async def test_add_command_failure(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
 
     interaction = MockInteraction(
@@ -89,9 +89,8 @@ async def test_add_command_failure(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_autocomplete(mockbot: Bot) -> None:
-    sounds = mockbot.sound_commands
-    assert sounds is not None
+async def test_autocomplete(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
+    mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
 
     interaction = MockInteraction(
@@ -124,9 +123,8 @@ async def test_autocomplete(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_list_command(mockbot: Bot) -> None:
-    sounds = mockbot.sound_commands
-    assert sounds is not None
+async def test_list_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
+    mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
     list_ = extract(sounds.list)
 
@@ -177,9 +175,8 @@ async def test_list_command(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_info_command(mockbot: Bot) -> None:
-    sounds = mockbot.sound_commands
-    assert sounds is not None
+async def test_info_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
+    mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
     info_ = extract(sounds.info)
 
@@ -230,9 +227,8 @@ async def test_info_command(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_play_command(mockbot: Bot) -> None:
-    sounds = mockbot.sound_commands
-    assert sounds is not None
+async def test_play_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
+    mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
     play_ = extract(sounds.play)
 
@@ -278,9 +274,10 @@ async def test_play_command(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_play_command_missing(mockbot: Bot) -> None:
-    sounds = mockbot.sound_commands
-    assert sounds is not None
+async def test_play_command_missing(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
     play_ = extract(sounds.play)
 
     interaction = MockInteraction(
@@ -300,9 +297,10 @@ async def test_play_command_missing(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_play_command_not_in_channel(mockbot: Bot) -> None:
-    sounds = mockbot.sound_commands
-    assert sounds is not None
+async def test_play_command_not_in_channel(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
     play_ = extract(sounds.play)
 
@@ -342,9 +340,10 @@ async def test_play_command_not_in_channel(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_play_command_error(mockbot: Bot) -> None:
-    sounds = mockbot.sound_commands
-    assert sounds is not None
+async def test_play_command_error(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
     play_ = extract(sounds.play)
 
@@ -390,9 +389,10 @@ async def test_play_command_error(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_remove_command_missing(mockbot: Bot) -> None:
-    sounds = mockbot.sound_commands
-    assert sounds is not None
+async def test_remove_command_missing(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
     remove_ = extract(sounds.remove)
 
     interaction = MockInteraction(
@@ -412,9 +412,10 @@ async def test_remove_command_missing(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_remove_command(mockbot: Bot) -> None:
-    sounds = mockbot.sound_commands
-    assert sounds is not None
+async def test_remove_command(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
     info_ = extract(sounds.info)
     remove_ = extract(sounds.remove)
@@ -466,9 +467,11 @@ async def test_remove_command(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_on_error(mockbot: Bot, caplog) -> None:
-    sounds = mockbot.sound_commands
-    assert sounds is not None
+async def test_on_error(
+    sound_fixtures: tuple[Bot, SoundCommands],
+    caplog,
+) -> None:
+    mockbot, sounds = sound_fixtures
 
     interaction = MockInteraction(
         sounds.remove,

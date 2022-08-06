@@ -12,19 +12,20 @@ from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
 from threepseat.ext.custom.data import CustomCommand
 from threepseat.ext.custom.data import CustomCommandTable
+from threepseat.ext.extension import CommandGroupExtension
 from threepseat.utils import alphanumeric
 
 logger = logging.getLogger(__name__)
 
 
-class CustomCommands(app_commands.Group):
+class CustomCommands(CommandGroupExtension):
     """Custom commands group."""
 
     def __init__(self, db_path: str) -> None:
         """Init CustomCommands.
 
         Warning:
-            register_all() should be called after initializing
+            post_init() should be called after initializing
             a new object to ensure all commands in the database get
             registered.
 
@@ -38,6 +39,11 @@ class CustomCommands(app_commands.Group):
             description='Create custom commands',
             guild_only=True,
         )
+
+    async def post_init(self, bot: discord.ext.commands.Bot) -> None:
+        """Register all saved custom commands to the client."""
+        for command in self.table.all():
+            await self.register(command, bot, sync=False)
 
     async def register(
         self,
@@ -89,15 +95,6 @@ class CustomCommands(app_commands.Group):
             f'unregistered custom command /{name} from '
             f'{guild.name} ({guild.id})',
         )
-
-    async def register_all(
-        self,
-        bot: ext_commands.Bot,
-        sync: bool = False,
-    ) -> None:
-        """Register all commands in the database."""
-        for command in self.table.all():
-            await self.register(command, bot, sync)
 
     async def autocomplete(
         self,
