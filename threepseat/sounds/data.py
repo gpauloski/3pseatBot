@@ -1,20 +1,15 @@
 from __future__ import annotations
 
-import contextlib
 import logging
 import os
-import sqlite3
 import time
 import uuid
-from collections.abc import Generator
 from typing import NamedTuple
 
 import youtube_dl
 
-from threepseat.database import create_table
-from threepseat.database import named_tuple_parameters
+from threepseat.table import SQLTableInterface
 from threepseat.utils import alphanumeric
-
 
 MAX_SOUND_LENGTH_SECONDS = 30
 
@@ -34,37 +29,29 @@ class Sound(NamedTuple):
     filename: str
 
 
-class Sounds:
-    """Sounds data manager."""
+class SoundsTable(SQLTableInterface[Sound]):
+    """Sounds table interface."""
 
     def __init__(self, db_path: str, data_path: str) -> None:
-        """Init Sounds.
+        """Init SoundsTable.
 
         Args:
             db_path (str): path to sqlite database.
             data_path (str): directory where sound files are stored.
         """
-        self.db_path = db_path
         self.data_path = data_path
 
-        if len(os.path.dirname(self.db_path)) > 0:
-            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-
-        with self.connect() as db:
-            create_table(db, 'sounds', Sound)
+        super().__init__(
+            Sound,
+            'sounds',
+            db_path,
+            primary_keys=('name', 'guild_id'),
+        )
 
     def filepath(self, filename: str) -> str:
         """Get filepath for filename."""
         os.makedirs(self.data_path, exist_ok=True)
         return os.path.join(self.data_path, filename)
-
-    @contextlib.contextmanager
-    def connect(self) -> Generator[sqlite3.Connection, None, None]:
-        """Database connection context manager."""
-        # Source: https://github.com/pre-commit/pre-commit/blob/354b900f15e88a06ce8493e0316c288c44777017/pre_commit/store.py#L91  # noqa: E501
-        with contextlib.closing(sqlite3.connect(self.db_path)) as db:
-            with db:
-                yield db
 
     def add(
         self,
@@ -107,48 +94,23 @@ class Sounds:
 
         download(sound.link, self.filepath(sound.filename))
 
-        with self.connect() as db:
-            db.execute(
-                f'INSERT INTO sounds VALUES {named_tuple_parameters(Sound)}',
-                sound._asdict(),
-            )
-
+        self.update(sound)
         logger.info(f'added sound to database: {sound}')
 
-    def get(self, name: str, guild_id: int) -> Sound | None:
-        """Get sound in database."""
-        with self.connect() as db:
-            rows = db.execute(
-                'SELECT * FROM sounds '
-                'WHERE name = :name AND guild_id = :guild',
-                {'name': name, 'guild': guild_id},
-            ).fetchall()
-            if len(rows) == 0:
-                return None
-            else:
-                return Sound(*rows[0])
-
-    def list(self, guild_id: int) -> list[Sound]:
+    def _all(self, guild_id: int) -> list[Sound]:  # type: ignore
         """List sounds in database."""
-        with self.connect() as db:
-            rows = db.execute(
-                'SELECT * FROM sounds WHERE guild_id = :guild_id',
-                {'guild_id': guild_id},
-            )
-            return [Sound(*row) for row in rows]
+        return super()._all(guild_id=guild_id)
 
-    def remove(self, name: str, guild_id: int) -> None:
+    def _get(self, name: str, guild_id: int) -> Sound | None:  # type: ignore
+        """Get sound in database."""
+        return super()._get(name=name, guild_id=guild_id)
+
+    def remove(self, name: str, guild_id: int) -> None:  # type: ignore
         """Remove sound from database."""
-        sound = self.get(name, guild_id)
+        sound = self.get(name=name, guild_id=guild_id)
 
         if sound is not None:
-            with self.connect() as db:
-                db.execute(
-                    'DELETE FROM sounds '
-                    'WHERE name = :name AND guild_id = :guild_id',
-                    {'guild_id': guild_id, 'name': name},
-                )
-
+            super().remove(name=name, guild_id=guild_id)
             filepath = self.filepath(sound.filename)
             os.remove(filepath)
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import functools
 import logging
 
 import discord
@@ -9,7 +8,7 @@ from discord import app_commands
 
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
-from threepseat.sounds.data import Sounds
+from threepseat.sounds.data import SoundsTable
 from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 
@@ -19,19 +18,14 @@ logger = logging.getLogger(__name__)
 class SoundCommands(app_commands.Group):
     """App commands for sound board."""
 
-    def __init__(self, sounds: Sounds) -> None:
+    def __init__(self, db_path: str, data_path: str) -> None:
         """Init SoundCommands.
 
         Args:
-            sounds (Sounds): sounds database object.
+            db_path (str): path to database to add table to.
+            data_path (str): directory where sound files are stored.
         """
-        self.sounds = sounds
-
-        # Create a new cached list method because the function
-        # can get called many times in quick succession for autocomplete
-        self.sounds_list_cached = functools.lru_cache(maxsize=8)(
-            self.sounds.list,
-        )
+        self.table = SoundsTable(db_path, data_path)
 
         super().__init__(
             name='sounds',
@@ -58,7 +52,7 @@ class SoundCommands(app_commands.Group):
 
         assert interaction.guild is not None
         try:
-            self.sounds.add(
+            self.table.add(
                 name=name,
                 description=description,
                 link=link,
@@ -68,7 +62,6 @@ class SoundCommands(app_commands.Group):
         except ValueError as e:
             await interaction.followup.send(str(e))
         else:
-            self.sounds_list_cached.cache_clear()
             await interaction.followup.send(f'Added *{name}* to the sounds.')
 
     async def autocomplete(
@@ -78,10 +71,9 @@ class SoundCommands(app_commands.Group):
     ) -> list[app_commands.Choice[str]]:
         """Return list of sound choices matching current."""
         assert interaction.guild is not None
-        sounds = self.sounds_list_cached(interaction.guild.id)
         return [
             app_commands.Choice(name=sound.name, value=sound.name)
-            for sound in sounds
+            for sound in self.table.all(interaction.guild.id)
             if current.lower() in sound.name.lower() or current == ''
         ]
 
@@ -91,7 +83,7 @@ class SoundCommands(app_commands.Group):
         """List available sounds."""
         await interaction.response.defer(thinking=True)
         assert interaction.guild is not None
-        sounds = self.sounds.list(interaction.guild.id)
+        sounds = self.table.all(interaction.guild.id)
 
         if len(sounds) == 0:
             await interaction.followup.send('The guild has no sounds yet!')
@@ -106,7 +98,7 @@ class SoundCommands(app_commands.Group):
     async def info(self, interaction: discord.Interaction, name: str) -> None:
         """Information about a sound."""
         assert interaction.guild is not None
-        sound = self.sounds.get(name, guild_id=interaction.guild.id)
+        sound = self.table.get(name, guild_id=interaction.guild.id)
         if sound is None:
             await interaction.response.send_message(
                 f'A sound named *{name}* does not exist.',
@@ -130,7 +122,7 @@ class SoundCommands(app_commands.Group):
     async def play(self, interaction: discord.Interaction, name: str) -> None:
         """Play a sound."""
         assert interaction.guild is not None
-        sound = self.sounds.get(name, guild_id=interaction.guild.id)
+        sound = self.table.get(name, guild_id=interaction.guild.id)
         if sound is None:
             await interaction.response.send_message(
                 f'A sound named *{name}* does not exist.',
@@ -149,7 +141,7 @@ class SoundCommands(app_commands.Group):
             return
 
         try:
-            await play_sound(self.sounds.filepath(sound.filename), channel)
+            await play_sound(self.table.filepath(sound.filename), channel)
         except Exception as e:
             await interaction.followup.send(
                 'Failed to play the sound. Sorry.',
@@ -173,15 +165,14 @@ class SoundCommands(app_commands.Group):
     ) -> None:
         """Remove a sound."""
         assert interaction.guild is not None
-        sound = self.sounds.get(name, guild_id=interaction.guild.id)
+        sound = self.table.get(name, guild_id=interaction.guild.id)
         if sound is None:
             await interaction.response.send_message(
                 f'A sound named *{name}* does not exist.',
                 ephemeral=True,
             )
         else:
-            self.sounds.remove(name, interaction.guild.id)
-            self.sounds_list_cached.cache_clear()
+            self.table.remove(name, interaction.guild.id)
             await interaction.response.send_message(
                 f'Removed the *{name}* sound.',
             )

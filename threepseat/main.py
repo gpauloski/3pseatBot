@@ -17,7 +17,6 @@ from threepseat.logging import configure_logging
 from threepseat.reminders.commands import ReminderCommands
 from threepseat.rules.commands import RulesCommands
 from threepseat.sounds.commands import SoundCommands
-from threepseat.sounds.data import Sounds
 from threepseat.sounds.web import create_app
 
 
@@ -29,8 +28,8 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
     birthday_commands = BirthdayCommands(cfg.sqlite_database)
     custom_commands = CustomCommands(cfg.sqlite_database)
     rules_commands = RulesCommands(cfg.sqlite_database)
-    sounds = Sounds(cfg.sqlite_database, cfg.sounds_path)
-    sound_commands = SoundCommands(sounds)
+    sound_commands = SoundCommands(cfg.sqlite_database, cfg.sounds_path)
+    sounds = sound_commands.table
     reminder_commands = ReminderCommands(cfg.sqlite_database)
 
     bot = Bot(

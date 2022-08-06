@@ -133,6 +133,7 @@ class SQLTableInterface(Generic[RowType]):
     @contextlib.contextmanager
     def connect(self) -> Generator[sqlite3.Connection, None, None]:
         """Database connection context manager."""
+        # Source: https://github.com/pre-commit/pre-commit/blob/354b900f15e88a06ce8493e0316c288c44777017/pre_commit/store.py#L91  # noqa: E501
         with contextlib.closing(sqlite3.connect(self._filepath)) as db:
             with db:
                 yield db

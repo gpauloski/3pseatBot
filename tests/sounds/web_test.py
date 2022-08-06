@@ -13,7 +13,7 @@ from testing.mock import MockGuild
 from testing.mock import MockUser
 from threepseat.bot import Bot
 from threepseat.sounds.data import Sound
-from threepseat.sounds.data import Sounds
+from threepseat.sounds.data import SoundsTable
 from threepseat.sounds.web import create_app
 from threepseat.sounds.web import get_member
 from threepseat.sounds.web import get_mutual_guilds
@@ -26,7 +26,7 @@ async def quart_app(
     tmp_path: pathlib.Path,
 ) -> AsyncGenerator[quart.typing.TestAppProtocol, None]:
     """Generate Quart test app."""
-    sounds = Sounds(db_path=tmp_file, data_path=tmp_file)
+    sounds = SoundsTable(db_path=tmp_file, data_path=tmp_file)
 
     with (
         mock.patch('threepseat.bot.Bot.user'),
@@ -110,7 +110,7 @@ async def test_sound_grid(quart_app) -> None:
     sound_list = [sound, sound, sound]
 
     with (
-        mock.patch.object(sounds, 'list', return_value=sound_list),
+        mock.patch.object(sounds, 'all', return_value=sound_list),
         mock.patch.object(bot, 'get_guild', return_value=guild),
     ):
         response = await client.get('/sounds/1234')

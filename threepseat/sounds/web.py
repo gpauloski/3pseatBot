@@ -14,7 +14,7 @@ from quart_discord import Unauthorized
 from werkzeug.wrappers.response import Response as werkseug_Response
 
 from threepseat.bot import Bot
-from threepseat.sounds.data import Sounds
+from threepseat.sounds.data import SoundsTable
 from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 
@@ -54,7 +54,7 @@ class SoundData(NamedTuple):
 def create_app(
     *,
     bot: Bot,
-    sounds: Sounds,
+    sounds: SoundsTable,
     client_id: int,
     client_secret: str,
     bot_token: str,
@@ -64,7 +64,7 @@ def create_app(
 
     Args:
         bot (Bot): bot instance to use for playing sounds.
-        sounds (Sounds): sounds database.
+        sounds (SoundsTable): sounds table.
         client_id (int): client ID of bot.
         client_secret (str): client secret of bot.
         bot_token (str): bot token.
@@ -178,7 +178,7 @@ async def sound_grid(guild_id: int) -> Response:
     """Display grid of available sounds in guild."""
     bot = quart.current_app.config['bot']
     sounds = quart.current_app.config['sounds']
-    sound_list = sounds.list(guild_id)
+    sound_list = sounds.all(guild_id)
     guild = bot.get_guild(guild_id)
 
     sound_data = [

@@ -15,7 +15,6 @@ from testing.mock import MockMember
 from testing.utils import extract
 from threepseat.bot import Bot
 from threepseat.sounds.commands import SoundCommands
-from threepseat.sounds.data import Sounds
 
 
 @pytest.fixture
@@ -25,8 +24,7 @@ def mockbot(
 ) -> Generator[Bot, None, None]:
     db_file = os.path.join(tmp_path, 'data.db')
     data_path = os.path.join(tmp_path, 'data')
-    sounds = Sounds(db_path=db_file, data_path=data_path)
-    sound_commands = SoundCommands(sounds)
+    sound_commands = SoundCommands(db_path=db_file, data_path=data_path)
     bot = Bot(sound_commands=sound_commands)
     with mock.patch.object(bot.tree, 'sync', mock.AsyncMock()):
         yield bot
