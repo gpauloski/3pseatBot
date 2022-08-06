@@ -6,13 +6,8 @@ import discord
 from discord.ext import commands
 
 from threepseat.commands.commands import registered_app_commands
-from threepseat.ext.birthdays import BirthdayCommands
-from threepseat.ext.custom import CustomCommands
-from threepseat.ext.reminders import ReminderCommands
-from threepseat.ext.rules import RulesCommands
-from threepseat.ext.sounds import SoundCommands
+from threepseat.ext.extension import CommandGroupExtension
 from threepseat.listeners.listeners import registered_listeners
-from threepseat.utils import leave_on_empty
 
 
 logger = logging.getLogger(__name__)
@@ -25,34 +20,18 @@ class Bot(commands.Bot):
         self,
         *,
         playing_title: str | None = None,
-        birthday_commands: BirthdayCommands | None = None,
-        custom_commands: CustomCommands | None = None,
-        rules_commands: RulesCommands | None = None,
-        sound_commands: SoundCommands | None = None,
-        reminder_commands: ReminderCommands | None = None,
+        extensions: list[CommandGroupExtension] | None = None,
     ) -> None:
         """Init Bot.
 
         Args:
             playing_title (str, optional): set bot as playing this title
                 (default: None).
-            birthday_commands (BirthdayCommands, optional): birthday commands
-                object to register with bot (default: None).
-            custom_commands (CustomCommands, optional): custom commands
-                object to register with bot (default: None).
-            rules_commands (RulesCommands, optional): rules commands
-                object to register with bot (default: None).
-            sound_commands (SoundCommands, optional): sound commands
-                object to register with bot (default: None).
-            reminder_commands (ReminderCommands, optional): reminder commands
-                object to register with bot (default: None).
+            extensions (list[CommandGroupExtension], optional): list of
+                extensions to register with the bot.
         """
         self.playing_title = playing_title
-        self.birthday_commands = birthday_commands
-        self.custom_commands = custom_commands
-        self.rules_commands = rules_commands
-        self.sound_commands = sound_commands
-        self.reminder_commands = reminder_commands
+        self._cmd_group_exts = extensions
 
         intents = discord.Intents(
             guilds=True,
@@ -96,34 +75,11 @@ class Bot(commands.Bot):
             self.add_listener(listener.func, listener.event)
         logger.info(f'registered {len(listeners)} listeners')
 
-        if self.birthday_commands is not None:
-            self.tree.add_command(self.birthday_commands)
-            self.birthday_checker = self.birthday_commands.birthday_task(self)
-            self.birthday_checker.start()
-            logger.info('registered birthday command group')
-
-        if self.custom_commands is not None:
-            self.tree.add_command(self.custom_commands)
-            await self.custom_commands.register_all(self)
-            logger.info('registered custom command group')
-
-        if self.rules_commands is not None:
-            self.tree.add_command(self.rules_commands)
-            self.add_listener(self.rules_commands.on_message, 'on_message')
-            self.rule_event_starter = self.rules_commands.event_starter(self)
-            self.rule_event_starter.start()
-            logger.info('registered rules command group')
-
-        if self.sound_commands is not None:
-            self.tree.add_command(self.sound_commands)
-            self.voice_channel_checker = leave_on_empty(self, 60)
-            self.voice_channel_checker.start()
-            logger.info('registered sound command group')
-
-        if self.reminder_commands is not None:
-            self.tree.add_command(self.reminder_commands)
-            self.reminder_commands.start_repeating_reminders(self)
-            logger.info('registered reminders command group')
+        if self._cmd_group_exts is not None:
+            for ext in self._cmd_group_exts:
+                self.tree.add_command(ext)
+                await ext.post_init(self)
+                logger.info(f'registered {ext.name} command group')
 
         await self.tree.sync()
         for guild in self.guilds:

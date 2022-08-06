@@ -11,6 +11,7 @@ from discord.ext import tasks
 
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
+from threepseat.ext.extension import CommandGroupExtension
 from threepseat.ext.reminders.data import Reminder
 from threepseat.ext.reminders.data import RemindersTable
 from threepseat.ext.reminders.data import ReminderType
@@ -38,7 +39,7 @@ class ReminderTaskKey(NamedTuple):
     name: str
 
 
-class ReminderCommands(app_commands.Group):
+class ReminderCommands(CommandGroupExtension):
     """App commands for reminders for text and voice channels."""
 
     def __init__(self, db_path: str) -> None:
@@ -60,11 +61,11 @@ class ReminderCommands(app_commands.Group):
             guild_only=True,
         )
 
-    def start_repeating_reminders(self, client: discord.Client) -> None:
-        """Start all enabled reminder tasks."""
-        for guild in client.guilds:
+    async def post_init(self, bot: discord.ext.commands.Bot) -> None:
+        """Spawn all saved repeating reminder tasks."""
+        for guild in bot.guilds:
             for reminder in self.table.all(guild.id):
-                self.start_reminder(client, reminder, ReminderType.REPEATING)
+                self.start_reminder(bot, reminder, ReminderType.REPEATING)
 
     def start_reminder(
         self,

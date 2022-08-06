@@ -16,17 +16,18 @@ from threepseat.ext.custom.data import CustomCommand
 
 
 @pytest.fixture
-def mockbot(tmp_file: str) -> Generator[Bot, None, None]:
+def command_fixtures(
+    tmp_file: str,
+) -> Generator[tuple[Bot, CustomCommands], None, None]:
     cc = CustomCommands(tmp_file)
-    bot = Bot(custom_commands=cc)
+    bot = Bot(extensions=[cc])
     with mock.patch.object(bot.tree, 'sync', mock.AsyncMock()):
-        yield bot
+        yield bot, cc
 
 
 @pytest.mark.asyncio
-async def test_create(mockbot: Bot) -> None:
-    custom = mockbot.custom_commands
-    assert custom is not None
+async def test_create(command_fixtures: tuple[Bot, CustomCommands]) -> None:
+    mockbot, custom = command_fixtures
     create_ = extract(custom.create)
 
     interaction = MockInteraction(
@@ -54,9 +55,10 @@ async def test_create(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_invalid_name(mockbot: Bot) -> None:
-    custom = mockbot.custom_commands
-    assert custom is not None
+async def test_create_invalid_name(
+    command_fixtures: tuple[Bot, CustomCommands],
+) -> None:
+    mockbot, custom = command_fixtures
     create_ = extract(custom.create)
 
     interaction = MockInteraction(
@@ -82,9 +84,8 @@ async def test_create_invalid_name(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_list(mockbot: Bot) -> None:
-    custom = mockbot.custom_commands
-    assert custom is not None
+async def test_list(command_fixtures: tuple[Bot, CustomCommands]) -> None:
+    mockbot, custom = command_fixtures
     list_ = extract(custom.list)
 
     interaction = MockInteraction(
@@ -116,7 +117,7 @@ async def test_list(mockbot: Bot) -> None:
         'get_guild',
         return_value=interaction.guild,
     ):
-        await custom.register_all(mockbot)
+        await custom.post_init(mockbot)
 
     interaction = MockInteraction(
         custom.list,
@@ -134,9 +135,8 @@ async def test_list(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_remove(mockbot: Bot) -> None:
-    custom = mockbot.custom_commands
-    assert custom is not None
+async def test_remove(command_fixtures: tuple[Bot, CustomCommands]) -> None:
+    mockbot, custom = command_fixtures
     remove_ = extract(custom.remove)
 
     command = CustomCommand(
@@ -181,9 +181,11 @@ async def test_remove(mockbot: Bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_on_error(mockbot: Bot, caplog) -> None:
-    custom = mockbot.custom_commands
-    assert custom is not None
+async def test_on_error(
+    command_fixtures: tuple[Bot, CustomCommands],
+    caplog,
+) -> None:
+    mockbot, custom = command_fixtures
 
     interaction = MockInteraction(
         custom.remove,

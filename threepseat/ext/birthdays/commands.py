@@ -13,6 +13,7 @@ from discord.ext import tasks
 from threepseat.commands.commands import log_interaction
 from threepseat.ext.birthdays.data import Birthday
 from threepseat.ext.birthdays.data import BirthdayTable
+from threepseat.ext.extension import CommandGroupExtension
 from threepseat.utils import primary_channel
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ class Months(enum.Enum):
     December = 12
 
 
-class BirthdayCommands(app_commands.Group):
+class BirthdayCommands(CommandGroupExtension):
     """App commands group for birthday messages."""
 
     def __init__(self, db_path: str) -> None:
@@ -55,6 +56,12 @@ class BirthdayCommands(app_commands.Group):
             description='Guild member birthday messages',
             guild_only=True,
         )
+
+    async def post_init(self, bot: discord.ext.commands.Bot) -> None:
+        """Launch birthday task."""
+        self._birthday_task = self.birthday_task(bot)
+        self._birthday_task.start()
+        logger.info('spawning birthday checker background task')
 
     def birthday_task(self, client: discord.Client) -> tasks.Loop[tasks.LF]:
         """Return async task that will check for birthdays once per day."""

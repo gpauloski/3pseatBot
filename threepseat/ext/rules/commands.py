@@ -11,6 +11,7 @@ from discord.ext import tasks
 
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
+from threepseat.ext.extension import CommandGroupExtension
 from threepseat.ext.rules.data import GuildConfig
 from threepseat.ext.rules.data import RulesDatabase
 from threepseat.ext.rules.exceptions import EventStartError
@@ -28,7 +29,7 @@ NOT_CONFIGURED_MESSAGE = (
 )
 
 
-class RulesCommands(app_commands.Group):
+class RulesCommands(CommandGroupExtension):
     """App commands for rules extension."""
 
     def __init__(self, db_path: str) -> None:
@@ -47,6 +48,12 @@ class RulesCommands(app_commands.Group):
             description='Enforce legacy 3pseat rules for this channel',
             guild_only=True,
         )
+
+    async def post_init(self, bot: discord.ext.commands.Bot) -> None:
+        """Add the message listener to the bot and spawn the event starter."""
+        bot.add_listener(self.on_message, 'on_message')
+        self._event_starter_task = self.event_starter(bot)
+        self._event_starter_task.start()
 
     async def handle_offending_message(self, message: discord.Message) -> None:
         """Handle side effects for message that breaks rules.

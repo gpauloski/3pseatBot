@@ -48,7 +48,7 @@ async def test_start_repeating_reminders(reminders) -> None:
             MockGuild('guild', REMINDER.guild_id),
             MockGuild('guild', 42),
         ]
-        reminders.start_repeating_reminders(client)
+        await reminders.post_init(client)
 
     assert len(reminders._tasks) == 2
 

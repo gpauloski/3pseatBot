@@ -49,22 +49,24 @@ async def test_bot_startup(tmp_file: str, caplog) -> None:
         assert bot.change_presence.called
         assert bot.tree.sync.called
 
+        extensions = [
+            BirthdayCommands(tmp_file),
+            CustomCommands(tmp_file),
+            ReminderCommands(tmp_file),
+            RulesCommands(tmp_file),
+            SoundCommands(
+                tmp_file,
+                data_path='/tmp/threepseat-test',
+            ),
+        ]
+
         with mock.patch(
             'threepseat.bot.Bot.guilds',
             new_callable=mock.PropertyMock(
                 return_value=[MockGuild('guild', 1234)],
             ),
         ):
-            bot = Bot(
-                birthday_commands=BirthdayCommands(tmp_file),
-                custom_commands=CustomCommands(tmp_file),
-                sound_commands=SoundCommands(
-                    tmp_file,
-                    data_path='/tmp/threepseat-test',
-                ),
-                rules_commands=RulesCommands(tmp_file),
-                reminder_commands=ReminderCommands(tmp_file),
-            )
+            bot = Bot(extensions=extensions)
             await bot.on_ready()
 
     assert any(

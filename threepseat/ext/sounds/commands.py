@@ -8,14 +8,16 @@ from discord import app_commands
 
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
+from threepseat.ext.extension import CommandGroupExtension
 from threepseat.ext.sounds.data import SoundsTable
+from threepseat.utils import leave_on_empty
 from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 
 logger = logging.getLogger(__name__)
 
 
-class SoundCommands(app_commands.Group):
+class SoundCommands(CommandGroupExtension):
     """App commands for sound board."""
 
     def __init__(self, db_path: str, data_path: str) -> None:
@@ -32,6 +34,11 @@ class SoundCommands(app_commands.Group):
             description='Soundboard for voice channels',
             guild_only=True,
         )
+
+    async def post_init(self, bot: discord.ext.commands.Bot) -> None:
+        """Spawn task that leaves channels when they are empty."""
+        self._vc_leaver_task = leave_on_empty(bot, 60)
+        self._vc_leaver_task.start()
 
     @app_commands.command(name='add', description='Add a sound')
     @app_commands.describe(name='Name of sound (max 12 characters)')
