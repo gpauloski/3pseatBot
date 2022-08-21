@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import random
 from collections.abc import Callable
@@ -47,9 +48,10 @@ def reminder_task(
         count=2 if kind == ReminderType.ONE_TIME else None,
     )
     async def _reminder() -> None:
-        if _reminder.current_loop == 0:
+        if _reminder.current_loop == 0 and kind == ReminderType.ONE_TIME:
             # Skip first loop so task actually does delay before first
-            # reminder.
+            # reminder. We only do this for one time reminders as repeating
+            # reminders have a random sleep added before the first loop.
             return
 
         guild = client.get_guild(reminder.guild_id)
@@ -84,6 +86,14 @@ def reminder_task(
             and callback is not None
         ):
             callback()
+
+    @_reminder.before_loop
+    async def _delay_start() -> None:
+        # For repeating reminders, we start reminder at some random offset
+        # for some /variation/
+        if kind == ReminderType.REPEATING:
+            offset_seconds = 60 * random.uniform(1, reminder.delay_minutes)
+            await asyncio.sleep(int(offset_seconds))
 
     return _reminder
 
