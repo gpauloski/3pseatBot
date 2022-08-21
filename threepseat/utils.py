@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import functools
 import io
 import logging
@@ -54,6 +55,73 @@ def primary_channel(guild: discord.Guild) -> discord.TextChannel | None:
             return channel_candidate
 
     return None
+
+
+def readable_timedelta(
+    *,
+    days: float = 0,
+    hours: float = 0,
+    minutes: float = 0,
+    seconds: float = 0,
+) -> str:
+    """Converts timedelta to readable string.
+
+    Usage:
+        >>> readable_timedelta(hours=12, minutes=3)
+        "12 hours and 3 minutes"
+        >>> readable_timedelta(days=2, hours=25, seconds=2)
+        "3 days, 1 hour, and 2 seconds"
+        >>> readable_timedelta()
+        "0 seconds"
+
+    Note:
+        All arguments are passed to datetime.timedelta() and second is
+        the lowest precision supported.
+
+    Args:
+        days (float): number of days (default: 0).
+        hours (float): number of hours (default: 0).
+        minutes (float): number of minutes (default: 0).
+        seconds (float): number of seconds (default: 0).
+
+    Returns:
+        time delta formatted as readable string.
+    """
+    delta = datetime.timedelta(
+        days=days,
+        hours=hours,
+        minutes=minutes,
+        seconds=seconds,
+    )
+    remainder = int(delta.total_seconds())
+
+    days, remainder = divmod(remainder, 60 * 60 * 24)
+    hours, remainder = divmod(remainder, 60 * 60)
+    minutes, remainder = divmod(remainder, 60)
+    seconds = remainder
+
+    units: list[tuple[int, str]] = []
+    if days != 0:
+        units.append((days, 'day' if days == 1 else 'days'))
+    if hours != 0:
+        units.append((hours, 'hour' if hours == 1 else 'hours'))
+    if minutes != 0:
+        units.append((minutes, 'minute' if minutes == 1 else 'minutes'))
+    if seconds != 0:
+        units.append((seconds, 'second' if seconds == 1 else 'seconds'))
+
+    if len(units) == 0:
+        return '0 seconds'
+
+    units_ = [f'{value} {unit}' for value, unit in units]
+    if len(units) == 1:
+        return units_[0]
+    if len(units) == 2:
+        return f'{units_[0]} and {units_[1]}'
+
+    before_and = ', '.join(units_[:-1])
+    after_and = units_[-1]
+    return f'{before_and}, and {after_and}'
 
 
 def voice_channel(member: discord.Member) -> discord.VoiceChannel | None:

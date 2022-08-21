@@ -18,6 +18,7 @@ from threepseat.utils import cached_load
 from threepseat.utils import leave_on_empty
 from threepseat.utils import play_sound
 from threepseat.utils import primary_channel
+from threepseat.utils import readable_timedelta
 from threepseat.utils import split_strings
 from threepseat.utils import voice_channel
 
@@ -78,6 +79,40 @@ def test_primary_channel() -> None:
         guild._channels = {'c1': channel}  # type: ignore
         with mock.patch('threepseat.utils.isinstance', return_value=False):
             assert primary_channel(guild) is None
+
+
+@pytest.mark.parametrize(
+    'args,expected',
+    (
+        # Default value
+        ({}, '0 seconds'),
+        # Singular vs plural
+        ({'days': 1}, '1 day'),
+        ({'days': 2}, '2 days'),
+        ({'hours': 1}, '1 hour'),
+        ({'hours': 2}, '2 hours'),
+        ({'minutes': 1}, '1 minute'),
+        ({'minutes': 2}, '2 minutes'),
+        ({'seconds': 1}, '1 second'),
+        ({'seconds': 2}, '2 seconds'),
+        # Two non-zero items (concatenates with and)
+        ({'minutes': 3, 'seconds': 1}, '3 minutes and 1 second'),
+        # Three or more non-zero items (concatenates with commas and and)
+        (
+            {'days': 5, 'minutes': 3, 'seconds': 1},
+            '5 days, 3 minutes, and 1 second',
+        ),
+        (
+            {'days': 5, 'hours': 25, 'minutes': 3, 'seconds': 1},
+            '6 days, 1 hour, 3 minutes, and 1 second',
+        ),
+        # Negative values
+        ({'minutes': 3, 'seconds': -1}, '2 minutes and 59 seconds'),
+        ({'days': -3, 'minutes': -1}, '-4 days, 23 hours, and 59 minutes'),
+    ),
+)
+def test_readable_timedelta(args: dict[str, float], expected: str) -> None:
+    assert readable_timedelta(**args) == expected
 
 
 def test_voice_channel() -> None:
