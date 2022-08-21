@@ -19,6 +19,7 @@ from threepseat.ext.rules.exceptions import GuildNotConfiguredError
 from threepseat.ext.rules.exceptions import MaxOffensesExceededError
 from threepseat.ext.rules.utils import ignore_message
 from threepseat.utils import primary_channel
+from threepseat.utils import readable_sequence
 from threepseat.utils import readable_timedelta
 from threepseat.utils import split_strings
 
@@ -181,10 +182,11 @@ class RulesCommands(CommandGroupExtension):
 
         duration = config.event_duration if duration is None else duration
         duration_readable = readable_timedelta(minutes=duration)
+        prefixes = readable_sequence(split_strings(config.prefixes), 'or')
 
         await channel.send(
             f'3pseat mode is starting for {duration_readable}! '
-            f'All messages with text must start with {config.prefixes}.',
+            f'All messages with text must start with {prefixes}.',
         )
 
         logger.info(
@@ -314,27 +316,28 @@ class RulesCommands(CommandGroupExtension):
                 NOT_CONFIGURED_MESSAGE,
                 ephemeral=True,
             )
-        else:
-            enabled = 'enabled' if config.enabled > 0 else 'disabled'
-            last_event = (
-                'never'
-                if config.last_event == 0
-                else datetime.datetime.fromtimestamp(config.last_event)
-            )
-            event_duration = readable_timedelta(minutes=config.event_duration)
-            timeout_duration = readable_timedelta(
-                minutes=config.timeout_duration,
-            )
-            await interaction.response.send_message(
-                f'Legacy 3pseat mode is **{enabled}**.\n'
-                f'- *Expected events per day*: {config.event_expectancy}\n'
-                f'- *Event duration*: {event_duration}\n'
-                f'- *Max offenses before timeout*: {config.max_offenses}\n'
-                f'- *Timeout duration*: {timeout_duration}\n'
-                f'- *Prefix pattern*: {config.prefixes}\n'
-                f'- *Last event*: {last_event}',
-                ephemeral=True,
-            )
+            return
+
+        enabled = 'enabled' if config.enabled > 0 else 'disabled'
+        last_event = (
+            'never'
+            if config.last_event == 0
+            else datetime.datetime.fromtimestamp(config.last_event)
+        )
+        event_duration = readable_timedelta(minutes=config.event_duration)
+        timeout_duration = readable_timedelta(minutes=config.timeout_duration)
+        prefixes = readable_sequence(split_strings(config.prefixes), 'or')
+
+        await interaction.response.send_message(
+            f'Legacy 3pseat mode is **{enabled}**.\n'
+            f'- *Expected events per day*: {config.event_expectancy}\n'
+            f'- *Event duration*: {event_duration}\n'
+            f'- *Max offenses before timeout*: {config.max_offenses}\n'
+            f'- *Timeout duration*: {timeout_duration}\n'
+            f'- *Prefix pattern*: {prefixes}\n'
+            f'- *Last event*: {last_event}',
+            ephemeral=True,
+        )
 
     @app_commands.command(
         name='enable',
