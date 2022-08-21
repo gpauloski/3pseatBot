@@ -160,7 +160,11 @@ class RulesCommands(CommandGroupExtension):
 
         await self.handle_offending_message(message)
 
-    async def start_event(self, guild: discord.Guild) -> None:
+    async def start_event(
+        self,
+        guild: discord.Guild,
+        duration: float | None = None,
+    ) -> None:
         """Start a rules enforcement event for the guild."""
         config = self.database.get_config(guild.id)
         if config is None:
@@ -175,9 +179,11 @@ class RulesCommands(CommandGroupExtension):
                 f'{guild.name} ({guild.id})',
             )
 
-        duration = readable_timedelta(minutes=config.event_duration)
+        duration = config.event_duration if duration is None else duration
+        duration_readable = readable_timedelta(minutes=duration)
+
         await channel.send(
-            f'3pseat mode is starting for {duration}! '
+            f'3pseat mode is starting for {duration_readable}! '
             f'All messages with text must start with {config.prefixes}.',
         )
 
@@ -189,7 +195,7 @@ class RulesCommands(CommandGroupExtension):
             self.stop_event(
                 guild=guild,
                 channel=channel,
-                sleep_seconds=config.event_duration * 60,
+                sleep_seconds=duration * 60,
             ),
         )
 
@@ -334,19 +340,23 @@ class RulesCommands(CommandGroupExtension):
         name='enable',
         description='[Admin Only] Enable legacy 3pseat events for the guild',
     )
-    @app_commands.describe(immediate='Optionally start event immediately')
+    @app_commands.describe(
+        immediate='Optionally start event immediately',
+        duration='Override duration (minutes) if starting event immediately',
+    )
     @app_commands.check(admin_or_owner)
     @app_commands.check(log_interaction)
     async def enable(
         self,
         interaction: discord.Interaction,
         immediate: bool = False,
+        duration: app_commands.Range[float, 1.0, None] | None = None,
     ) -> None:
         """Enable events for the guild."""
         assert interaction.guild is not None
         if immediate:
             try:
-                await self.start_event(interaction.guild)
+                await self.start_event(interaction.guild, duration=duration)
             except EventStartError as e:
                 await interaction.response.send_message(
                     f'Failed to start event: {e}.',
