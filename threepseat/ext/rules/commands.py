@@ -19,6 +19,8 @@ from threepseat.ext.rules.exceptions import GuildNotConfiguredError
 from threepseat.ext.rules.exceptions import MaxOffensesExceededError
 from threepseat.ext.rules.utils import ignore_message
 from threepseat.utils import primary_channel
+from threepseat.utils import readable_sequence
+from threepseat.utils import readable_timedelta
 from threepseat.utils import split_strings
 
 logger = logging.getLogger(__name__)
@@ -159,7 +161,11 @@ class RulesCommands(CommandGroupExtension):
 
         await self.handle_offending_message(message)
 
-    async def start_event(self, guild: discord.Guild) -> None:
+    async def start_event(
+        self,
+        guild: discord.Guild,
+        duration: float | None = None,
+    ) -> None:
         """Start a rules enforcement event for the guild."""
         config = self.database.get_config(guild.id)
         if config is None:
@@ -174,20 +180,24 @@ class RulesCommands(CommandGroupExtension):
                 f'{guild.name} ({guild.id})',
             )
 
+        duration = config.event_duration if duration is None else duration
+        duration_readable = readable_timedelta(minutes=duration)
+        prefixes = readable_sequence(split_strings(config.prefixes), 'or')
+
         await channel.send(
-            f'3pseat mode is starting for {config.event_duration} minutes! '
-            f'All messages with text must start with {config.prefixes}.',
+            f'3pseat mode is starting for {duration_readable}! '
+            f'All messages with text must start with {prefixes}.',
         )
 
         logger.info(
             f'starting rules event for {guild.name} ({guild.id}) for '
-            f'{config.event_duration} minutes',
+            f'{duration}',
         )
         self.event_handlers[guild.id] = asyncio.create_task(
             self.stop_event(
                 guild=guild,
                 channel=channel,
-                sleep_seconds=config.event_duration * 60,
+                sleep_seconds=duration * 60,
             ),
         )
 
@@ -268,6 +278,10 @@ class RulesCommands(CommandGroupExtension):
         """Configure events for a guild."""
         assert interaction.guild is not None
 
+        # This ensures there is one space after each part in case the user
+        # has it formatted slightly differently
+        prefixes = ', '.join(split_strings(prefixes))
+
         config = GuildConfig(
             guild_id=interaction.guild.id,
             enabled=False,
@@ -302,41 +316,50 @@ class RulesCommands(CommandGroupExtension):
                 NOT_CONFIGURED_MESSAGE,
                 ephemeral=True,
             )
-        else:
-            enabled = 'enabled' if config.enabled > 0 else 'disabled'
-            last_event = (
-                'never'
-                if config.last_event == 0
-                else datetime.datetime.fromtimestamp(config.last_event)
-            )
-            await interaction.response.send_message(
-                f'Legacy 3pseat mode is **{enabled}**.\n'
-                f'- *Expected events per day*: {config.event_expectancy}\n'
-                f'- *Event duration (minutes)*: {config.event_duration}\n'
-                f'- *Max offenses before timeout*: {config.max_offenses}\n'
-                f'- *Timeout duration (minutes)*: {config.timeout_duration}\n'
-                f'- *Prefix pattern*: {config.prefixes}\n'
-                f'- *Last event*: {last_event}',
-                ephemeral=True,
-            )
+            return
+
+        enabled = 'enabled' if config.enabled > 0 else 'disabled'
+        last_event = (
+            'never'
+            if config.last_event == 0
+            else datetime.datetime.fromtimestamp(config.last_event)
+        )
+        event_duration = readable_timedelta(minutes=config.event_duration)
+        timeout_duration = readable_timedelta(minutes=config.timeout_duration)
+        prefixes = readable_sequence(split_strings(config.prefixes), 'or')
+
+        await interaction.response.send_message(
+            f'Legacy 3pseat mode is **{enabled}**.\n'
+            f'- *Expected events per day*: {config.event_expectancy}\n'
+            f'- *Event duration*: {event_duration}\n'
+            f'- *Max offenses before timeout*: {config.max_offenses}\n'
+            f'- *Timeout duration*: {timeout_duration}\n'
+            f'- *Prefix pattern*: {prefixes}\n'
+            f'- *Last event*: {last_event}',
+            ephemeral=True,
+        )
 
     @app_commands.command(
         name='enable',
         description='[Admin Only] Enable legacy 3pseat events for the guild',
     )
-    @app_commands.describe(immediate='Optionally start event immediately')
+    @app_commands.describe(
+        immediate='Optionally start event immediately',
+        duration='Override duration (minutes) if starting event immediately',
+    )
     @app_commands.check(admin_or_owner)
     @app_commands.check(log_interaction)
     async def enable(
         self,
         interaction: discord.Interaction,
         immediate: bool = False,
+        duration: app_commands.Range[float, 1.0, None] | None = None,
     ) -> None:
         """Enable events for the guild."""
         assert interaction.guild is not None
         if immediate:
             try:
-                await self.start_event(interaction.guild)
+                await self.start_event(interaction.guild, duration=duration)
             except EventStartError as e:
                 await interaction.response.send_message(
                     f'Failed to start event: {e}.',

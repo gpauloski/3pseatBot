@@ -17,6 +17,7 @@ from threepseat.ext.reminders.data import RemindersTable
 from threepseat.ext.reminders.data import ReminderType
 from threepseat.ext.reminders.utils import reminder_task
 from threepseat.utils import alphanumeric
+from threepseat.utils import readable_timedelta
 
 MAX_TEXT_LENGTH = 200
 WARN_ON_LONG_DELAY = 6 * 60
@@ -222,11 +223,12 @@ class ReminderCommands(CommandGroupExtension):
         date = datetime.datetime.fromtimestamp(
             reminder.creation_time,
         ).strftime('%B %d, %Y')
+        delay = readable_timedelta(minutes=reminder.delay_minutes)
         msg = (
             f'Reminder *{reminder.name}* ({value.kind.value}):\n'
             f' - message: {reminder.text}\n'
             f' - channel: {channel_str}\n'
-            f' - delay: {reminder.delay_minutes} minute(s)n'
+            f' - delay: {delay}\n'
             f' - author: {user_str}\n'
             f' - created: {date}\n'
         )
