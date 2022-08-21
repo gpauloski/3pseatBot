@@ -7,6 +7,7 @@ import io
 import logging
 import re
 import warnings
+from collections.abc import Sequence
 from typing import cast
 
 import discord
@@ -55,6 +56,29 @@ def primary_channel(guild: discord.Guild) -> discord.TextChannel | None:
             return channel_candidate
 
     return None
+
+
+def readable_sequence(values: Sequence[str], conjunction: str = 'and') -> str:
+    """Joins a sequence as a readable list with commands and a conjunction.
+
+    Args:
+        values (sequence[str]): sequence of strings to join.
+        conjunction (str): conjunction to join the last two elements by
+            (default: and).
+
+    Returns:
+        string that is the joined sequence.
+    """
+    if len(values) == 0:
+        return ''
+    elif len(values) == 1:
+        return values[0]
+    elif len(values) == 2:
+        return f'{values[0]} {conjunction} {values[1]}'
+
+    before = ', '.join(values[:-1])
+    after = values[-1]
+    return f'{before}, {conjunction} {after}'
 
 
 def readable_timedelta(
@@ -114,14 +138,7 @@ def readable_timedelta(
         return '0 seconds'
 
     units_ = [f'{value} {unit}' for value, unit in units]
-    if len(units) == 1:
-        return units_[0]
-    if len(units) == 2:
-        return f'{units_[0]} and {units_[1]}'
-
-    before_and = ', '.join(units_[:-1])
-    after_and = units_[-1]
-    return f'{before_and}, and {after_and}'
+    return readable_sequence(units_, 'and')
 
 
 def voice_channel(member: discord.Member) -> discord.VoiceChannel | None:

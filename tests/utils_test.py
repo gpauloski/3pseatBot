@@ -18,6 +18,7 @@ from threepseat.utils import cached_load
 from threepseat.utils import leave_on_empty
 from threepseat.utils import play_sound
 from threepseat.utils import primary_channel
+from threepseat.utils import readable_sequence
 from threepseat.utils import readable_timedelta
 from threepseat.utils import split_strings
 from threepseat.utils import voice_channel
@@ -79,6 +80,23 @@ def test_primary_channel() -> None:
         guild._channels = {'c1': channel}  # type: ignore
         with mock.patch('threepseat.utils.isinstance', return_value=False):
             assert primary_channel(guild) is None
+
+
+@pytest.mark.parametrize(
+    'values,conjunction,expected',
+    (
+        ([], 'and', ''),
+        (['a'], 'and', 'a'),
+        (['a', 'b'], 'and', 'a and b'),
+        (['a', 'b', 'c', 'd'], 'or', 'a, b, c, or d'),
+    ),
+)
+def test_readable_sequence(
+    values: list[str],
+    conjunction: str,
+    expected: str,
+) -> None:
+    assert readable_sequence(values, conjunction) == expected
 
 
 @pytest.mark.parametrize(
