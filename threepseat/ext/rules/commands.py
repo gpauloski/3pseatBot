@@ -19,6 +19,7 @@ from threepseat.ext.rules.exceptions import GuildNotConfiguredError
 from threepseat.ext.rules.exceptions import MaxOffensesExceededError
 from threepseat.ext.rules.utils import ignore_message
 from threepseat.utils import primary_channel
+from threepseat.utils import readable_timedelta
 from threepseat.utils import split_strings
 
 logger = logging.getLogger(__name__)
@@ -174,14 +175,15 @@ class RulesCommands(CommandGroupExtension):
                 f'{guild.name} ({guild.id})',
             )
 
+        duration = readable_timedelta(minutes=config.event_duration)
         await channel.send(
-            f'3pseat mode is starting for {config.event_duration} minutes! '
+            f'3pseat mode is starting for {duration}! '
             f'All messages with text must start with {config.prefixes}.',
         )
 
         logger.info(
             f'starting rules event for {guild.name} ({guild.id}) for '
-            f'{config.event_duration} minutes',
+            f'{duration}',
         )
         self.event_handlers[guild.id] = asyncio.create_task(
             self.stop_event(
@@ -309,12 +311,16 @@ class RulesCommands(CommandGroupExtension):
                 if config.last_event == 0
                 else datetime.datetime.fromtimestamp(config.last_event)
             )
+            event_duration = readable_timedelta(minutes=config.event_duration)
+            timeout_duration = readable_timedelta(
+                minutes=config.timeout_duration,
+            )
             await interaction.response.send_message(
                 f'Legacy 3pseat mode is **{enabled}**.\n'
                 f'- *Expected events per day*: {config.event_expectancy}\n'
-                f'- *Event duration (minutes)*: {config.event_duration}\n'
+                f'- *Event duration*: {event_duration}\n'
                 f'- *Max offenses before timeout*: {config.max_offenses}\n'
-                f'- *Timeout duration (minutes)*: {config.timeout_duration}\n'
+                f'- *Timeout duration*: {timeout_duration}\n'
                 f'- *Prefix pattern*: {config.prefixes}\n'
                 f'- *Last event*: {last_event}',
                 ephemeral=True,
