@@ -270,6 +270,10 @@ class RulesCommands(CommandGroupExtension):
         """Configure events for a guild."""
         assert interaction.guild is not None
 
+        # This ensures there is one space after each part in case the user
+        # has it formatted slightly differently
+        prefixes = ', '.join(split_strings(prefixes))
+
         config = GuildConfig(
             guild_id=interaction.guild.id,
             enabled=False,
