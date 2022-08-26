@@ -60,7 +60,7 @@ repos:
     -   id: mypy
         # Add any additional typed package dependencies here
         additional_dependencies: [
-            'git+https://github.com/Rapptz/discord.py.git@13c725f1836168eca97a5e51180625a32f3eb2cc',
+            'discord-py>=2.0.0',
             'quart==0.17.0',
             'types-emoji',
             'types-requests'
