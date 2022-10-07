@@ -4,6 +4,7 @@ import asyncio
 import datetime
 import logging
 import random
+import time
 
 import discord
 from discord import app_commands
@@ -201,6 +202,10 @@ class RulesCommands(CommandGroupExtension):
             ),
         )
 
+        # Starting event success so update last_event time
+        config = config._replace(last_event=time.time())
+        self.database.update_config(config)
+
     async def stop_event(
         self,
         guild: discord.Guild,
@@ -326,7 +331,9 @@ class RulesCommands(CommandGroupExtension):
         last_event = (
             'never'
             if config.last_event == 0
-            else datetime.datetime.fromtimestamp(config.last_event)
+            else datetime.datetime.fromtimestamp(config.last_event).strftime(
+                '%-d %B %Y at %-I:%M:%S %p',
+            )
         )
         event_duration = readable_timedelta(minutes=config.event_duration)
         timeout_duration = readable_timedelta(minutes=config.timeout_duration)
@@ -484,7 +491,7 @@ class RulesCommands(CommandGroupExtension):
                 return
             last_offense = datetime.datetime.fromtimestamp(
                 user_data.last_offense,
-            ).strftime('%d %B %Y')
+            ).strftime('%-d %B %Y at %-I:%M:%S %p')
             await interaction.response.send_message(
                 f'{user.mention} currently has {user_data.current_offenses}/'
                 f'{config.max_offenses} offenses and '
