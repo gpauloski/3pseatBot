@@ -195,7 +195,7 @@ async def sound_grid(guild_id: int) -> Response:
         for sound in sound_list
     ]
 
-    sound_data.sort(key=lambda x: x.name)
+    sound_data.sort(key=lambda x: x.name.lower())
 
     return await quart.render_template(
         'sounds.html',
