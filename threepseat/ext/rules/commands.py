@@ -241,9 +241,13 @@ class RulesCommands(CommandGroupExtension):
                 if guild is None:
                     continue
                 # Expectancy is expected number of events per day so scale
-                # by number of chances for an event to start per day
+                # by number of chances for an event to start per day. For
+                # example, if event_expectancy is 0.25 (one event every
+                # four days) and chances per day is 24, p = 0.25/24.
+                # Then we pick a random number is trigger the event if less
+                # than p.
                 p = max(min(config.event_expectancy / chances_per_day, 1), 0)
-                if p <= random.random():
+                if random.random() <= p:
                     await self.start_event(guild)
 
         return _event_starter

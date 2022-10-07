@@ -206,11 +206,11 @@ async def test_event_starter(commands) -> None:
         mock.patch.object(commands, 'start_event', mock.AsyncMock()) as mocked,
         mock.patch.object(client, 'get_guild', return_value=guild),
     ):
-        with mock.patch('random.random', return_value=0):
+        with mock.patch('random.random', return_value=1):
             await func()
             assert mocked.await_count == 0
 
-        with mock.patch('random.random', return_value=1.1):
+        with mock.patch('random.random', return_value=0):
             await func()
             assert mocked.await_count == 1
 
