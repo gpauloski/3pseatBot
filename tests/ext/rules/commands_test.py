@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Generator
 from unittest import mock
 
@@ -206,13 +207,25 @@ async def test_event_starter(commands) -> None:
         mock.patch.object(commands, 'start_event', mock.AsyncMock()) as mocked,
         mock.patch.object(client, 'get_guild', return_value=guild),
     ):
-        with mock.patch('random.random', return_value=0):
+        with mock.patch('random.random', return_value=1):
             await func()
             assert mocked.await_count == 0
 
-        with mock.patch('random.random', return_value=1.1):
+        with mock.patch('random.random', return_value=0):
             await func()
             assert mocked.await_count == 1
+
+        # Test cooldown prevents starting
+        config_orig = commands.database.get_config(GUILD_CONFIG.guild_id)
+        config_new = config_orig._replace(
+            event_cooldown=5,
+            last_event=time.time(),
+        )
+        commands.database.update_config(config_new)
+        await func()
+        assert mocked.await_count == 1
+        # Restore original config
+        commands.database.update_config(config_orig)
 
     with mock.patch.object(client, 'get_guild', return_value=None):
         await func()

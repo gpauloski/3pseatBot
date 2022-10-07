@@ -4,6 +4,7 @@ import asyncio
 import datetime
 import logging
 import random
+import time
 
 import discord
 from discord import app_commands
@@ -201,6 +202,10 @@ class RulesCommands(CommandGroupExtension):
             ),
         )
 
+        # Starting event success so update last_event time
+        config = config._replace(last_event=time.time())
+        self.database.update_config(config)
+
     async def stop_event(
         self,
         guild: discord.Guild,
@@ -240,10 +245,22 @@ class RulesCommands(CommandGroupExtension):
                 guild = client.get_guild(config.guild_id)
                 if guild is None:
                     continue
+                # Skip if still in cooldown period
+                last_event_delta = time.time() - config.last_event
+                if (
+                    # Check > 0 in case current time is before last_event
+                    0 < last_event_delta < config.event_cooldown * 60
+                    and config.last_event > 0
+                ):
+                    continue
                 # Expectancy is expected number of events per day so scale
-                # by number of chances for an event to start per day
+                # by number of chances for an event to start per day. For
+                # example, if event_expectancy is 0.25 (one event every
+                # four days) and chances per day is 24, p = 0.25/24.
+                # Then we pick a random number is trigger the event if less
+                # than p.
                 p = max(min(config.event_expectancy / chances_per_day, 1), 0)
-                if p <= random.random():
+                if random.random() <= p:
                     await self.start_event(guild)
 
         return _event_starter
@@ -258,9 +275,12 @@ class RulesCommands(CommandGroupExtension):
         prefixes='Comma-separated list of prefixes',
         expectancy=(
             'Expected number of event occurrences per day '
-            '(default: twice per week)'
+            '(default: 2/7, twice per week)'
         ),
-        duration='Duration of event in minutes (default: 1 hour)',
+        cooldown=(
+            'Cooldown between random events in minutes (default: 720 minutes)'
+        ),
+        duration='Duration of event in minutes (default: 60 minutes)',
         max_offenses='Max offenses before user is timed out (default: 3)',
         timeout='Minutes to timeout user for (default: 3 minutes)',
     )
@@ -271,6 +291,7 @@ class RulesCommands(CommandGroupExtension):
         interaction: discord.Interaction,
         prefixes: str,
         expectancy: app_commands.Range[float, 0.0, None] = 2 / 7,
+        cooldown: app_commands.Range[float, 0.0, None] = 720.0,
         duration: app_commands.Range[float, 1.0, None] = 60.0,
         max_offenses: app_commands.Range[int, 1, None] = 3,
         timeout: app_commands.Range[float, 0.0, None] = 3.0,
@@ -287,7 +308,7 @@ class RulesCommands(CommandGroupExtension):
             enabled=False,
             event_expectancy=expectancy,
             event_duration=duration,
-            event_cooldown=0,
+            event_cooldown=cooldown,
             last_event=0,
             max_offenses=max_offenses,
             timeout_duration=timeout,
@@ -322,7 +343,9 @@ class RulesCommands(CommandGroupExtension):
         last_event = (
             'never'
             if config.last_event == 0
-            else datetime.datetime.fromtimestamp(config.last_event)
+            else datetime.datetime.fromtimestamp(config.last_event).strftime(
+                '%-d %B %Y at %-I:%M:%S %p',
+            )
         )
         event_duration = readable_timedelta(minutes=config.event_duration)
         timeout_duration = readable_timedelta(minutes=config.timeout_duration)
@@ -480,7 +503,7 @@ class RulesCommands(CommandGroupExtension):
                 return
             last_offense = datetime.datetime.fromtimestamp(
                 user_data.last_offense,
-            ).strftime('%d %B %Y')
+            ).strftime('%-d %B %Y at %-I:%M:%S %p')
             await interaction.response.send_message(
                 f'{user.mention} currently has {user_data.current_offenses}/'
                 f'{config.max_offenses} offenses and '

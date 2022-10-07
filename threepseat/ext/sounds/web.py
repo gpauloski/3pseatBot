@@ -195,7 +195,7 @@ async def sound_grid(guild_id: int) -> Response:
         for sound in sound_list
     ]
 
-    sound_data.sort(key=lambda x: x.name)
+    sound_data.sort(key=lambda x: x.name.lower())
 
     return await quart.render_template(
         'sounds.html',
@@ -242,7 +242,7 @@ async def sound_play(guild_id: int, sound_name: str) -> Response:
 async def login() -> Response:  # pragma: no cover
     """Login with discord OAuth."""
     discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    return await discord.create_session()
+    return await discord.create_session(prompt=True)
 
 
 @sounds_blueprint.route('/logout/')
@@ -258,6 +258,7 @@ async def callback() -> Response:  # pragma: no cover
     """Discord OAuth callback route."""
     discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
     await discord.callback()
+    quart.session.permanent = True
     return quart.redirect(quart.url_for('sounds.guilds'))
 
 
