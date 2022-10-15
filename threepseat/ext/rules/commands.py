@@ -246,9 +246,12 @@ class RulesCommands(CommandGroupExtension):
                 if guild is None:
                     continue
                 # Skip if still in cooldown period
-                last_event_delta = time.time() - config.last_event
+                last_event_delta = time.time() - (
+                    config.last_event + (config.event_duration * 60)
+                )
                 if (
                     # Check > 0 in case current time is before last_event
+                    # + event_duration (e.g., if event_duration was shortened)
                     0 < last_event_delta < config.event_cooldown * 60
                     and config.last_event > 0
                 ):
@@ -347,6 +350,7 @@ class RulesCommands(CommandGroupExtension):
                 '%-d %B %Y at %-I:%M:%S %p',
             )
         )
+        event_cooldown = readable_timedelta(minutes=config.event_cooldown)
         event_duration = readable_timedelta(minutes=config.event_duration)
         timeout_duration = readable_timedelta(minutes=config.timeout_duration)
         prefixes = readable_sequence(split_strings(config.prefixes), 'or')
@@ -355,6 +359,7 @@ class RulesCommands(CommandGroupExtension):
             f'Legacy 3pseat mode is **{enabled}**.\n'
             f'- *Expected events per day*: {config.event_expectancy}\n'
             f'- *Event duration*: {event_duration}\n'
+            f'- *Event cooldown*: {event_cooldown}\n'
             f'- *Max offenses before timeout*: {config.max_offenses}\n'
             f'- *Timeout duration*: {timeout_duration}\n'
             f'- *Prefix pattern*: {prefixes}\n'
