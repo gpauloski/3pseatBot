@@ -12,6 +12,7 @@ from discord.ext import tasks
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
 from threepseat.ext.extension import CommandGroupExtension
+from threepseat.ext.extension import MAX_CHOICES_LENGTH
 from threepseat.ext.reminders.data import Reminder
 from threepseat.ext.reminders.data import RemindersTable
 from threepseat.ext.reminders.data import ReminderType
@@ -118,11 +119,12 @@ class ReminderCommands(CommandGroupExtension):
             for key, value in self._tasks.items()
             if interaction.guild.id == key.guild_id
         ]
-        return [
+        choices = [
             app_commands.Choice(name=f'{name} ({kind})', value=name)
             for name, kind in name_kinds
             if current.lower() in name.lower() or current == ''
         ]
+        return choices[: min(len(choices), MAX_CHOICES_LENGTH)]
 
     @app_commands.command(
         name='create',

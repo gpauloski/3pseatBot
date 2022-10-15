@@ -10,6 +10,7 @@ from discord import app_commands
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
 from threepseat.ext.extension import CommandGroupExtension
+from threepseat.ext.extension import MAX_CHOICES_LENGTH
 from threepseat.ext.sounds.data import MemberSound
 from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import SoundsTable
@@ -122,11 +123,12 @@ class SoundCommands(CommandGroupExtension):
     ) -> list[app_commands.Choice[str]]:
         """Return list of sound choices matching current."""
         assert interaction.guild is not None
-        return [
+        choices = [
             app_commands.Choice(name=sound.name, value=sound.name)
             for sound in self.table.all(interaction.guild.id)
             if current.lower() in sound.name.lower() or current == ''
         ]
+        return choices[: min(len(choices), MAX_CHOICES_LENGTH)]
 
     @app_commands.command(name='list', description='List available sounds')
     @app_commands.check(log_interaction)
