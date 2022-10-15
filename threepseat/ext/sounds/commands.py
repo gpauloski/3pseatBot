@@ -233,6 +233,7 @@ class SoundCommands(CommandGroupExtension):
         self.join_table.update(member_sound)
         await interaction.response.send_message(
             f'Updated your voice channel entry sound to *{name}*.',
+            ephemeral=True,
         )
 
     @app_commands.command(
