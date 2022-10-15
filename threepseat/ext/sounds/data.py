@@ -120,6 +120,48 @@ class SoundsTable(SQLTableInterface[Sound]):
             )
 
 
+class MemberSound(NamedTuple):
+    """Sound to play when a member joins a voice channel."""
+
+    member_id: int
+    guild_id: int
+    name: str
+    updated_time: float
+
+
+class MemberSoundTable(SQLTableInterface[MemberSound]):
+    """Sounds to play when members join voice channels."""
+
+    def __init__(self, db_path: str) -> None:
+        """Init MemberSoundTable.
+
+        Args:
+            db_path (str): path to sqlite database.
+        """
+        super().__init__(
+            MemberSound,
+            'member_sounds',
+            db_path,
+            primary_keys=('member_id', 'guild_id'),
+        )
+
+    def _all(self, guild_id: int) -> list[MemberSound]:  # type: ignore
+        """Get all member sounds in guild."""
+        return super()._all(guild_id=guild_id)
+
+    def _get(  # type: ignore
+        self,
+        member_id: int,
+        guild_id: int,
+    ) -> MemberSound | None:
+        """Get MemberSound for member."""
+        return super()._get(member_id=member_id, guild_id=guild_id)
+
+    def remove(self, member_id: int, guild_id: int) -> int:  # type: ignore
+        """Remove a MemberSound from the table."""
+        return super().remove(member_id=member_id, guild_id=guild_id)
+
+
 def download(link: str, filepath: str) -> None:
     """Download sound from YouTube.
 

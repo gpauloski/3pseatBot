@@ -8,6 +8,8 @@ from unittest import mock
 import pytest
 
 from threepseat.ext.sounds.data import download
+from threepseat.ext.sounds.data import MemberSound
+from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
 
@@ -246,3 +248,23 @@ def test_youtube_download_errors(tmp_path: pathlib.Path) -> None:
         ):
             with pytest.raises(ValueError, match='downloading'):
                 download(link, filepath)
+
+
+def test_member_sounds_table(tmp_path: pathlib.Path) -> None:
+    db_path = os.path.join(tmp_path, 'member-sounds.db')
+
+    member_sounds = MemberSoundTable(db_path)
+    sound = MemberSound(member_id=1, guild_id=2, name='test', updated_time=0)
+
+    member_sounds.update(sound)
+    assert len(member_sounds.all(sound.guild_id)) == 1
+    assert len(member_sounds.all(guild_id=42)) == 0
+
+    assert (
+        member_sounds.get(member_id=sound.member_id, guild_id=sound.guild_id)
+        == sound
+    )
+    assert member_sounds.get(member_id=0, guild_id=0) is None
+
+    member_sounds.remove(member_id=sound.member_id, guild_id=sound.guild_id)
+    assert len(member_sounds.all(sound.guild_id)) == 0

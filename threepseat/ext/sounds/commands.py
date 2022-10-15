@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import logging
+import time
 
 import discord
 from discord import app_commands
@@ -9,6 +10,8 @@ from discord import app_commands
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
 from threepseat.ext.extension import CommandGroupExtension
+from threepseat.ext.sounds.data import MemberSound
+from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import SoundsTable
 from threepseat.utils import leave_on_empty
 from threepseat.utils import play_sound
@@ -28,6 +31,7 @@ class SoundCommands(CommandGroupExtension):
             data_path (str): directory where sound files are stored.
         """
         self.table = SoundsTable(db_path, data_path)
+        self.join_table = MemberSoundTable(db_path)
 
         super().__init__(
             name='sounds',
@@ -39,6 +43,46 @@ class SoundCommands(CommandGroupExtension):
         """Spawn task that leaves channels when they are empty."""
         self._vc_leaver_task = leave_on_empty(bot, 60)
         self._vc_leaver_task.start()
+
+        bot.add_listener(self.on_voice_state_update, 'on_voice_state_update')
+
+    async def on_voice_state_update(
+        self,
+        member: discord.Member,
+        before: discord.VoiceState,
+        after: discord.VoiceState,
+    ) -> None:
+        """Play sounds on member voice channel join."""
+        assert member.guild is not None
+        if (
+            not isinstance(after.channel, discord.VoiceChannel)
+            or before.channel == after.channel
+        ):
+            return
+
+        member_sound = self.join_table.get(
+            member_id=member.id,
+            guild_id=member.guild.id,
+        )
+        if member_sound is None:
+            return
+
+        sound = self.table.get(
+            name=member_sound.name,
+            guild_id=member.guild.id,
+        )
+        if sound is None:
+            return
+
+        try:
+            await play_sound(
+                self.table.filepath(sound.filename),
+                after.channel,
+            )
+        except Exception as e:
+            logger.exception(
+                f'caught exception when playing sound on member join: {e}',
+            )
 
     @app_commands.command(name='add', description='Add a sound')
     @app_commands.describe(name='Name of sound (max 12 characters)')
@@ -156,6 +200,40 @@ class SoundCommands(CommandGroupExtension):
             logger.exception(f'caught exception when playing sound: {e}')
         else:
             await interaction.followup.send('Played!')
+
+    @app_commands.command(
+        name='register',
+        description='Register your entry sound',
+    )
+    @app_commands.describe(name='Name of sound to play when joining a channel')
+    @app_commands.autocomplete(name=autocomplete)
+    @app_commands.check(log_interaction)
+    async def register(
+        self,
+        interaction: discord.Interaction,
+        name: str,
+    ) -> None:
+        """Register your sound."""
+        assert interaction.guild is not None
+
+        sound = self.table.get(name, guild_id=interaction.guild.id)
+        if sound is None:
+            await interaction.response.send_message(
+                f'A sound named *{name}* does not exist.',
+                ephemeral=True,
+            )
+            return
+
+        member_sound = MemberSound(
+            member_id=interaction.user.id,
+            guild_id=interaction.guild.id,
+            name=name,
+            updated_time=time.time(),
+        )
+        self.join_table.update(member_sound)
+        await interaction.response.send_message(
+            f'Updated your voice channel entry sound to *{name}*.',
+        )
 
     @app_commands.command(
         name='remove',
