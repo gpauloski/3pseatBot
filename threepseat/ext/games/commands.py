@@ -10,6 +10,7 @@ from discord import app_commands
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
 from threepseat.ext.extension import CommandGroupExtension
+from threepseat.ext.extension import MAX_CHOICES_LENGTH
 from threepseat.ext.games.data import Game
 from threepseat.ext.games.data import GamesTable
 
@@ -42,11 +43,12 @@ class GamesCommands(CommandGroupExtension):
         assert interaction.guild is not None
         games = self.table.all(interaction.guild.id)
         games.sort(key=lambda g: g.name)
-        return [
+        choices = [
             app_commands.Choice(name=game.name, value=game.name)
             for game in games
             if current.lower() in game.name.lower() or current == ''
         ]
+        return choices[: min(len(choices), MAX_CHOICES_LENGTH)]
 
     @app_commands.command(
         name='add',

@@ -3,6 +3,8 @@ from __future__ import annotations
 import discord
 from discord import app_commands
 
+MAX_CHOICES_LENGTH = 25
+
 
 class CommandGroupExtension(app_commands.Group):
     """Base class for 3pseatBot command group extensions."""

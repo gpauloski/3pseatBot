@@ -13,6 +13,7 @@ from threepseat.commands.commands import log_interaction
 from threepseat.ext.custom.data import CustomCommand
 from threepseat.ext.custom.data import CustomCommandTable
 from threepseat.ext.extension import CommandGroupExtension
+from threepseat.ext.extension import MAX_CHOICES_LENGTH
 from threepseat.utils import alphanumeric
 
 logger = logging.getLogger(__name__)
@@ -103,11 +104,12 @@ class CustomCommands(CommandGroupExtension):
     ) -> list[app_commands.Choice[str]]:
         """Return list of custom commands in the guild matching current."""
         assert interaction.guild is not None
-        return [
+        choices = [
             app_commands.Choice(name=command.name, value=command.name)
             for command in self.table.all(interaction.guild.id)
             if current.lower() in command.name.lower() or current == ''
         ]
+        return choices[: min(len(choices), MAX_CHOICES_LENGTH)]
 
     @app_commands.command(
         name='create',
