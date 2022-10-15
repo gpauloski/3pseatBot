@@ -10,7 +10,7 @@ class CommandGroupExtension(app_commands.Group):
     async def post_init(self, bot: discord.ext.commands.Bot) -> None:
         """Complete post initialization using a bot.
 
-        This method should typically be called once after the extension
+        This method should only be called once after the extension
         and the bot/client have been initialized.
 
         Subclasses can use this method to launch background tasks that need
