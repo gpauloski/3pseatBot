@@ -173,6 +173,25 @@ async def test_start_event(commands) -> None:
 
 
 @pytest.mark.asyncio
+async def test_resume_event(commands) -> None:
+    guild = MockGuild('guild', GUILD_CONFIG.guild_id)
+    channel = MockChannel('channel')
+
+    with (
+        mock.patch(
+            'threepseat.ext.rules.commands.primary_channel',
+            return_value=channel,
+        ),
+        mock.patch.object(channel, 'send', mock.AsyncMock()) as mock_send,
+    ):
+        await commands.start_event(guild, resume=True)
+        assert guild.id in commands.event_handlers
+        commands.event_handlers[guild.id].cancel()
+        # Resume should not send event starting message
+        assert mock_send.await_count == 0
+
+
+@pytest.mark.asyncio
 async def test_stop_event(commands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     channel = MockChannel('channel')
@@ -219,6 +238,7 @@ async def test_event_starter(commands) -> None:
         config_orig = commands.database.get_config(GUILD_CONFIG.guild_id)
         config_new = config_orig._replace(
             event_cooldown=5,
+            event_duration=0,
             last_event=time.time(),
         )
         commands.database.update_config(config_new)
@@ -524,3 +544,48 @@ async def test_on_error(commands, caplog) -> None:
     caplog.set_level(logging.ERROR)
     await commands.on_error(interaction, app_commands.AppCommandError('test1'))
     assert any(['test1' in record.message for record in caplog.records])
+
+
+@pytest.mark.asyncio
+async def test_resume_events(commands) -> None:
+    config = GuildConfig(
+        guild_id=100,
+        enabled=1,
+        event_expectancy=0.5,
+        event_duration=60,
+        event_cooldown=5.0,
+        last_event=time.time(),
+        max_offenses=3,
+        timeout_duration=300,
+        prefixes='3pseat, 3pfeet',
+    )
+    guild = MockGuild('guild', config.guild_id)
+    client = MockClient(MockUser('bot', 42))
+    commands.database.update_config(config)
+
+    with (
+        mock.patch.object(client, 'get_guild', return_value=guild),
+        mock.patch.object(client, 'add_listener'),
+        mock.patch.object(
+            commands,
+            'start_event',
+            mock.AsyncMock(),
+        ) as mock_start,
+    ):
+        await commands.post_init(client)
+        assert mock_start.await_count == 1
+    commands._event_starter_task.cancel()
+
+    # Retest with guild not found
+    with (
+        mock.patch.object(client, 'get_guild', return_value=None),
+        mock.patch.object(client, 'add_listener'),
+        mock.patch.object(
+            commands,
+            'start_event',
+            mock.AsyncMock(),
+        ) as mock_start,
+    ):
+        await commands.post_init(client)
+        assert mock_start.await_count == 0
+    commands._event_starter_task.cancel()

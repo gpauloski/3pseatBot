@@ -55,6 +55,26 @@ class RulesCommands(CommandGroupExtension):
     async def post_init(self, bot: discord.ext.commands.Bot) -> None:
         """Add the message listener to the bot and spawn the event starter."""
         bot.add_listener(self.on_message, 'on_message')
+
+        # Scan database for guilds that should be in an event
+        for config in self.database.get_configs():
+            time_since_last_event = time.time() - config.last_event
+            event_time_remain = (
+                config.last_event + (config.event_duration * 60)
+            ) - time.time()
+            # Add 60 second buffer to not restart event if bot restarts
+            # within a minute of the event ending. Probably not needed but if
+            # the bot gets into a thrashing state of restarting it may be good
+            in_event = (
+                config.event_duration * 60
+            ) > time_since_last_event and event_time_remain > 60
+            if config.enabled and in_event and config.last_event > 0:
+                guild = bot.get_guild(config.guild_id)
+                if guild is None:
+                    continue
+                duration = config.event_duration - (time_since_last_event / 60)
+                await self.start_event(guild, duration, resume=True)
+
         self._event_starter_task = self.event_starter(bot)
         self._event_starter_task.start()
 
@@ -166,6 +186,7 @@ class RulesCommands(CommandGroupExtension):
         self,
         guild: discord.Guild,
         duration: float | None = None,
+        resume: bool = False,
     ) -> None:
         """Start a rules enforcement event for the guild."""
         config = self.database.get_config(guild.id)
@@ -185,14 +206,16 @@ class RulesCommands(CommandGroupExtension):
         duration_readable = readable_timedelta(minutes=duration)
         prefixes = readable_sequence(split_strings(config.prefixes), 'or')
 
-        await channel.send(
-            f'3pseat mode is starting for {duration_readable}! '
-            f'All messages with text must start with {prefixes}.',
-        )
+        if not resume:
+            await channel.send(
+                f'3pseat mode is starting for {duration_readable}! '
+                f'All messages with text must start with {prefixes}.',
+            )
 
+        action = 'resuming' if resume else 'starting'
         logger.info(
-            f'starting rules event for {guild.name} ({guild.id}) for '
-            f'{duration}',
+            f'{action} rules event for {guild.name} ({guild.id}) for '
+            f'{duration_readable}',
         )
         self.event_handlers[guild.id] = asyncio.create_task(
             self.stop_event(
@@ -202,9 +225,10 @@ class RulesCommands(CommandGroupExtension):
             ),
         )
 
-        # Starting event success so update last_event time
-        config = config._replace(last_event=time.time())
-        self.database.update_config(config)
+        if not resume:
+            # Starting new event success so update last_event time
+            config = config._replace(last_event=time.time())
+            self.database.update_config(config)
 
     async def stop_event(
         self,
@@ -246,9 +270,12 @@ class RulesCommands(CommandGroupExtension):
                 if guild is None:
                     continue
                 # Skip if still in cooldown period
-                last_event_delta = time.time() - config.last_event
+                last_event_delta = time.time() - (
+                    config.last_event + (config.event_duration * 60)
+                )
                 if (
                     # Check > 0 in case current time is before last_event
+                    # + event_duration (e.g., if event_duration was shortened)
                     0 < last_event_delta < config.event_cooldown * 60
                     and config.last_event > 0
                 ):
@@ -347,6 +374,7 @@ class RulesCommands(CommandGroupExtension):
                 '%-d %B %Y at %-I:%M:%S %p',
             )
         )
+        event_cooldown = readable_timedelta(minutes=config.event_cooldown)
         event_duration = readable_timedelta(minutes=config.event_duration)
         timeout_duration = readable_timedelta(minutes=config.timeout_duration)
         prefixes = readable_sequence(split_strings(config.prefixes), 'or')
@@ -355,6 +383,7 @@ class RulesCommands(CommandGroupExtension):
             f'Legacy 3pseat mode is **{enabled}**.\n'
             f'- *Expected events per day*: {config.event_expectancy}\n'
             f'- *Event duration*: {event_duration}\n'
+            f'- *Event cooldown*: {event_cooldown}\n'
             f'- *Max offenses before timeout*: {config.max_offenses}\n'
             f'- *Timeout duration*: {timeout_duration}\n'
             f'- *Prefix pattern*: {prefixes}\n'
