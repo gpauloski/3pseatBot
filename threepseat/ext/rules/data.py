@@ -86,8 +86,10 @@ class RulesDatabase:
         """Update user offenses row matching the guild and user id."""
         return self.offenses_table.update(user)
 
-    def add_offense(self, guild_id: int, user_id: int) -> int:
+    def add_offense(self, guild_id: int, user_id: int, count: int = 1) -> int:
         """Add offense to user in guild."""
+        if count < 1:
+            raise ValueError('Count must be greater than zero.')
         config = self.get_config(guild_id)
         if config is None:
             raise GuildNotConfiguredError()
@@ -96,27 +98,34 @@ class RulesDatabase:
             user = UserOffenses(
                 guild_id=guild_id,
                 user_id=user_id,
-                current_offenses=1,
-                total_offenses=1,
+                current_offenses=count,
+                total_offenses=count,
                 last_offense=time.time(),
             )
         else:
             user = user._replace(
-                current_offenses=user.current_offenses + 1,
-                total_offenses=user.total_offenses + 1,
+                current_offenses=user.current_offenses + count,
+                total_offenses=user.total_offenses + count,
             )
         self.update_user(user)
         if user.current_offenses >= config.max_offenses:
             raise MaxOffensesExceededError()
         return user.current_offenses
 
-    def remove_offense(self, guild_id: int, user_id: int) -> None:
+    def remove_offense(
+        self,
+        guild_id: int,
+        user_id: int,
+        count: int = 1,
+    ) -> None:
         """Remove offense from user in guild."""
+        if count < 1:
+            raise ValueError('Count must be greater than zero.')
         user = self.get_user(guild_id, user_id)
         if user is not None:
             user = user._replace(
-                current_offenses=max(0, user.current_offenses - 1),
-                total_offenses=max(0, user.total_offenses - 1),
+                current_offenses=max(0, user.current_offenses - count),
+                total_offenses=max(0, user.total_offenses - count),
             )
             self.update_user(user)
 

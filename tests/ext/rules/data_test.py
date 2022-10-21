@@ -71,11 +71,12 @@ def test_add_offense(tmp_file: str) -> None:
     assert user.current_offenses == 1
     assert user.total_offenses == 1
 
-    assert rules.add_offense(guild_id=GUILD_CONFIG.guild_id, user_id=42) == 2
+    with pytest.raises(MaxOffensesExceededError):
+        rules.add_offense(guild_id=GUILD_CONFIG.guild_id, user_id=42, count=2)
     user = rules.get_user(guild_id=GUILD_CONFIG.guild_id, user_id=42)
     assert user is not None
-    assert user.current_offenses == 2
-    assert user.total_offenses == 2
+    assert user.current_offenses == 3
+    assert user.total_offenses == 3
 
 
 def test_add_offense_guild_error(tmp_file: str) -> None:
@@ -115,6 +116,13 @@ def test_remove_offense(tmp_file: str) -> None:
     # Unknown users are no-ops
     rules.remove_offense(guild_id=GUILD_CONFIG.guild_id, user_id=1)
 
+    rules.add_offense(guild_id=GUILD_CONFIG.guild_id, user_id=42, count=2)
+    rules.remove_offense(guild_id=GUILD_CONFIG.guild_id, user_id=42, count=2)
+    user = rules.get_user(guild_id=GUILD_CONFIG.guild_id, user_id=42)
+    assert user is not None
+    assert user.current_offenses == 0
+    assert user.total_offenses == 0
+
 
 def test_reset_current_offenses(tmp_file: str) -> None:
     rules = RulesDatabase(db_path=tmp_file)
@@ -130,3 +138,19 @@ def test_reset_current_offenses(tmp_file: str) -> None:
 
     # Unknown users are no-ops
     rules.reset_current_offenses(guild_id=GUILD_CONFIG.guild_id, user_id=1)
+
+
+def test_add_remove_below_one(tmp_file: str) -> None:
+    rules = RulesDatabase(db_path=tmp_file)
+
+    with pytest.raises(ValueError):
+        rules.add_offense(1, 1, 0)
+
+    with pytest.raises(ValueError):
+        rules.add_offense(1, 1, -1)
+
+    with pytest.raises(ValueError):
+        rules.remove_offense(1, 1, 0)
+
+    with pytest.raises(ValueError):
+        rules.remove_offense(1, 1, -1)

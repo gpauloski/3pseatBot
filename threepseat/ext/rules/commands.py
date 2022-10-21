@@ -545,12 +545,14 @@ class RulesCommands(CommandGroupExtension):
         description='[Admin Only] Add an offense to the user',
     )
     @app_commands.describe(user='User to add offense to')
+    @app_commands.describe(count='Number of offenses to add')
     @app_commands.check(admin_or_owner)
     @app_commands.check(log_interaction)
     async def add_offense(
         self,
         interaction: discord.Interaction,
         user: discord.Member,
+        count: app_commands.Range[int, 1, None] = 1,
     ) -> None:
         """Add an offense to the member."""
         assert interaction.guild is not None
@@ -558,6 +560,7 @@ class RulesCommands(CommandGroupExtension):
             current = self.database.add_offense(
                 guild_id=interaction.guild.id,
                 user_id=user.id,
+                count=count,
             )
         except GuildNotConfiguredError:
             await interaction.response.send_message(
@@ -573,8 +576,8 @@ class RulesCommands(CommandGroupExtension):
             await interaction.response.send_message(msg)
         else:
             await interaction.response.send_message(
-                f'Added an offense to {user.mention}. '
-                f'They now have {current}.',
+                f'Added {count} offense{"s" if count > 1 else ""} '
+                f'to {user.mention}. They now have {current}.',
             )
 
     @app_commands.command(
@@ -582,18 +585,21 @@ class RulesCommands(CommandGroupExtension):
         description='[Admin Only] Remove an offense from the user',
     )
     @app_commands.describe(user='User to remove offense from')
+    @app_commands.describe(count='Number of offenses to remove')
     @app_commands.check(admin_or_owner)
     @app_commands.check(log_interaction)
     async def remove_offense(
         self,
         interaction: discord.Interaction,
         user: discord.Member,
+        count: app_commands.Range[int, 1, None] = 1,
     ) -> None:
         """Remove an offense from the member."""
         assert interaction.guild is not None
-        self.database.remove_offense(interaction.guild.id, user.id)
+        self.database.remove_offense(interaction.guild.id, user.id, count)
         await interaction.response.send_message(
-            f'Removed offense from {user.mention}.',
+            f'Removed {count} offense{"s" if count > 1 else ""} from '
+            f'{user.mention}.',
         )
 
     @app_commands.command(

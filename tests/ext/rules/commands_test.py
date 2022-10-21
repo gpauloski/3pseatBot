@@ -452,14 +452,15 @@ async def test_add_offense(commands) -> None:
     )
     member = MockMember('user', 42, MockGuild('guild', GUILD_CONFIG.guild_id))
 
-    await add_offense_(commands, interaction, member)
+    await add_offense_(commands, interaction, member, count=2)
     assert interaction.responded
     assert (
         interaction.response_message is not None
-        and 'Added an offense' in interaction.response_message
+        and 'Added 2 offenses' in interaction.response_message
     )
 
     data = commands.database.get_user(GUILD_CONFIG.guild_id, 42)
+    assert data.current_offenses == 2
     commands.database.update_user(data._replace(current_offenses=1000))
 
     with mock.patch.object(
@@ -504,7 +505,7 @@ async def test_remove_offenses(commands) -> None:
     assert interaction.responded
     assert (
         interaction.response_message is not None
-        and 'Removed offense' in interaction.response_message
+        and 'Removed 1 offense' in interaction.response_message
     )
 
 
