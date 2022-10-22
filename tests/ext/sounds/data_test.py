@@ -216,10 +216,10 @@ def test_youtube_download(tmp_path: pathlib.Path) -> None:
 
     with (
         mock.patch(
-            'youtube_dl.YoutubeDL.extract_info',
+            'yt_dlp.YoutubeDL.extract_info',
             return_value={'duration': 0.1},
         ),
-        mock.patch('youtube_dl.YoutubeDL.download'),
+        mock.patch('yt_dlp.YoutubeDL.download'),
     ):
         download(link, filepath)
 
@@ -228,14 +228,14 @@ def test_youtube_download_errors(tmp_path: pathlib.Path) -> None:
     filepath = os.path.join(tmp_path, 'test_video.mp3')
     link = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
 
-    with mock.patch('youtube_dl.YoutubeDL.extract_info') as mock_extract:
+    with mock.patch('yt_dlp.YoutubeDL.extract_info') as mock_extract:
         mock_extract.return_value = {'duration': 10000}
         with pytest.raises(ValueError, match='Clip is longer than'):
             download(link, filepath)
 
         mock_extract.return_value = {'duration': 0}
         with mock.patch(
-            'youtube_dl.YoutubeDL.extract_info',
+            'yt_dlp.YoutubeDL.extract_info',
             side_effect=Exception('test'),
         ):
             with pytest.raises(ValueError, match='extracting'):
@@ -243,7 +243,7 @@ def test_youtube_download_errors(tmp_path: pathlib.Path) -> None:
 
         link = 'https://www.youtube.com/watch?v=jhFDyDgMVUI'
         with mock.patch(
-            'youtube_dl.YoutubeDL.download',
+            'yt_dlp.YoutubeDL.download',
             side_effect=Exception('test'),
         ):
             with pytest.raises(ValueError, match='downloading'):

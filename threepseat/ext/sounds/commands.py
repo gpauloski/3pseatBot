@@ -128,6 +128,7 @@ class SoundCommands(CommandGroupExtension):
             for sound in self.table.all(interaction.guild.id)
             if current.lower() in sound.name.lower() or current == ''
         ]
+        choices = sorted(choices, key=lambda c: c.name.lower())
         return choices[: min(len(choices), MAX_CHOICES_LENGTH)]
 
     @app_commands.command(name='list', description='List available sounds')

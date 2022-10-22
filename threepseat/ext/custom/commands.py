@@ -109,6 +109,7 @@ class CustomCommands(CommandGroupExtension):
             for command in self.table.all(interaction.guild.id)
             if current.lower() in command.name.lower() or current == ''
         ]
+        choices = sorted(choices, key=lambda c: c.name.lower())
         return choices[: min(len(choices), MAX_CHOICES_LENGTH)]
 
     @app_commands.command(

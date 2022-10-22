@@ -124,6 +124,7 @@ class ReminderCommands(CommandGroupExtension):
             for name, kind in name_kinds
             if current.lower() in name.lower() or current == ''
         ]
+        choices = sorted(choices, key=lambda c: c.name.lower())
         return choices[: min(len(choices), MAX_CHOICES_LENGTH)]
 
     @app_commands.command(

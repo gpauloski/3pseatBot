@@ -42,12 +42,12 @@ class GamesCommands(CommandGroupExtension):
         """Return list of games in a guild."""
         assert interaction.guild is not None
         games = self.table.all(interaction.guild.id)
-        games.sort(key=lambda g: g.name)
         choices = [
             app_commands.Choice(name=game.name, value=game.name)
             for game in games
             if current.lower() in game.name.lower() or current == ''
         ]
+        choices = sorted(choices, key=lambda c: c.name.lower())
         return choices[: min(len(choices), MAX_CHOICES_LENGTH)]
 
     @app_commands.command(
