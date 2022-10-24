@@ -32,7 +32,7 @@ packages already installed.
 ```
 $ git clone https://github.com/gpauloski/3pseatBot
 $ cd 3pseatBot
-$ tox --devenv venv -e py310
+$ tox --devenv venv -e py311
 $ . venv/bin/activate
 ```
 
@@ -63,5 +63,5 @@ $ pre-commit run --all-files
 
 The test suite uses `tox`. Run the tests with:
 ```
-$ tox -e py310
+$ tox -e py311
 ```
