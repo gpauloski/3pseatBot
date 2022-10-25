@@ -1,4 +1,4 @@
-from python:3.10-slim-buster
+from python:3.11-slim-buster
 
 RUN apt update
 RUN apt -y install ffmpeg

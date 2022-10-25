@@ -6,7 +6,7 @@ import time
 import uuid
 from typing import NamedTuple
 
-import yt_dlp
+from yt_dlp import YoutubeDL
 
 from threepseat.table import SQLTableInterface
 from threepseat.utils import alphanumeric
@@ -189,7 +189,7 @@ def download(link: str, filepath: str) -> None:
         'socket_timeout': 30,
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    with YoutubeDL(ydl_opts) as ydl:
         try:
             metadata = ydl.extract_info(
                 link,
