@@ -1,8 +1,7 @@
 from python:3.11-slim-buster
 
 RUN apt update
-RUN apt -y install ffmpeg
-RUN apt -y install git
+RUN apt -y install build-essential ffmpeg git
 
 COPY . /bot
 

@@ -112,7 +112,7 @@ class SoundCommands(CommandGroupExtension):
                 guild_id=interaction.guild.id,
             )
         except ValueError as e:
-            await interaction.followup.send(str(e))
+            await interaction.followup.send(str(e), ephemeral=True)
         else:
             await interaction.followup.send(f'Added *{name}* to the sounds.')
 
@@ -264,6 +264,7 @@ class SoundCommands(CommandGroupExtension):
             self.table.remove(name, interaction.guild.id)
             await interaction.response.send_message(
                 f'Removed the *{name}* sound.',
+                ephemeral=True,
             )
 
     async def on_error(
