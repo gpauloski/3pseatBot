@@ -133,10 +133,11 @@ class CustomCommands(CommandGroupExtension):
             await interaction.response.send_message(
                 'The command name must be a single word with only '
                 'alphanumeric characters.',
+                ephemeral=True,
             )
             return
 
-        await interaction.response.defer(thinking=True)
+        await interaction.response.defer(thinking=True, ephemeral=True)
 
         assert interaction.guild is not None
         command = CustomCommand(
@@ -151,7 +152,7 @@ class CustomCommands(CommandGroupExtension):
         self.table.update(command)
         await self.register(command, interaction.client)
 
-        await interaction.followup.send(f'Created /{name}.', ephemeral=True)
+        await interaction.followup.send(f'Created /{name}.')
 
     @app_commands.command(name='list', description='List custom commands')
     @app_commands.check(log_interaction)
