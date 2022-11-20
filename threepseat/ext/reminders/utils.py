@@ -12,6 +12,7 @@ from threepseat.ext.reminders.data import Reminder
 from threepseat.ext.reminders.data import ReminderType
 from threepseat.tts import Accent
 from threepseat.tts import tts_as_mp3
+from threepseat.utils import LoopType
 from threepseat.utils import play_sound
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ def reminder_task(
     reminder: Reminder,
     kind: ReminderType,
     callback: Callable[[], None] | None,
-) -> tasks.Loop[tasks.LF]:
+) -> LoopType:
     """Return task that periodically sends reminder.
 
     Usage:

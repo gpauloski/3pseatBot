@@ -33,21 +33,21 @@ async def test_bot_startup(tmp_file: str, caplog) -> None:
         mock.patch(
             'threepseat.bot.Bot.wait_until_ready',
             mock.AsyncMock(),
-        ),
+        ) as mock_wait_until_ready,
         mock.patch(
             'threepseat.bot.Bot.change_presence',
             mock.AsyncMock(),
-        ),
+        ) as mock_change_presence,
         mock.patch(
             'discord.app_commands.tree.CommandTree.sync',
             mock.AsyncMock(),
-        ),
+        ) as mock_sync,
     ):
         bot = Bot(playing_title='3pseat Test Simulator')
         await bot.on_ready()
-        assert bot.wait_until_ready.called
-        assert bot.change_presence.called
-        assert bot.tree.sync.called
+        assert mock_wait_until_ready.called
+        assert mock_change_presence.called
+        assert mock_sync.called
 
         extensions = [
             BirthdayCommands(tmp_file),

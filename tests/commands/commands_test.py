@@ -81,8 +81,16 @@ def test_extract_command_options() -> None:
             {
                 'type': 1,
                 'options': [
-                    {'value': '12345', 'type': 6, 'name': 'user'},
-                    {'value': True, 'type': 2, 'name': 'flag'},
+                    {
+                        'value': '12345',
+                        'type': 6,
+                        'name': 'user',
+                    },  # type: ignore
+                    {
+                        'value': True,
+                        'type': 2,
+                        'name': 'flag',
+                    },  # type: ignore
                 ],
                 'name': 'list',
             },
