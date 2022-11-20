@@ -123,7 +123,7 @@ async def test_one_time_reminders_delete_themselves(reminders) -> None:
         client = MockClient(MockUser('user', 1234))
         guild = MockGuild('guild', 5678)
         channel = MockChannel('channel', 9012)
-        client.get_guild = mock.MagicMock(return_value=guild)
+        client.get_guild = mock.MagicMock(return_value=guild)  # type: ignore
         guild.get_channel = mock.MagicMock(  # type: ignore
             return_value=channel,
         )
@@ -309,7 +309,7 @@ async def test_info(reminders) -> None:
     info_ = extract(reminders.info)
 
     key = ReminderTaskKey(REMINDER.guild_id, REMINDER.name)
-    value = ReminderTask(ReminderType.ONE_TIME, REMINDER, None)
+    value = ReminderTask(ReminderType.ONE_TIME, REMINDER, None)  # type: ignore
     reminders._tasks[key] = value
 
     interaction = MockInteraction(
@@ -358,7 +358,7 @@ async def test_list(reminders) -> None:
     value = ReminderTask(
         ReminderType.ONE_TIME,
         REMINDER._replace(name='a'),
-        None,
+        None,  # type: ignore
     )
     reminders._tasks[key] = value
 
@@ -366,7 +366,7 @@ async def test_list(reminders) -> None:
     value = ReminderTask(
         ReminderType.ONE_TIME,
         REMINDER._replace(name='b'),
-        None,
+        None,  # type: ignore
     )
     reminders._tasks[key] = value
 

@@ -52,6 +52,8 @@ class Bot(commands.Bot):
         """Bot on ready event."""
         await self.setup()
         await self.wait_until_ready()
+        # Should not be none as we have waited for the login to succeed
+        assert self.user is not None
         logger.info(f'{self.user.name} (Client ID: {self.user.id}) is ready!')
 
     async def setup(self) -> None:

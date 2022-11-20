@@ -7,13 +7,19 @@ import io
 import logging
 import re
 import warnings
+from collections.abc import Callable
+from collections.abc import Coroutine
 from collections.abc import Sequence
+from typing import Any
 from typing import cast
 
 import discord
 import discord.ext.tasks as tasks
 
 logger = logging.getLogger(__name__)
+
+LF = Callable[..., Coroutine[Any, Any, Any]]
+LoopType = tasks.Loop[LF]
 
 
 def alphanumeric(s: str) -> bool:
@@ -187,7 +193,7 @@ async def play_sound(
 def leave_on_empty(
     client: discord.Client,
     interval: float = 30,
-) -> tasks.Loop[tasks.LF]:
+) -> LoopType:
     """Returns a task that when started will leave empty voice channels.
 
     This will periodically check if the client is in an empty voice

@@ -19,6 +19,7 @@ from threepseat.ext.rules.exceptions import EventStartError
 from threepseat.ext.rules.exceptions import GuildNotConfiguredError
 from threepseat.ext.rules.exceptions import MaxOffensesExceededError
 from threepseat.ext.rules.utils import ignore_message
+from threepseat.utils import LoopType
 from threepseat.utils import primary_channel
 from threepseat.utils import readable_sequence
 from threepseat.utils import readable_timedelta
@@ -248,7 +249,7 @@ class RulesCommands(CommandGroupExtension):
         self,
         client: discord.Client,
         interval_minutes: float = 60,
-    ) -> tasks.Loop[tasks.LF]:
+    ) -> LoopType:
         """Create task that will periodically start events.
 
         Usage:

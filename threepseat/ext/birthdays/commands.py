@@ -14,6 +14,7 @@ from threepseat.commands.commands import log_interaction
 from threepseat.ext.birthdays.data import Birthday
 from threepseat.ext.birthdays.data import BirthdayTable
 from threepseat.ext.extension import CommandGroupExtension
+from threepseat.utils import LoopType
 from threepseat.utils import primary_channel
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ class BirthdayCommands(CommandGroupExtension):
         self._birthday_task.start()
         logger.info('spawning birthday checker background task')
 
-    def birthday_task(self, client: discord.Client) -> tasks.Loop[tasks.LF]:
+    def birthday_task(self, client: discord.Client) -> LoopType:
         """Return async task that will check for birthdays once per day."""
 
         @tasks.loop(hours=24)

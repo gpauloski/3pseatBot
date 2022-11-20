@@ -7,7 +7,6 @@ from typing import NamedTuple
 
 import discord
 from discord import app_commands
-from discord.ext import tasks
 
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
@@ -18,6 +17,7 @@ from threepseat.ext.reminders.data import RemindersTable
 from threepseat.ext.reminders.data import ReminderType
 from threepseat.ext.reminders.utils import reminder_task
 from threepseat.utils import alphanumeric
+from threepseat.utils import LoopType
 from threepseat.utils import readable_timedelta
 
 MAX_TEXT_LENGTH = 200
@@ -31,7 +31,7 @@ class ReminderTask(NamedTuple):
 
     kind: ReminderType
     reminder: Reminder
-    task: tasks.Loop[tasks.LF]
+    task: LoopType
 
 
 class ReminderTaskKey(NamedTuple):
@@ -83,7 +83,7 @@ class ReminderCommands(CommandGroupExtension):
         def _remove_callback() -> None:
             self._tasks.pop(key, None)
 
-        task = reminder_task(
+        task: LoopType = reminder_task(
             client,
             reminder,
             kind,

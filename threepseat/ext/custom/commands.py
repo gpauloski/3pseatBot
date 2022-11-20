@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from typing import Any
+from typing import cast
 
 import discord
 from discord import app_commands
@@ -74,6 +75,9 @@ class CustomCommands(CommandGroupExtension):
         )
 
         guild = bot.get_guild(command.guild_id)
+        # This should hold as this method should only be called via an
+        # interaction from a guild
+        assert guild is not None
         bot.tree.remove_command(command.name, guild=guild)
         bot.tree.add_command(command_, guild=guild)
         if sync:
@@ -150,7 +154,8 @@ class CustomCommands(CommandGroupExtension):
         )
 
         self.table.update(command)
-        await self.register(command, interaction.client)
+        bot = cast(ext_commands.Bot, interaction.client)
+        await self.register(command, bot)
 
         await interaction.followup.send(f'Created /{name}.')
 
@@ -195,7 +200,8 @@ class CustomCommands(CommandGroupExtension):
 
         removed = bool(self.table.remove(interaction.guild.id, name))
         if removed:
-            await self.unregister(name, interaction.guild, interaction.client)
+            bot = cast(ext_commands.Bot, interaction.client)
+            await self.unregister(name, interaction.guild, bot)
             await interaction.followup.send(
                 f'Removed /{name}.',
                 ephemeral=True,

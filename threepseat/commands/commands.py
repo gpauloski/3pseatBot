@@ -43,12 +43,14 @@ def extract_command_options(
     if interaction.data is None or 'options' not in interaction.data:
         return None
     options: dict[str, Any] = {}
-    for option in interaction.data['options']:  # type: ignore
+    for option in interaction.data['options']:  # type: ignore[typeddict-item]
         if 'options' in option:
-            for suboption in option['options']:  # type: ignore
-                options[suboption['name']] = suboption['value']
+            for suboption in option['options']:  # type: ignore[typeddict-item]
+                value = suboption['value']  # type: ignore[typeddict-item]
+                options[suboption['name']] = value
         else:
-            options[option['name']] = option['value']  # type: ignore
+            value = option['value']  # type: ignore[typeddict-item]
+            options[option['name']] = value
     return options
 
 

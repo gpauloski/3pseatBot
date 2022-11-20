@@ -68,7 +68,7 @@ class MockClient(commands.Bot):
         self._user = user
 
     @property
-    def owner_id(self) -> int:
+    def owner_id(self) -> int:  # type: ignore[override]
         return self._user.id
 
     @property

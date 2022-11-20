@@ -15,6 +15,7 @@ from threepseat.ext.sounds.data import MemberSound
 from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import SoundsTable
 from threepseat.utils import leave_on_empty
+from threepseat.utils import LoopType
 from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 
@@ -42,7 +43,7 @@ class SoundCommands(CommandGroupExtension):
 
     async def post_init(self, bot: discord.ext.commands.Bot) -> None:
         """Spawn task that leaves channels when they are empty."""
-        self._vc_leaver_task = leave_on_empty(bot, 60)
+        self._vc_leaver_task: LoopType = leave_on_empty(bot, 60)
         self._vc_leaver_task.start()
 
         bot.add_listener(self.on_voice_state_update, 'on_voice_state_update')
