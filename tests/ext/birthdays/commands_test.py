@@ -44,10 +44,10 @@ async def test_birthday_task(birthdays) -> None:
         mock.patch.object(birthdays, 'send_birthday_messages') as mock_send,
     ):
         task = birthdays.birthday_task(client)
-        task.change_interval(seconds=0.01)
+        task.change_interval(seconds=0.005)
         task.start()
         while task.current_loop == 0:
-            await asleep(0.005)
+            await asleep(0.01)
         task.cancel()
 
         assert mock_send.await_count >= 1
@@ -67,10 +67,10 @@ async def test_birthday_task_sleeps_until_start(birthdays) -> None:
         commands.BIRTHDAY_CHECK_MINUTE = 59
 
         task = birthdays.birthday_task(client)
-        task.change_interval(seconds=0.01)
+        task.change_interval(seconds=0.005)
         task.start()
         while task.current_loop == 0:
-            await asleep(0.005)
+            await asleep(0.01)
         task.cancel()
 
         # Force time to be in past
@@ -78,10 +78,10 @@ async def test_birthday_task_sleeps_until_start(birthdays) -> None:
         commands.BIRTHDAY_CHECK_MINUTE = 0
 
         task = birthdays.birthday_task(client)
-        task.change_interval(seconds=0.01)
+        task.change_interval(seconds=0.005)
         task.start()
         while task.current_loop == 0:
-            await asleep(0.005)
+            await asleep(0.01)
         task.cancel()
 
 
