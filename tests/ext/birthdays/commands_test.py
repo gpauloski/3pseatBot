@@ -62,7 +62,9 @@ async def test_birthday_task_sleeps_until_start(birthdays) -> None:
         client.guilds = []  # type: ignore
 
     with mock.patch('asyncio.sleep'):
-        # Force time to be in future
+        original_check_hour = commands.BIRTHDAY_CHECK_HOUR
+        original_check_minute = commands.BIRTHDAY_CHECK_MINUTE
+        # Force next birthday check time to be in future
         commands.BIRTHDAY_CHECK_HOUR = 23
         commands.BIRTHDAY_CHECK_MINUTE = 59
 
@@ -73,7 +75,7 @@ async def test_birthday_task_sleeps_until_start(birthdays) -> None:
             await asleep(0.01)
         task.cancel()
 
-        # Force time to be in past
+        # Force next birthday check time to be in past
         commands.BIRTHDAY_CHECK_HOUR = 0
         commands.BIRTHDAY_CHECK_MINUTE = 0
 
@@ -83,6 +85,10 @@ async def test_birthday_task_sleeps_until_start(birthdays) -> None:
         while task.current_loop == 0:
             await asleep(0.01)
         task.cancel()
+
+        # Restore values
+        commands.BIRTHDAY_CHECK_HOUR = original_check_hour
+        commands.BIRTHDAY_CHECK_MINUTE = original_check_minute
 
 
 @pytest.mark.asyncio
