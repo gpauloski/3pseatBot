@@ -43,10 +43,10 @@
       <h5 class="center-align blue-grey-text text-lighten-5">Select a Discord Server</h5>
     </div>
     <div style="max-width: 500px; margin: 0 auto;">
-    <ul class="collection blue-grey darken-4" style="border-color: #37474f; margin-top: 32px; max-width: ">
+    <ul class="collection blue-grey darken-4" style="border-color: transparent; margin-top: 32px; max-width: ">
       {% for guild in guilds %}
       <a href="{{ guild.url }}">
-      <li class="collection-item blue-grey darken-2 blue-grey-text text-lighten-4" style="border-bottom-color: #37474f; height: 60px;">
+      <li class="collection-item blue-grey darken-2 blue-grey-text text-lighten-4" style="height: 60px; margin-bottom: 10px">
         <div class="blue-grey-text text-lighten-4" style="font-size: 24px; margin-top: 4px; line-height: 30px;">
           {{ guild.name }}
           <div class="secondary-content">
