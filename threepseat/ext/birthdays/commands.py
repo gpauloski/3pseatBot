@@ -85,11 +85,14 @@ class BirthdayCommands(CommandGroupExtension):
                 hour=BIRTHDAY_CHECK_HOUR,
                 minute=BIRTHDAY_CHECK_MINUTE,
             )
-            if (
-                now.hour >= BIRTHDAY_CHECK_HOUR
-                and now.minute > BIRTHDAY_CHECK_MINUTE
-            ):
-                future += datetime.timedelta(days=1)
+            # the day offset is 0 if today's check time has not occurred yet or
+            # 1 if it is later than the check time (i.e., we need to sleep
+            # until tomorrow).
+            day_offset = int(
+                now.hour >= BIRTHDAY_CHECK_MINUTE
+                and now.minute >= BIRTHDAY_CHECK_MINUTE,
+            )
+            future += datetime.timedelta(days=day_offset)
             await asyncio.sleep((future - now).seconds)
 
         return _checker
