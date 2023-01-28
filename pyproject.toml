@@ -107,7 +107,7 @@ target-version = "py37"
 
 [tool.ruff.isort]
 force-single-line = true
-known-first-party = ["foobar", "test", "testing"]
+known-first-party = ["threepseat", "test", "testing"]
 required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.per-file-ignores]
