@@ -9,13 +9,13 @@ from discord import app_commands
 
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
-from threepseat.ext.extension import CommandGroupExtension
 from threepseat.ext.extension import MAX_CHOICES_LENGTH
+from threepseat.ext.extension import CommandGroupExtension
 from threepseat.ext.sounds.data import MemberSound
 from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import SoundsTable
-from threepseat.utils import leave_on_empty
 from threepseat.utils import LoopType
+from threepseat.utils import leave_on_empty
 from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 

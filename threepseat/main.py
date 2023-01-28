@@ -20,7 +20,6 @@ from threepseat.ext.sounds import SoundCommands
 from threepseat.ext.sounds.web import create_app
 from threepseat.logging import configure_logging
 
-
 logger = logging.getLogger(__name__)
 
 

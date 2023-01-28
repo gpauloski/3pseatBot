@@ -200,7 +200,7 @@ def download(link: str, filepath: str) -> None:
             logger.exception(
                 f'caught error extracting sound metadata: {e}',
             )
-            raise ValueError('Error extracting sound metadata.')
+            raise ValueError('Error extracting sound metadata.') from e
 
         if int(metadata['duration']) > MAX_SOUND_LENGTH_SECONDS:
             raise ValueError(
@@ -211,4 +211,4 @@ def download(link: str, filepath: str) -> None:
             ydl.download([link])
         except Exception as e:
             logger.exception(f'caught error downloading sound: {e}')
-            raise ValueError('Error downloading sound.')
+            raise ValueError('Error downloading sound.') from e

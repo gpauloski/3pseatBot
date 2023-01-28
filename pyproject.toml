@@ -102,7 +102,7 @@ filterwarnings = [
 # pycodestyle, pyflakes, flake8-builtins, flake8-bugbear, isort, pep8-naming,
 # pydocstyle, flake8-debugger, flake8-commas
 select = ["E", "F", "A", "B", "I", "N", "D", "T10", "COM"]
-extend-ignore = ["D100", "D104", "D105"]
+extend-ignore = ["D100", "D104", "D105", "D401", "A002", "A003"]
 target-version = "py37"
 
 [tool.ruff.isort]

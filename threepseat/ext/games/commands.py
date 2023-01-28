@@ -9,8 +9,8 @@ from discord import app_commands
 
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
-from threepseat.ext.extension import CommandGroupExtension
 from threepseat.ext.extension import MAX_CHOICES_LENGTH
+from threepseat.ext.extension import CommandGroupExtension
 from threepseat.ext.games.data import Game
 from threepseat.ext.games.data import GamesTable
 

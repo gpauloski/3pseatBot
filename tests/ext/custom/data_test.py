@@ -3,7 +3,6 @@ from __future__ import annotations
 from threepseat.ext.custom.data import CustomCommand
 from threepseat.ext.custom.data import CustomCommandTable
 
-
 COMMAND = CustomCommand(
     name='mycommand',
     description='my test commands',

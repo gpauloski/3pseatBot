@@ -10,7 +10,6 @@ from testing.utils import extract
 from threepseat.ext.games.commands import GamesCommands
 from threepseat.ext.games.data import Game
 
-
 GAME = Game(
     guild_id=1234,
     author_id=9012,

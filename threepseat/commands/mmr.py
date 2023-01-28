@@ -7,8 +7,8 @@ import logging
 import time
 from collections.abc import Callable
 from datetime import datetime
-from typing import cast
 from typing import NamedTuple
+from typing import cast
 
 import discord
 import requests
@@ -17,7 +17,6 @@ from discord import app_commands
 from threepseat.commands.commands import log_interaction
 from threepseat.commands.commands import register_app_command
 from threepseat.utils import split_strings
-
 
 logger = logging.getLogger(__name__)
 

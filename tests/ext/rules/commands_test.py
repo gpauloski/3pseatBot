@@ -20,7 +20,6 @@ from threepseat.ext.rules.commands import RulesCommands
 from threepseat.ext.rules.data import GuildConfig
 from threepseat.ext.rules.exceptions import EventStartError
 
-
 GUILD_CONFIG = GuildConfig(
     guild_id=1234,
     enabled=1,
