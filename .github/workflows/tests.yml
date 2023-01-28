@@ -2,7 +2,7 @@ name: tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, test-me-*]
     tags:
   pull_request:
   workflow_dispatch:
@@ -23,7 +23,8 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Install ffmpeg
         uses: FedericoCarboni/setup-ffmpeg@v2
@@ -33,8 +34,21 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
+      - name: Get pip cache dir
+        id: pip-cache-dir
+        run: echo "PIP_CACHE_DIR=$(pip cache dir)" >> $GITHUB_ENV
+
+      - name: Use pip cache
+        id: pip-cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.PIP_CACHE_DIR }}
+          key: ${{ matrix.os }}-pip-${{ matrix.python }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ matrix.os }}-pip-${{ matrix.python }}-
+
       - name: Install Packages
-        run: python -mpip install --upgrade setuptools pip tox virtualenv
+        run: python -mpip install --upgrade pip tox
 
       - name: Run Tox
         run: tox -e ${{ matrix.toxenv }}
