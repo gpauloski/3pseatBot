@@ -10,14 +10,14 @@ from discord import app_commands
 
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
-from threepseat.ext.extension import CommandGroupExtension
 from threepseat.ext.extension import MAX_CHOICES_LENGTH
+from threepseat.ext.extension import CommandGroupExtension
 from threepseat.ext.reminders.data import Reminder
 from threepseat.ext.reminders.data import RemindersTable
 from threepseat.ext.reminders.data import ReminderType
 from threepseat.ext.reminders.utils import reminder_task
-from threepseat.utils import alphanumeric
 from threepseat.utils import LoopType
+from threepseat.utils import alphanumeric
 from threepseat.utils import readable_timedelta
 
 MAX_TEXT_LENGTH = 200

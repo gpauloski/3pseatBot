@@ -11,14 +11,14 @@ from testing.mock import MockGuild
 from testing.mock import MockInteraction
 from testing.mock import MockUser
 from testing.utils import extract
+from threepseat.commands.mmr import GameMode
+from threepseat.commands.mmr import Stats
+from threepseat.commands.mmr import Status
 from threepseat.commands.mmr import autocomplete_summoners
 from threepseat.commands.mmr import cache_add
 from threepseat.commands.mmr import days_since
-from threepseat.commands.mmr import GameMode
 from threepseat.commands.mmr import get_stats
 from threepseat.commands.mmr import mmr
-from threepseat.commands.mmr import Stats
-from threepseat.commands.mmr import Status
 
 
 class _MockResponse:

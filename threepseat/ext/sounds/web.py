@@ -8,9 +8,9 @@ from typing import TypeAlias
 import discord
 import quart
 from quart_discord import DiscordOAuth2Session
+from quart_discord import Unauthorized
 from quart_discord import models
 from quart_discord import requires_authorization
-from quart_discord import Unauthorized
 from werkzeug.wrappers.response import Response as werkseug_Response
 
 from threepseat.bot import Bot
@@ -109,8 +109,8 @@ def get_mutual_guilds(
     """Get mutual guilds between user and client.
 
     Args:
-        client (discord.Client)
-        user (model.User)
+        client (discord.Client): Discord client.
+        user (model.User): Discord user.
 
     Returns:
         list of Guilds.

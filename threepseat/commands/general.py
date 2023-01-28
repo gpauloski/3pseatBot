@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import random
-from typing import cast
 from typing import Literal
+from typing import cast
 
 import discord
 from discord import app_commands

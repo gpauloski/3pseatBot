@@ -17,7 +17,6 @@ from threepseat.ext.birthdays.commands import BirthdayCommands
 from threepseat.ext.birthdays.commands import Months
 from threepseat.ext.birthdays.data import Birthday
 
-
 BIRTHDAY = Birthday(
     guild_id=1234,
     user_id=5678,

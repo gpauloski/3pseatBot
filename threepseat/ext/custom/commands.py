@@ -13,8 +13,8 @@ from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
 from threepseat.ext.custom.data import CustomCommand
 from threepseat.ext.custom.data import CustomCommandTable
-from threepseat.ext.extension import CommandGroupExtension
 from threepseat.ext.extension import MAX_CHOICES_LENGTH
+from threepseat.ext.extension import CommandGroupExtension
 from threepseat.utils import alphanumeric
 
 logger = logging.getLogger(__name__)

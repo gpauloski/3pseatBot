@@ -13,13 +13,12 @@ from testing.mock import MockGuild
 from testing.mock import MockInteraction
 from testing.mock import MockUser
 from testing.utils import extract
+from threepseat.ext.reminders.commands import WARN_ON_LONG_DELAY
 from threepseat.ext.reminders.commands import ReminderCommands
 from threepseat.ext.reminders.commands import ReminderTask
 from threepseat.ext.reminders.commands import ReminderTaskKey
-from threepseat.ext.reminders.commands import WARN_ON_LONG_DELAY
 from threepseat.ext.reminders.data import Reminder
 from threepseat.ext.reminders.data import ReminderType
-
 
 REMINDER = Reminder(
     guild_id=1234,

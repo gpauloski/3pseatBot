@@ -35,7 +35,7 @@ def reminder_task(
         reminder (Reminder): reminder configuration.
         kind (ReminderType): type of reminder to configure if tasks should
             only run once.
-        callable (Callable): optional callable that takes no arguments that
+        callback (Callable): optional callable that takes no arguments that
             will be executed after the task is finished. Note this is really
             only relevant for one-time tasks.
 

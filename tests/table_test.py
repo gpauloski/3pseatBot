@@ -10,12 +10,12 @@ from typing import NamedTuple
 import pytest
 
 from threepseat.table import Field
+from threepseat.table import SQLTableInterface
 from threepseat.table import field_names
 from threepseat.table import field_types
 from threepseat.table import fields_to_insert_str
 from threepseat.table import fields_to_search_str
 from threepseat.table import fields_to_update_str
-from threepseat.table import SQLTableInterface
 
 
 class ExampleRow(NamedTuple):

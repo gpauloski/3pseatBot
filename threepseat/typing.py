@@ -11,7 +11,7 @@ def base_type(t: types.UnionType) -> type:
     function will return int.
 
     Args:
-        field (type): the optional field type to extract the base type from.
+        t (type): the optional field type to extract the base type from.
 
     Returns:
         the base type.

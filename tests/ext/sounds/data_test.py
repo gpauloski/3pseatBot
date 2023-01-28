@@ -7,11 +7,11 @@ from unittest import mock
 
 import pytest
 
-from threepseat.ext.sounds.data import download
 from threepseat.ext.sounds.data import MemberSound
 from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
+from threepseat.ext.sounds.data import download
 
 TEST_SOUND = Sound(
     uuid='abcd-efgh',

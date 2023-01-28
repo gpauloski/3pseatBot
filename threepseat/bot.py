@@ -9,7 +9,6 @@ from threepseat.commands.commands import registered_app_commands
 from threepseat.ext.extension import CommandGroupExtension
 from threepseat.listeners.listeners import registered_listeners
 
-
 logger = logging.getLogger(__name__)
 
 

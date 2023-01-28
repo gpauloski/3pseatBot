@@ -6,7 +6,6 @@ from typing import Any
 from typing import NamedTuple
 from typing import TypeVar
 
-
 _listeners: list[Listener] = []
 
 T = TypeVar('T')
