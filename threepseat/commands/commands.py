@@ -49,7 +49,7 @@ def extract_command_options(
                 value = suboption['value']  # type: ignore[typeddict-item]
                 options[suboption['name']] = value
         else:
-            value = option['value']  # type: ignore[typeddict-item]
+            value = option['value']
             options[option['name']] = value
     return options
 

@@ -17,7 +17,7 @@ MAX_TTS_CHARACTERS = 200
 logger = logging.getLogger(__name__)
 
 
-@register_app_command
+@register_app_command  # type: ignore[arg-type]
 @app_commands.command(
     name='speak',
     description='Read message as TTS in voice channel',

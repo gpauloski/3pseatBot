@@ -13,7 +13,7 @@ from threepseat.commands.commands import log_interaction
 from threepseat.commands.commands import register_app_command
 
 
-@register_app_command
+@register_app_command  # type: ignore[arg-type]
 @app_commands.command(description='Roll for a random guild emote')
 @app_commands.describe(match='Only roll for emotes that match this string')
 @app_commands.check(log_interaction)

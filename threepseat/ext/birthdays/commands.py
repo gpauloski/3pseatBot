@@ -112,7 +112,10 @@ class BirthdayCommands(CommandGroupExtension):
                 if member is not None:
                     await channel.send(f'Happy Birthday, {member.mention}!')
 
-    @app_commands.command(name='add', description='Add a member birthday')
+    @app_commands.command(  # type: ignore[arg-type]
+        name='add',
+        description='Add a member birthday',
+    )
     @app_commands.describe(
         member='Member the birthday is for',
         month='Month of the member\'s birthday',
@@ -155,7 +158,7 @@ class BirthdayCommands(CommandGroupExtension):
             ephemeral=True,
         )
 
-    @app_commands.command(
+    @app_commands.command(  # type: ignore[arg-type]
         name='list',
         description='List birthdays in the guild',
     )
@@ -186,7 +189,10 @@ class BirthdayCommands(CommandGroupExtension):
 
         await interaction.followup.send('\n'.join(birthdays_strs))
 
-    @app_commands.command(name='remove', description='Remove a birthday')
+    @app_commands.command(  # type: ignore[arg-type]
+        name='remove',
+        description='Remove a birthday',
+    )
     @app_commands.describe(member='Member to remove birthday for')
     @app_commands.check(log_interaction)
     async def remove(

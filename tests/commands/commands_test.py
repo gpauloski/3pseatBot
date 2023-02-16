@@ -66,8 +66,8 @@ def test_extract_command_options() -> None:
     interaction.data = {
         'type': 1,
         'options': [
-            {'value': 0, 'type': 4, 'name': 'start'},  # type: ignore
-            {'value': 5, 'type': 4, 'name': 'end'},  # type: ignore
+            {'value': 0, 'type': 4, 'name': 'start'},
+            {'value': 5, 'type': 4, 'name': 'end'},
         ],
         'name': 'roll',
         'id': '12345',
@@ -85,7 +85,7 @@ def test_extract_command_options() -> None:
                         'value': '12345',
                         'type': 6,
                         'name': 'user',
-                    },  # type: ignore
+                    },
                     {
                         'value': True,
                         'type': 2,
