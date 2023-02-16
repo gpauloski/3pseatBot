@@ -170,7 +170,7 @@ async def autocomplete_summoners(
     ]
 
 
-@register_app_command
+@register_app_command  # type: ignore[arg-type]
 @app_commands.command(description='Check League of Legends MMR')
 @app_commands.describe(
     summoners='Comma separated list of summoner names',

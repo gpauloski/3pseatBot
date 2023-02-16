@@ -86,7 +86,10 @@ class SoundCommands(CommandGroupExtension):
                 f'caught exception when playing sound on member join: {e}',
             )
 
-    @app_commands.command(name='add', description='Add a sound')
+    @app_commands.command(  # type: ignore[arg-type]
+        name='add',
+        description='Add a sound',
+    )
     @app_commands.describe(name='Name of sound (max 12 characters)')
     @app_commands.describe(link='Link to YouTube clip (max 30 seconds)')
     @app_commands.describe(
@@ -132,7 +135,10 @@ class SoundCommands(CommandGroupExtension):
         choices = sorted(choices, key=lambda c: c.name.lower())
         return choices[: min(len(choices), MAX_CHOICES_LENGTH)]
 
-    @app_commands.command(name='list', description='List available sounds')
+    @app_commands.command(  # type: ignore[arg-type]
+        name='list',
+        description='List available sounds',
+    )
     @app_commands.check(log_interaction)
     async def list(self, interaction: discord.Interaction) -> None:
         """List available sounds."""
@@ -146,7 +152,10 @@ class SoundCommands(CommandGroupExtension):
             sounds_str = ', '.join([s.name for s in sounds])
             await interaction.followup.send(f'Available sounds: {sounds_str}')
 
-    @app_commands.command(name='info', description='Information about a sound')
+    @app_commands.command(  # type: ignore[arg-type]
+        name='info',
+        description='Information about a sound',
+    )
     @app_commands.describe(name='Name of sound to query')
     @app_commands.autocomplete(name=autocomplete)
     @app_commands.check(log_interaction)
@@ -170,7 +179,10 @@ class SoundCommands(CommandGroupExtension):
             msg += f'*Added by {user_str} on {date}*'
             await interaction.response.send_message(msg)
 
-    @app_commands.command(name='play', description='Play a sound')
+    @app_commands.command(  # type: ignore[arg-type]
+        name='play',
+        description='Play a sound',
+    )
     @app_commands.describe(name='Name of sound to play')
     @app_commands.autocomplete(name=autocomplete)
     @app_commands.check(log_interaction)
@@ -205,7 +217,7 @@ class SoundCommands(CommandGroupExtension):
         else:
             await interaction.followup.send('Played!')
 
-    @app_commands.command(
+    @app_commands.command(  # type: ignore[arg-type]
         name='register',
         description='Register your entry sound',
     )
@@ -240,7 +252,7 @@ class SoundCommands(CommandGroupExtension):
             ephemeral=True,
         )
 
-    @app_commands.command(
+    @app_commands.command(  # type: ignore[arg-type]
         name='remove',
         description='[Admin Only] Remove a sound',
     )
