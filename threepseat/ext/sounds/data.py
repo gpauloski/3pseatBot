@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import pathlib
 import time
 import uuid
 from typing import NamedTuple
@@ -175,6 +176,7 @@ def download(link: str, filepath: str) -> None:
         ValueError:
             if there is an error downloading the clip.
     """
+    filepath = str(pathlib.Path(filepath).with_suffix('.%(ext)s'))
     ydl_opts = {
         'outtmpl': filepath,
         'format': 'worst',
