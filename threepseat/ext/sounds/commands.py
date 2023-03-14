@@ -169,7 +169,9 @@ class SoundCommands(CommandGroupExtension):
                 ephemeral=True,
             )
         else:
-            user = interaction.client.get_user(sound.author_id)
+            user = interaction.client.get_user(  # type: ignore[attr-defined]
+                sound.author_id,
+            )
             user_str = user.mention if user is not None else 'unknown'
             date = datetime.datetime.fromtimestamp(
                 sound.created_time,

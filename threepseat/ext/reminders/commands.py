@@ -219,7 +219,9 @@ class ReminderCommands(CommandGroupExtension):
         value = self._tasks[key]
         reminder = value.reminder
 
-        user = interaction.client.get_user(reminder.author_id)
+        user = interaction.client.get_user(  # type: ignore[attr-defined]
+            reminder.author_id,
+        )
         user_str = user.mention if user is not None else 'unknown'
         channel = interaction.guild.get_channel(reminder.channel_id)
         channel_str = channel.mention if channel is not None else 'unknown'

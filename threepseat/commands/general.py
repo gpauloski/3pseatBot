@@ -65,8 +65,8 @@ async def source(interaction: discord.Interaction) -> None:
     """Get 3pseatBot's source code link."""
     name = (
         'Bot'
-        if interaction.client.user is None
-        else interaction.client.user.name
+        if interaction.client.user is None  # type: ignore[attr-defined]
+        else interaction.client.user.name  # type: ignore[attr-defined]
     )
     await interaction.response.send_message(
         f'This is {name} v{threepseat.__version__}. '
