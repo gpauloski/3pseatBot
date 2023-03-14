@@ -43,11 +43,11 @@ async def test_reminder_task() -> None:
         guild = MockGuild('guild', 5678)
         text_channel = MockChannel('channel', 9012)
         voice_channel = MockVoiceChannel()
-        client.get_guild = mock.MagicMock(  # type: ignore[assignment]
+        client.get_guild = mock.MagicMock(  # type: ignore[method-assign]
             return_value=guild,
         )
 
-        guild.get_channel = mock.MagicMock(  # type: ignore[assignment]
+        guild.get_channel = mock.MagicMock(  # type: ignore[method-assign]
             return_value=text_channel,
         )
         task = reminder_task(client, REMINDER, ReminderType.ONE_TIME, None)
@@ -56,7 +56,7 @@ async def test_reminder_task() -> None:
         assert mock_text.await_count == 1
         task.cancel()
 
-        guild.get_channel = mock.MagicMock(  # type: ignore[assignment]
+        guild.get_channel = mock.MagicMock(  # type: ignore[method-assign]
             return_value=voice_channel,
         )
         task = reminder_task(client, REMINDER, ReminderType.ONE_TIME, None)
@@ -70,7 +70,7 @@ async def test_reminder_task() -> None:
 async def test_reminder_task_missing_guild(caplog) -> None:
     caplog.set_level(logging.ERROR)
     client = MockClient(MockUser('user', 1234))
-    client.get_guild = mock.MagicMock(  # type: ignore[assignment]
+    client.get_guild = mock.MagicMock(  # type: ignore[method-assign]
         return_value=None,
     )
 
@@ -87,10 +87,10 @@ async def test_reminder_task_missing_channel(caplog) -> None:
     caplog.set_level(logging.ERROR)
     client = MockClient(MockUser('user', 1234))
     guild = MockGuild('guild', 5678)
-    client.get_guild = mock.MagicMock(  # type: ignore[assignment]
+    client.get_guild = mock.MagicMock(  # type: ignore[method-assign]
         return_value=guild,
     )
-    guild.get_channel = mock.MagicMock(  # type: ignore[assignment]
+    guild.get_channel = mock.MagicMock(  # type: ignore[method-assign]
         return_value=None,
     )
 
@@ -112,7 +112,7 @@ async def test_reminder_task_callback() -> None:
         client = MockClient(MockUser('user', 1234))
         guild = MockGuild('guild', 5678)
         text_channel = MockChannel('channel', 9012)
-        client.get_guild = mock.MagicMock(  # type: ignore[assignment]
+        client.get_guild = mock.MagicMock(  # type: ignore[method-assign]
             return_value=guild,
         )
 

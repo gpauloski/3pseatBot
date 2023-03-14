@@ -99,7 +99,9 @@ async def admin_or_owner(interaction: discord.Interaction) -> bool:
     if isinstance(
         interaction.client,
         commands.Bot,
-    ) and await interaction.client.is_owner(interaction.user):
+    ) and await interaction.client.is_owner(  # type: ignore[attr-defined]
+        interaction.user,
+    ):
         return True
     elif (
         isinstance(interaction.user, discord.Member)
