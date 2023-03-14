@@ -39,7 +39,7 @@ def split_strings(text: str, delimiter: str = ',') -> list[str]:
 
     Args:
         text (str): text to split.
-        delimiter (str): delimter to split using.
+        delimiter (str): delimiter to split using.
 
     Returns:
         list of stripped substrings.
