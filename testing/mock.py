@@ -145,7 +145,7 @@ class MockInteraction(Interaction):
 
         if isinstance(channel, str):
             channel = MockChannel(channel)
-        self.channel: discord.TextChannel | None = channel  # type: ignore
+        self.channel: discord.TextChannel | None = channel
 
         if isinstance(guild, str):
             guild = MockGuild(guild, 123982131)
