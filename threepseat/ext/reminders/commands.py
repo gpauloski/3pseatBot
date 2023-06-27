@@ -7,6 +7,7 @@ from typing import NamedTuple
 
 import discord
 from discord import app_commands
+from discord.ext import commands
 
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
@@ -109,7 +110,7 @@ class ReminderCommands(CommandGroupExtension):
 
     async def autocomplete(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         current: str,
     ) -> list[app_commands.Choice[str]]:
         """Return list of reminders in the guild matching current query."""
@@ -142,7 +143,7 @@ class ReminderCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def create(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         kind: ReminderType,
         name: app_commands.Range[str, 1, 18],
         text: app_commands.Range[str, 1, MAX_TEXT_LENGTH],
@@ -205,7 +206,11 @@ class ReminderCommands(CommandGroupExtension):
     @app_commands.describe(name='Name of reminder to query')
     @app_commands.autocomplete(name=autocomplete)
     @app_commands.check(log_interaction)
-    async def info(self, interaction: discord.Interaction, name: str) -> None:
+    async def info(
+        self,
+        interaction: discord.Interaction[commands.Bot],
+        name: str,
+    ) -> None:
         """Get info about a reminder."""
         assert interaction.guild is not None
 
@@ -219,9 +224,7 @@ class ReminderCommands(CommandGroupExtension):
         value = self._tasks[key]
         reminder = value.reminder
 
-        user = interaction.client.get_user(  # type: ignore[attr-defined]
-            reminder.author_id,
-        )
+        user = interaction.client.get_user(reminder.author_id)
         user_str = user.mention if user is not None else 'unknown'
         channel = interaction.guild.get_channel(reminder.channel_id)
         channel_str = channel.mention if channel is not None else 'unknown'
@@ -245,7 +248,10 @@ class ReminderCommands(CommandGroupExtension):
         description='List all reminders in the guild',
     )
     @app_commands.check(log_interaction)
-    async def list(self, interaction: discord.Interaction) -> None:
+    async def list(
+        self,
+        interaction: discord.Interaction[commands.Bot],
+    ) -> None:
         """List reminder in the guild."""
         assert interaction.guild is not None
 
@@ -285,7 +291,7 @@ class ReminderCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def remove(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         name: str,
     ) -> None:
         """Remove a reminder."""

@@ -89,7 +89,7 @@ class MockMessage(discord.Message):
         self.clean_content = message
 
 
-class Response(InteractionResponse):
+class Response(InteractionResponse[Any]):
     def __init__(self) -> None:
         self.called = False
         self.message: str | None = None
@@ -123,7 +123,7 @@ class Followup:
         return mock.AsyncMock()
 
 
-class MockInteraction(Interaction):
+class MockInteraction(Interaction[Any]):
     def __init__(
         self,
         command: Command[Any, Any, Any],

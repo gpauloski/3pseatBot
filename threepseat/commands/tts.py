@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 @app_commands.check(log_interaction)
 @app_commands.guild_only()
 async def tts(
-    interaction: discord.Interaction,
+    interaction: discord.Interaction[discord.Client],
     text: app_commands.Range[str, 1, MAX_TTS_CHARACTERS],
     accent: Accent = Accent.UNITED_STATES,
     slow: bool = False,

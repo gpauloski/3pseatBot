@@ -17,7 +17,7 @@ from threepseat.commands.commands import register_app_command
 @app_commands.describe(user='specify a user to flip for (defaults to self)')
 @app_commands.check(log_interaction)
 async def flip(
-    interaction: discord.Interaction,
+    interaction: discord.Interaction[discord.Client],
     user: discord.Member | discord.User | None = None,
 ) -> Literal['heads', 'tails']:
     """Flip a coin."""
@@ -39,7 +39,7 @@ async def flip(
 @app_commands.describe(user='specify a user to roll for (defaults to self)')
 @app_commands.check(log_interaction)
 async def roll(
-    interaction: discord.Interaction,
+    interaction: discord.Interaction[discord.Client],
     start: int,
     end: int,
     user: discord.Member | discord.User | None = None,
@@ -61,12 +61,12 @@ async def roll(
 @register_app_command  # type: ignore[arg-type]
 @app_commands.command(description='3pseatBot source code')
 @app_commands.check(log_interaction)
-async def source(interaction: discord.Interaction) -> None:
+async def source(interaction: discord.Interaction[discord.Client]) -> None:
     """Get 3pseatBot's source code link."""
     name = (
         'Bot'
-        if interaction.client.user is None  # type: ignore[attr-defined]
-        else interaction.client.user.name  # type: ignore[attr-defined]
+        if interaction.client.user is None
+        else interaction.client.user.name
     )
     await interaction.response.send_message(
         f'This is {name} v{threepseat.__version__}. '

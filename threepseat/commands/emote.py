@@ -18,7 +18,10 @@ from threepseat.commands.commands import register_app_command
 @app_commands.describe(match='Only roll for emotes that match this string')
 @app_commands.check(log_interaction)
 @app_commands.guild_only()
-async def emote(interaction: discord.Interaction, match: str = '') -> None:
+async def emote(
+    interaction: discord.Interaction[discord.Client],
+    match: str = '',
+) -> None:
     """Roll an emote command."""
     await interaction.response.defer(thinking=True)
 

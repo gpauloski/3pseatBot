@@ -8,6 +8,7 @@ import time
 
 import discord
 from discord import app_commands
+from discord.ext import commands
 from discord.ext import tasks
 
 from threepseat.commands.commands import admin_or_owner
@@ -316,7 +317,7 @@ class RulesCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def configure(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         prefixes: str,
         expectancy: app_commands.Range[float, 0.0, None] = 2 / 7,
         cooldown: app_commands.Range[float, 0.0, None] = 720.0,
@@ -355,7 +356,10 @@ class RulesCommands(CommandGroupExtension):
         description='View the event configuration for this channel',
     )
     @app_commands.check(log_interaction)
-    async def configuration(self, interaction: discord.Interaction) -> None:
+    async def configuration(
+        self,
+        interaction: discord.Interaction[commands.Bot],
+    ) -> None:
         """Check the configuration for the guild."""
         assert interaction.guild is not None
         config = self.database.get_config(guild_id=interaction.guild.id)
@@ -404,7 +408,7 @@ class RulesCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def enable(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         immediate: bool = False,
         duration: app_commands.Range[float, 1.0, None] | None = None,
     ) -> None:
@@ -447,7 +451,7 @@ class RulesCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def disable(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         current: bool = False,
     ) -> None:
         """Disable events for the guild."""
@@ -484,7 +488,7 @@ class RulesCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def offenses(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         user: discord.Member | None = None,
     ) -> None:
         """Check offenses in the guild."""
@@ -551,7 +555,7 @@ class RulesCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def add_offense(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         user: discord.Member,
         count: app_commands.Range[int, 1, None] = 1,
     ) -> None:
@@ -591,7 +595,7 @@ class RulesCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def remove_offense(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         user: discord.Member,
         count: app_commands.Range[int, 1, None] = 1,
     ) -> None:
@@ -612,7 +616,7 @@ class RulesCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def reset_offenses(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         user: discord.Member,
     ) -> None:
         """Reset offenses for the member."""
@@ -624,7 +628,7 @@ class RulesCommands(CommandGroupExtension):
 
     async def on_error(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         error: app_commands.AppCommandError,
     ) -> None:
         """Callback for errors in child functions."""

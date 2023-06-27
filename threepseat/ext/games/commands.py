@@ -6,6 +6,7 @@ import time
 
 import discord
 from discord import app_commands
+from discord.ext import commands
 
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
@@ -36,7 +37,7 @@ class GamesCommands(CommandGroupExtension):
 
     async def autocomplete(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         current: str,
     ) -> list[app_commands.Choice[str]]:
         """Return list of games in a guild."""
@@ -59,7 +60,7 @@ class GamesCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def add(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         name: app_commands.Range[str, 1, 40],
     ) -> None:
         """Add a game to the list for the guild."""
@@ -91,7 +92,10 @@ class GamesCommands(CommandGroupExtension):
         description='List all the games',
     )
     @app_commands.check(log_interaction)
-    async def list(self, interaction: discord.Interaction) -> None:
+    async def list(
+        self,
+        interaction: discord.Interaction[commands.Bot],
+    ) -> None:
         """List games in the guild."""
         assert interaction.guild is not None
 
@@ -121,7 +125,7 @@ class GamesCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def remove(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         name: str,
     ) -> None:
         """Remove a game from the guild."""
@@ -144,7 +148,10 @@ class GamesCommands(CommandGroupExtension):
         description='Roll a random game',
     )
     @app_commands.check(log_interaction)
-    async def roll(self, interaction: discord.Interaction) -> None:
+    async def roll(
+        self,
+        interaction: discord.Interaction[commands.Bot],
+    ) -> None:
         """Roll a game in the guild."""
         assert interaction.guild is not None
 
