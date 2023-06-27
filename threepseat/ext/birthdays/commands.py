@@ -8,6 +8,7 @@ import time
 
 import discord
 from discord import app_commands
+from discord.ext import commands
 from discord.ext import tasks
 
 from threepseat.commands.commands import log_interaction
@@ -124,7 +125,7 @@ class BirthdayCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def add(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         member: discord.Member,
         month: Months,
         day: app_commands.Range[int, 1, 31],
@@ -163,7 +164,10 @@ class BirthdayCommands(CommandGroupExtension):
         description='List birthdays in the guild',
     )
     @app_commands.check(log_interaction)
-    async def list(self, interaction: discord.Interaction) -> None:
+    async def list(
+        self,
+        interaction: discord.Interaction[commands.Bot],
+    ) -> None:
         """List birthdays in the guild."""
         assert interaction.guild is not None
 
@@ -197,7 +201,7 @@ class BirthdayCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def remove(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         member: discord.Member,
     ) -> None:
         """Remove a birthday from the guild."""

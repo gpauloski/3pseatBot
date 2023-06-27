@@ -153,7 +153,7 @@ def cache_add(
 
 
 async def autocomplete_summoners(
-    interaction: discord.Interaction,
+    interaction: discord.Interaction[discord.Client],
     current: str,
 ) -> list[app_commands.Choice[str]]:
     """Return items in cache matching current."""
@@ -179,7 +179,7 @@ async def autocomplete_summoners(
 @app_commands.autocomplete(summoners=autocomplete_summoners)
 @app_commands.check(log_interaction)
 async def mmr(
-    interaction: discord.Interaction,
+    interaction: discord.Interaction[discord.Client],
     summoners: str,
     gamemode: GameMode = GameMode.ARAM,
 ) -> None:

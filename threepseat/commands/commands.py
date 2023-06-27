@@ -37,7 +37,7 @@ def registered_app_commands() -> list[Command | Group]:
 
 
 def extract_command_options(
-    interaction: discord.Interaction,
+    interaction: discord.Interaction[commands.Bot],
 ) -> dict[str, Any] | None:
     """Extract options from command interaction."""
     if interaction.data is None or 'options' not in interaction.data:
@@ -54,7 +54,9 @@ def extract_command_options(
     return options
 
 
-async def log_interaction(interaction: discord.Interaction) -> bool:
+async def log_interaction(
+    interaction: discord.Interaction[commands.Bot],
+) -> bool:
     """Log that an interaction occurred.
 
     Note:
@@ -88,7 +90,7 @@ async def log_interaction(interaction: discord.Interaction) -> bool:
     return True
 
 
-async def admin_or_owner(interaction: discord.Interaction) -> bool:
+async def admin_or_owner(interaction: discord.Interaction[Any]) -> bool:
     """Check if invoker of interaction is the bot owner or guild admin.
 
     Usage:
@@ -99,9 +101,7 @@ async def admin_or_owner(interaction: discord.Interaction) -> bool:
     if isinstance(
         interaction.client,
         commands.Bot,
-    ) and await interaction.client.is_owner(  # type: ignore[attr-defined]
-        interaction.user,
-    ):
+    ) and await interaction.client.is_owner(interaction.user):
         return True
     elif (
         isinstance(interaction.user, discord.Member)

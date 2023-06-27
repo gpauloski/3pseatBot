@@ -6,6 +6,7 @@ import time
 
 import discord
 from discord import app_commands
+from discord.ext import commands
 
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
@@ -98,7 +99,7 @@ class SoundCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def add(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         name: app_commands.Range[str, 1, 18],
         link: str,
         description: app_commands.Range[str, 1, 100],
@@ -122,7 +123,7 @@ class SoundCommands(CommandGroupExtension):
 
     async def autocomplete(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         current: str,
     ) -> list[app_commands.Choice[str]]:
         """Return list of sound choices matching current."""
@@ -140,7 +141,10 @@ class SoundCommands(CommandGroupExtension):
         description='List available sounds',
     )
     @app_commands.check(log_interaction)
-    async def list(self, interaction: discord.Interaction) -> None:
+    async def list(
+        self,
+        interaction: discord.Interaction[commands.Bot],
+    ) -> None:
         """List available sounds."""
         await interaction.response.defer(thinking=True)
         assert interaction.guild is not None
@@ -159,7 +163,11 @@ class SoundCommands(CommandGroupExtension):
     @app_commands.describe(name='Name of sound to query')
     @app_commands.autocomplete(name=autocomplete)
     @app_commands.check(log_interaction)
-    async def info(self, interaction: discord.Interaction, name: str) -> None:
+    async def info(
+        self,
+        interaction: discord.Interaction[commands.Bot],
+        name: str,
+    ) -> None:
         """Information about a sound."""
         assert interaction.guild is not None
         sound = self.table.get(name, guild_id=interaction.guild.id)
@@ -169,9 +177,7 @@ class SoundCommands(CommandGroupExtension):
                 ephemeral=True,
             )
         else:
-            user = interaction.client.get_user(  # type: ignore[attr-defined]
-                sound.author_id,
-            )
+            user = interaction.client.get_user(sound.author_id)
             user_str = user.mention if user is not None else 'unknown'
             date = datetime.datetime.fromtimestamp(
                 sound.created_time,
@@ -188,7 +194,11 @@ class SoundCommands(CommandGroupExtension):
     @app_commands.describe(name='Name of sound to play')
     @app_commands.autocomplete(name=autocomplete)
     @app_commands.check(log_interaction)
-    async def play(self, interaction: discord.Interaction, name: str) -> None:
+    async def play(
+        self,
+        interaction: discord.Interaction[commands.Bot],
+        name: str,
+    ) -> None:
         """Play a sound."""
         assert interaction.guild is not None
         sound = self.table.get(name, guild_id=interaction.guild.id)
@@ -228,7 +238,7 @@ class SoundCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def register(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         name: str,
     ) -> None:
         """Register your sound."""
@@ -264,7 +274,7 @@ class SoundCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def remove(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         name: str,
     ) -> None:
         """Remove a sound."""
@@ -284,7 +294,7 @@ class SoundCommands(CommandGroupExtension):
 
     async def on_error(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         error: app_commands.AppCommandError,
     ) -> None:
         """Callback for errors in child functions."""

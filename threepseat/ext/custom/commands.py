@@ -3,10 +3,10 @@ from __future__ import annotations
 import logging
 import time
 from typing import Any
-from typing import cast
 
 import discord
 from discord import app_commands
+from discord.ext import commands
 from discord.ext import commands as ext_commands
 
 from threepseat.commands.commands import admin_or_owner
@@ -64,7 +64,7 @@ class CustomCommands(CommandGroupExtension):
         @app_commands.guild_only
         @app_commands.check(log_interaction)
         async def _callback(
-            interaction: discord.Interaction,
+            interaction: discord.Interaction[commands.Bot],
         ) -> None:  # pragma: no cover
             await interaction.response.send_message(command.body)
 
@@ -103,7 +103,7 @@ class CustomCommands(CommandGroupExtension):
 
     async def autocomplete(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         current: str,
     ) -> list[app_commands.Choice[str]]:
         """Return list of custom commands in the guild matching current."""
@@ -127,7 +127,7 @@ class CustomCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def create(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         name: app_commands.Range[str, 1, 18],
         description: app_commands.Range[str, 1, 50],
         body: str,
@@ -154,8 +154,7 @@ class CustomCommands(CommandGroupExtension):
         )
 
         self.table.update(command)
-        bot = cast(ext_commands.Bot, interaction.client)
-        await self.register(command, bot)
+        await self.register(command, interaction.client)
 
         await interaction.followup.send(f'Created /{name}.')
 
@@ -164,7 +163,10 @@ class CustomCommands(CommandGroupExtension):
         description='List custom commands',
     )
     @app_commands.check(log_interaction)
-    async def list(self, interaction: discord.Interaction) -> None:
+    async def list(
+        self,
+        interaction: discord.Interaction[commands.Bot],
+    ) -> None:
         """List custom commands."""
         assert interaction.guild is not None
         commands = self.table.all(interaction.guild.id)
@@ -193,7 +195,7 @@ class CustomCommands(CommandGroupExtension):
     @app_commands.check(log_interaction)
     async def remove(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         name: str,
     ) -> None:
         """Remove a custom command."""
@@ -203,8 +205,7 @@ class CustomCommands(CommandGroupExtension):
 
         removed = bool(self.table.remove(interaction.guild.id, name))
         if removed:
-            bot = cast(ext_commands.Bot, interaction.client)
-            await self.unregister(name, interaction.guild, bot)
+            await self.unregister(name, interaction.guild, interaction.client)
             await interaction.followup.send(
                 f'Removed /{name}.',
                 ephemeral=True,
@@ -217,7 +218,7 @@ class CustomCommands(CommandGroupExtension):
 
     async def on_error(
         self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction[commands.Bot],
         error: app_commands.AppCommandError,
     ) -> None:
         """Callback for errors in child functions."""
