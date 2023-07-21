@@ -68,14 +68,14 @@ class SoundsTable(SQLTableInterface[Sound]):
             ValueError:
                 if name contains non-alphanumeric characters.
             ValueError:
-                if name is not between 1 and 12 characters long.
+                if name is not between 1 and 15 characters long.
             ValueError:
                 any additional errors raises by download().
         """
         if not alphanumeric(name):
             raise ValueError('Name must contain only alphanumeric characters.')
-        if len(name) == 0 or len(name) > 12:
-            raise ValueError('Name must be between 1 and 12 characters long.')
+        if len(name) == 0 or len(name) > 15:
+            raise ValueError('Name must be between 1 and 15 characters long.')
 
         existing = self.get(name=name, guild_id=guild_id)
         if existing is not None:
