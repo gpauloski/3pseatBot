@@ -62,7 +62,10 @@ def ignore_message(message: discord.Message) -> bool:
     Returns:
         True if any of the above conditions are met otherwise False.
     """
-    if message.type is not discord.MessageType.default:
+    if message.type not in (
+        discord.MessageType.default,
+        discord.MessageType.reply,
+    ):
         return True
     if message.author.bot:
         return True
