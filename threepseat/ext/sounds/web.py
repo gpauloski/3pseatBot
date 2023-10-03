@@ -22,10 +22,6 @@ Response: TypeAlias = str | quart.Response | werkseug_Response
 
 logger = logging.getLogger(__name__)
 
-# Override Quart standard handlers
-quart.logging.default_handler = logging.NullHandler()  # type: ignore
-quart.logging.serving_handler = logging.NullHandler()  # type: ignore
-
 sounds_blueprint = quart.Blueprint(
     'sounds',
     __name__,
@@ -76,12 +72,6 @@ def create_app(
     """
     app = quart.Quart(__name__)
 
-    # Propagate custom handlers to Quart App and Serving loggers
-    app_logger = quart.logging.create_logger(app)
-    serving_logger = quart.logging.create_serving_logger()
-    app_logger.handlers = logger.handlers
-    serving_logger.handlers = logger.handlers
-
     app.secret_key = os.urandom(128)
 
     if 'http://' in redirect_uri:  # pragma: no branch
@@ -93,6 +83,9 @@ def create_app(
     app.config['DISCORD_BOT_TOKEN'] = bot_token
 
     app.config['DISCORD_OAUTH2_SESSION'] = DiscordOAuth2Session(app)
+
+    # https://github.com/pallets/quart/issues/280
+    app.config['EXPLAIN_TEMPLATE_LOADING'] = True
 
     app.config['bot'] = bot
     app.config['sounds'] = sounds

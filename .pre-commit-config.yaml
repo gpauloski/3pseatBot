@@ -34,7 +34,7 @@ repos:
       - id: mypy
         additional_dependencies: [
             'discord-py>=2.0.0',
-            'quart==0.17.0',
+            'quart>=0.19.2',
             'types-emoji',
             'types-requests',
         ]

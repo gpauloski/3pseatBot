@@ -24,7 +24,7 @@ dependencies = [
     "emoji",
     "gtts",
     "pynacl",
-    "quart==0.17.0",
+    "quart>=0.19.2",
     "requests",
     "yt-dlp",
 ]
