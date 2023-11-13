@@ -71,7 +71,7 @@ class CustomCommands(CommandGroupExtension):
         command_: Any = app_commands.Command(
             name=command.name,
             description=command.description,
-            callback=_callback,  # type: ignore[arg-type]
+            callback=_callback,
         )
 
         guild = bot.get_guild(command.guild_id)
@@ -116,7 +116,7 @@ class CustomCommands(CommandGroupExtension):
         choices = sorted(choices, key=lambda c: c.name.lower())
         return choices[: min(len(choices), MAX_CHOICES_LENGTH)]
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='create',
         description='[Admin Only] Create a custom command',
     )
@@ -158,7 +158,7 @@ class CustomCommands(CommandGroupExtension):
 
         await interaction.followup.send(f'Created /{name}.')
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='list',
         description='List custom commands',
     )
@@ -185,7 +185,7 @@ class CustomCommands(CommandGroupExtension):
                 ephemeral=True,
             )
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='remove',
         description='[Admin Only] Remove a custom command',
     )
