@@ -87,7 +87,7 @@ class SoundCommands(CommandGroupExtension):
                 f'caught exception when playing sound on member join: {e}',
             )
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='add',
         description='Add a sound',
     )
@@ -136,7 +136,7 @@ class SoundCommands(CommandGroupExtension):
         choices = sorted(choices, key=lambda c: c.name.lower())
         return choices[: min(len(choices), MAX_CHOICES_LENGTH)]
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='list',
         description='List available sounds',
     )
@@ -156,7 +156,7 @@ class SoundCommands(CommandGroupExtension):
             sounds_str = ', '.join([s.name for s in sounds])
             await interaction.followup.send(f'Available sounds: {sounds_str}')
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='info',
         description='Information about a sound',
     )
@@ -187,7 +187,7 @@ class SoundCommands(CommandGroupExtension):
             msg += f'*Added by {user_str} on {date}*'
             await interaction.response.send_message(msg)
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='play',
         description='Play a sound',
     )
@@ -229,7 +229,7 @@ class SoundCommands(CommandGroupExtension):
         else:
             await interaction.followup.send('Played!')
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='register',
         description='Register your entry sound',
     )
@@ -264,7 +264,7 @@ class SoundCommands(CommandGroupExtension):
             ephemeral=True,
         )
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='remove',
         description='[Admin Only] Remove a sound',
     )

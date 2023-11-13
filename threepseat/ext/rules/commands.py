@@ -294,7 +294,7 @@ class RulesCommands(CommandGroupExtension):
 
         return _event_starter
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='configure',
         description=(
             '[Admin Only] Configure legacy 3pseat events for this guild'
@@ -351,7 +351,7 @@ class RulesCommands(CommandGroupExtension):
             ephemeral=True,
         )
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='configuration',
         description='View the event configuration for this channel',
     )
@@ -396,7 +396,7 @@ class RulesCommands(CommandGroupExtension):
             ephemeral=True,
         )
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='enable',
         description='[Admin Only] Enable legacy 3pseat events for the guild',
     )
@@ -442,7 +442,7 @@ class RulesCommands(CommandGroupExtension):
                 ephemeral=True,
             )
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='disable',
         description='[Admin Only] Disable legacy 3pseat events for the guild',
     )
@@ -480,7 +480,7 @@ class RulesCommands(CommandGroupExtension):
                 ephemeral=True,
             )
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='list',
         description='List offenses for the guild',
     )
@@ -545,7 +545,7 @@ class RulesCommands(CommandGroupExtension):
                 f'Their last offense was on {last_offense}.',
             )
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='add',
         description='[Admin Only] Add an offense to the user',
     )
@@ -585,7 +585,7 @@ class RulesCommands(CommandGroupExtension):
                 f'to {user.mention}. They now have {current}.',
             )
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='remove',
         description='[Admin Only] Remove an offense from the user',
     )
@@ -607,7 +607,7 @@ class RulesCommands(CommandGroupExtension):
             f'{user.mention}.',
         )
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='reset',
         description='[Admin Only] Reset a user\'s offense count',
     )

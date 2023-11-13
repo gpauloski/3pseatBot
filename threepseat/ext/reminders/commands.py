@@ -128,7 +128,7 @@ class ReminderCommands(CommandGroupExtension):
         choices = sorted(choices, key=lambda c: c.name.lower())
         return choices[: min(len(choices), MAX_CHOICES_LENGTH)]
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='create',
         description='[Admin Only] Create a new reminder',
     )
@@ -199,7 +199,7 @@ class ReminderCommands(CommandGroupExtension):
         await interaction.response.send_message(msg, ephemeral=True)
         logger.info(f'created new reminder: {reminder}')
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='info',
         description='Get info about a reminder',
     )
@@ -243,7 +243,7 @@ class ReminderCommands(CommandGroupExtension):
 
         await interaction.response.send_message(msg, ephemeral=True)
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='list',
         description='List all reminders in the guild',
     )
@@ -281,7 +281,7 @@ class ReminderCommands(CommandGroupExtension):
 
         await interaction.response.send_message(msg, ephemeral=True)
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='remove',
         description='[Admin Only] Remove a reminder',
     )

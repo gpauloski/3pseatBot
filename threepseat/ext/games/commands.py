@@ -51,7 +51,7 @@ class GamesCommands(CommandGroupExtension):
         choices = sorted(choices, key=lambda c: c.name.lower())
         return choices[: min(len(choices), MAX_CHOICES_LENGTH)]
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='add',
         description='[Admin Only] Add a new game to the list',
     )
@@ -87,7 +87,7 @@ class GamesCommands(CommandGroupExtension):
             ephemeral=True,
         )
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='list',
         description='List all the games',
     )
@@ -115,7 +115,7 @@ class GamesCommands(CommandGroupExtension):
             f'Available games:\n```\n{game_str}\n```',
         )
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='remove',
         description='[Admin Only] Remove a game from the list',
     )
@@ -143,7 +143,7 @@ class GamesCommands(CommandGroupExtension):
                 ephemeral=True,
             )
 
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.command(
         name='roll',
         description='Roll a random game',
     )
