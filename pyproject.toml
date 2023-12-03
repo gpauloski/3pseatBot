@@ -20,7 +20,7 @@ classifiers = [
 ]
 dependencies = [
     "Quart-Discord",
-    "discord.py>=2.2.2",
+    "discord.py>=2.3.2",
     "emoji",
     "gtts",
     "pynacl",
