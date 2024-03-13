@@ -628,7 +628,7 @@ class RulesCommands(CommandGroupExtension):
 
     async def on_error(
         self,
-        interaction: discord.Interaction[commands.Bot],
+        interaction: discord.Interaction[discord.Client],
         error: app_commands.AppCommandError,
     ) -> None:
         """Callback for errors in child functions."""
