@@ -119,8 +119,8 @@ class BirthdayCommands(CommandGroupExtension):
     )
     @app_commands.describe(
         member='Member the birthday is for',
-        month='Month of the member\'s birthday',
-        day='Day of the month of the member\'s birthday',
+        month="Month of the member's birthday",
+        day="Day of the month of the member's birthday",
     )
     @app_commands.check(log_interaction)
     async def add(

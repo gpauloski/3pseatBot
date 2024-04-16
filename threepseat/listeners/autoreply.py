@@ -27,7 +27,7 @@ async def pog_reply(message: discord.Message) -> None:
     if message.author.bot:
         return
 
-    pog_emotes = ['\U0001F1F5', '\U0001F1F4', '\U0001F1EC']
+    pog_emotes = ['\U0001f1f5', '\U0001f1f4', '\U0001f1ec']
     pog_re = r'(p+\s*)+(o+\s*)+(g+\s*)+'
     pog_emote_re = r'<:.*pog.*:\d*>'
 

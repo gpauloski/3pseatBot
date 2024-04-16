@@ -28,9 +28,9 @@ class Config:
             value = getattr(self, field_name)
             if not isinstance(value, field_type):
                 raise TypeError(
-                    f'Expected type \'{field_type.__name__}\' for '
-                    f'{self.__class__.__name__} field \'{field_name}\' but '
-                    f'got type \'{type(value).__name__}\'.',
+                    f"Expected type '{field_type.__name__}' for "
+                    f"{self.__class__.__name__} field '{field_name}' but "
+                    f"got type '{type(value).__name__}'.",
                 )
 
     @staticmethod

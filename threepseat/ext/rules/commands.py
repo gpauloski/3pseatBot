@@ -106,7 +106,7 @@ class RulesCommands(CommandGroupExtension):
             await message.reply(msg)
         else:
             await message.reply(
-                f'3pseat {message.author.mention}! You\'ve disturbed the '
+                f"3pseat {message.author.mention}! You've disturbed the "
                 f'spirits ({current}/{config.max_offenses}).',
             )
 
@@ -139,7 +139,7 @@ class RulesCommands(CommandGroupExtension):
                 f'({member.guild.id}): {e}',
             )
             return (
-                f'3pseat {member.mention}! You\'ve disturbed the '
+                f"3pseat {member.mention}! You've disturbed the "
                 f'spirits too many times, but you cannot be timed out. '
                 'Your cognizance is highly acknowledged.'
             )
@@ -609,7 +609,7 @@ class RulesCommands(CommandGroupExtension):
 
     @app_commands.command(
         name='reset',
-        description='[Admin Only] Reset a user\'s offense count',
+        description="[Admin Only] Reset a user's offense count",
     )
     @app_commands.describe(user='User to reset')
     @app_commands.check(admin_or_owner)
