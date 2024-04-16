@@ -72,9 +72,7 @@ async def log_interaction(
         None if not hasattr(channel, 'name') else channel.name  # type: ignore
     )
     channel_name = (
-        channel_name
-        if channel_name is not None
-        else channel.id  # type: ignore
+        channel_name if channel_name is not None else channel.id  # type: ignore
     )
 
     guild = None if interaction.guild is None else interaction.guild.name

@@ -32,8 +32,8 @@ def test_config_parse_bad_types() -> None:
     with pytest.raises(
         TypeError,
         match=(
-            'Expected type \'str\' for Config field \'client_secret\' '
-            'but got type \'int\'.'
+            "Expected type 'str' for Config field 'client_secret' "
+            "but got type 'int'."
         ),
     ):
         Config(**cfg_dict)  # type: ignore

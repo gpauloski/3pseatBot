@@ -224,7 +224,7 @@ async def mmr(
             f.format(
                 name=stats.summoner[:13],
                 mmr=stats.mmr,
-                err=f'\u00B1 {stats.err}',
+                err=f'\u00b1 {stats.err}',
                 rank=f'{stats.percentile}% / {stats.rank}',
                 days=f'{days_since(stats.time)} days ago',
             ),

@@ -37,10 +37,10 @@ def test_is_booster() -> None:
 def test_is_emoji() -> None:
     assert not is_emoji('')
     assert not is_emoji('     ')
-    assert is_emoji('\U0001F600')
-    assert is_emoji('\U0001F600 \U0001F600 \U0001F600')
+    assert is_emoji('\U0001f600')
+    assert is_emoji('\U0001f600 \U0001f600 \U0001f600')
     assert is_emoji('<:pog:>')
-    assert is_emoji('<:pog:1> \U0001F600')
+    assert is_emoji('<:pog:1> \U0001f600')
     assert not is_emoji('<::>')
     assert is_emoji('<:pog:123123231233>')
     assert is_emoji('<a:pog:123123231233>')
