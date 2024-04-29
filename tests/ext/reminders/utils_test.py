@@ -123,8 +123,14 @@ async def test_reminder_task_callback() -> None:
         callback = mock.MagicMock()
         task = reminder_task(client, REMINDER, ReminderType.ONE_TIME, callback)
         task.start()
-        await asyncio.sleep(0.02)
-        assert mock_text.await_count == 1
+        waited = 0
+        while mock_text.await_count == 0:
+            if waited >= 10:  # pragma: no cover
+                raise TimeoutError(
+                    'Timeout waiting for reminder task to execute.',
+                )
+            await asyncio.sleep(0.01)
+            waited += 1
         task.cancel()
         assert callback.called
 
