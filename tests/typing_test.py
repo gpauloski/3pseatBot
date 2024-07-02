@@ -8,8 +8,8 @@ from threepseat.typing import split_types
 
 
 def test_base_type() -> None:
-    assert base_type(int | None) == int
-    assert base_type(str | None) == str
+    assert base_type(int | None) is int
+    assert base_type(str | None) is str
 
     with pytest.raises(ValueError):
         assert base_type(int)  # type: ignore
