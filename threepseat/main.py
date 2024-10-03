@@ -54,19 +54,20 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
         redirect_uri=cfg.redirect_uri,
     )
 
-    await asyncio.gather(
-        bot.start(cfg.bot_token, reconnect=True),
-        webapp.run_task(
-            host='0.0.0.0',
-            port=cfg.sounds_port,
-            certfile=cfg.sounds_certfile,
-            keyfile=cfg.sounds_keyfile,
-            # mypy disagrees but this is what the docs say to do
-            # https://pgjones.gitlab.io/hypercorn/how_to_guides/api_usage.html?highlight=shutdown_trigger#graceful-shutdown  # noqa: E501
-            shutdown_trigger=shutdown_event.wait,  # type: ignore
-        ),
-        return_exceptions=True,
-    )
+    async with bot:
+        await asyncio.gather(
+            bot.start(cfg.bot_token, reconnect=True),
+            webapp.run_task(
+                host='0.0.0.0',
+                port=cfg.sounds_port,
+                certfile=cfg.sounds_certfile,
+                keyfile=cfg.sounds_keyfile,
+                # mypy disagrees but this is what the docs say to do
+                # https://pgjones.gitlab.io/hypercorn/how_to_guides/api_usage.html?highlight=shutdown_trigger#graceful-shutdown  # noqa: E501
+                shutdown_trigger=shutdown_event.wait,  # type: ignore
+            ),
+            return_exceptions=True,
+        )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
