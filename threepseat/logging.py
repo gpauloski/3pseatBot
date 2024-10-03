@@ -6,8 +6,6 @@ import os
 import sys
 from typing import Literal
 
-import discord
-
 
 def configure_logging(
     logdir: str | None,
@@ -38,8 +36,11 @@ def configure_logging(
         handlers=handlers,
     )
 
-    discord.utils.setup_logging(
-        handler=stream_handler if file_handler is None else file_handler,
-        formatter=logging.Formatter(fmt, datefmt),
-        level=logging.getLevelName(level),
-    )
+    logging.captureWarnings(True)
+
+    # discord.utils.setup_logging(
+    #     handler=stream_handler if file_handler is None else file_handler,
+    #     formatter=logging.Formatter(fmt, datefmt),
+    #     level=logging.getLevelName(level),
+    #     root=False,
+    # )
