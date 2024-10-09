@@ -156,7 +156,10 @@ async def test_start_event(commands) -> None:
         'threepseat.ext.rules.commands.primary_channel',
         return_value=None,
     ):
-        with pytest.raises(EventStartError, match='not find valid text'):
+        with pytest.raises(
+            EventStartError,
+            match='not find valid text',
+        ):  # pragma: no branch
             await commands.start_event(guild)
 
     with (

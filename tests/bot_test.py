@@ -65,7 +65,7 @@ async def test_bot_startup(tmp_file: str, caplog) -> None:
             new_callable=mock.PropertyMock(
                 return_value=[MockGuild('guild', 1234)],
             ),
-        ):
+        ):  # pragma: no branch
             bot = Bot(extensions=extensions)
             await bot.on_ready()
 
