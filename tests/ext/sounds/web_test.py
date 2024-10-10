@@ -45,7 +45,7 @@ async def quart_app(
             redirect_uri='http://localhost:5001',
         )
 
-        async with app.test_app() as test_app:
+        async with app.test_app() as test_app:  # pragma: no branch
             yield test_app
 
 

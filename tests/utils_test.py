@@ -78,7 +78,10 @@ def test_primary_channel() -> None:
         with mock.patch('discord.VoiceChannel'):
             channel = discord.VoiceChannel()  # type: ignore
         guild._channels = {'c1': channel}  # type: ignore
-        with mock.patch('threepseat.utils.isinstance', return_value=False):
+        with mock.patch(
+            'threepseat.utils.isinstance',
+            return_value=False,
+        ):  # pragma: no branch
             assert primary_channel(guild) is None
 
 
