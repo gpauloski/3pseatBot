@@ -216,8 +216,8 @@ async def mmr(
 
     f = '{name:<13} | {mmr:<4} {err:<5} | {rank:<21} | {days}'
     s = [
-        'Summoner      | MMR        | Rank                  | ' 'Updated',
-        '--------------|----------- | --------------------- | ' '-----------',
+        'Summoner      | MMR        | Rank                  | Updated',
+        '--------------|----------- | --------------------- | -----------',
     ]
     for stats in available_sums:
         s.append(

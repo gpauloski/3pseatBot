@@ -206,7 +206,7 @@ def download(link: str, filepath: str) -> None:
 
         if int(metadata['duration']) > MAX_SOUND_LENGTH_SECONDS:
             raise ValueError(
-                f'Clip is longer than {MAX_SOUND_LENGTH_SECONDS} ' 'seconds.',
+                f'Clip is longer than {MAX_SOUND_LENGTH_SECONDS} seconds.',
             )
 
         try:
