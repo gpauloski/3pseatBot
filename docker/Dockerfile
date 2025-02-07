@@ -1,4 +1,4 @@
-from python:3.12-slim-buster
+from python:3.12-slim
 
 RUN :\
     && apt-get update -y \
@@ -10,7 +10,7 @@ RUN :\
 COPY . /bot
 
 WORKDIR /bot
-RUN pip install .
+RUN pip install --no-cache-dir .
 
 EXPOSE 5000
 
