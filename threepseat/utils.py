@@ -176,7 +176,7 @@ async def play_sound(
     else:
         voice_client = await channel.connect()
 
-    source = discord.FFmpegPCMAudio(sound)
+    source = discord.FFmpegOpusAudio(sound)
 
     if voice_client.is_playing():
         voice_client.stop()
