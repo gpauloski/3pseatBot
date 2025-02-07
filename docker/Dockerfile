@@ -1,7 +1,11 @@
-from python:3.11-slim-buster
+from python:3.12-slim-buster
 
-RUN apt update
-RUN apt -y install build-essential ffmpeg git
+RUN :\
+    && apt-get update -y \
+    && apt-get install -y --no-install-recommends \
+        build-essential opus-tools ffmpeg git \
+    && apt-get clean autoclean \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY . /bot
 
