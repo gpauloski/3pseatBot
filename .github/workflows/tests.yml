@@ -31,6 +31,8 @@ jobs:
 
       - name: Install ffmpeg
         uses: FedericoCarboni/setup-ffmpeg@v3
+        with:
+          ffmpeg-version: "6.1.0"
 
       - name: Set up Python ${{matrix.python}}
         uses: actions/setup-python@v5
