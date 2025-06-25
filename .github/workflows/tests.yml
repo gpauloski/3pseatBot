@@ -30,7 +30,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install ffmpeg
-        uses: FedericoCarboni/setup-ffmpeg@37062fbf7149fc5578d6c57e08aed62458b375d6
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends ffmpeg opus-tools
 
       - name: Set up Python ${{matrix.python}}
         uses: actions/setup-python@v5
