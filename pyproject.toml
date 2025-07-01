@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "threepseat"
-version = "2.1.20"
+version = "2.1.21"
 authors = [
     {name = "Greg Pauloski", email = "jgpauloski@uchicago.edu"},
 ]
@@ -20,7 +20,7 @@ classifiers = [
 ]
 dependencies = [
     "Quart-Discord",
-    "discord.py>=2.3.2",
+    "discord.py@git+https://github.com/Rapptz/discord.py",
     "emoji",
     "gtts",
     "pynacl",
