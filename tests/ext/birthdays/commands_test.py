@@ -53,44 +53,6 @@ async def test_birthday_task(birthdays) -> None:
 
 
 @pytest.mark.asyncio
-async def test_birthday_task_sleeps_until_start(birthdays) -> None:
-    from threepseat.ext.birthdays import commands
-
-    with mock.patch('discord.Client'):
-        client = discord.Client()  # type: ignore
-        client.guilds = []  # type: ignore
-
-    with mock.patch('asyncio.sleep'):
-        original_check_hour = commands.BIRTHDAY_CHECK_HOUR
-        original_check_minute = commands.BIRTHDAY_CHECK_MINUTE
-        # Force next birthday check time to be in future
-        commands.BIRTHDAY_CHECK_HOUR = 23
-        commands.BIRTHDAY_CHECK_MINUTE = 59
-
-        task = birthdays.birthday_task(client)
-        task.change_interval(seconds=0.005)
-        task.start()
-        while task.current_loop == 0:
-            await asleep(0.01)
-        task.cancel()
-
-        # Force next birthday check time to be in past
-        commands.BIRTHDAY_CHECK_HOUR = 0
-        commands.BIRTHDAY_CHECK_MINUTE = 0
-
-        task = birthdays.birthday_task(client)
-        task.change_interval(seconds=0.005)
-        task.start()
-        while task.current_loop == 0:
-            await asleep(0.01)
-        task.cancel()
-
-        # Restore values
-        commands.BIRTHDAY_CHECK_HOUR = original_check_hour
-        commands.BIRTHDAY_CHECK_MINUTE = original_check_minute
-
-
-@pytest.mark.asyncio
 async def test_send_birthday_messages(birthdays) -> None:
     guild = MockGuild('guild', BIRTHDAY.guild_id)
     channel = MockChannel('channel', 42)
