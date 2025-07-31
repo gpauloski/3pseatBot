@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import asyncio
 import datetime
 import enum
 import logging
 import time
+import zoneinfo
 
 import discord
 from discord import app_commands
@@ -67,34 +67,18 @@ class BirthdayCommands(CommandGroupExtension):
 
     def birthday_task(self, client: discord.Client) -> LoopType:
         """Return async task that will check for birthdays once per day."""
+        time = datetime.time(
+            hour=BIRTHDAY_CHECK_HOUR,
+            minute=BIRTHDAY_CHECK_MINUTE,
+            tzinfo=zoneinfo.ZoneInfo('US/Central'),
+        )
 
-        @tasks.loop(hours=24)
+        @tasks.loop(time=time)
         async def _checker() -> None:
             logger.info('starting daily birthday check...')
             for guild in client.guilds:
                 await self.send_birthday_messages(guild)
             logger.info('finished daily birthday check')
-
-        @_checker.before_loop
-        async def _wait_until_start() -> None:
-            # source: https://stackoverflow.com/questions/51530012
-            now = datetime.datetime.now()
-            future = datetime.datetime(
-                year=now.year,
-                month=now.month,
-                day=now.day,
-                hour=BIRTHDAY_CHECK_HOUR,
-                minute=BIRTHDAY_CHECK_MINUTE,
-            )
-            # the day offset is 0 if today's check time has not occurred yet or
-            # 1 if it is later than the check time (i.e., we need to sleep
-            # until tomorrow).
-            day_offset = int(
-                now.hour >= BIRTHDAY_CHECK_MINUTE
-                and now.minute >= BIRTHDAY_CHECK_MINUTE,
-            )
-            future += datetime.timedelta(days=day_offset)
-            await asyncio.sleep((future - now).seconds)
 
         return _checker
 
