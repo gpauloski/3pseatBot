@@ -26,6 +26,7 @@ dependencies = [
     "pynacl",
     "quart>=0.19.2",
     "requests",
+    "tzdata",
     "yt-dlp",
 ]
 

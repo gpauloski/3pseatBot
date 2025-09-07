@@ -70,7 +70,7 @@ class BirthdayCommands(CommandGroupExtension):
         time = datetime.time(
             hour=BIRTHDAY_CHECK_HOUR,
             minute=BIRTHDAY_CHECK_MINUTE,
-            tzinfo=zoneinfo.ZoneInfo('US/Central'),
+            tzinfo=zoneinfo.ZoneInfo('America/Chicago'),
         )
 
         @tasks.loop(time=time)
