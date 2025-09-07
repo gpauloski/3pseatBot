@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "threepseat"
-version = "2.1.22"
+version = "2.1.23"
 authors = [
     {name = "Greg Pauloski", email = "jgpauloski@uchicago.edu"},
 ]
@@ -26,6 +26,7 @@ dependencies = [
     "pynacl",
     "quart>=0.19.2",
     "requests",
+    "tzdata",
     "yt-dlp",
 ]
 
