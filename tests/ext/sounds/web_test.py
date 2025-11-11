@@ -20,7 +20,6 @@ from threepseat.ext.sounds.web import get_mutual_guilds
 
 
 @pytest_asyncio.fixture
-@pytest.mark.asyncio
 async def quart_app(
     tmp_file: str,
     tmp_path: pathlib.Path,
