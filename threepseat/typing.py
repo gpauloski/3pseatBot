@@ -4,7 +4,7 @@ import types
 import typing
 
 
-def base_type(t: types.UnionType) -> type:
+def base_type(t: types.UnionType | type) -> type:
     """Get the base type of an optional type annotation.
 
     For example, if a field has the type annotations `int | None`, this
@@ -30,7 +30,7 @@ def base_type(t: types.UnionType) -> type:
     )
 
 
-def is_optional(t: types.UnionType) -> bool:
+def is_optional(t: types.UnionType | type) -> bool:
     """Check if the type is an optional type."""
     origin = typing.get_origin(t)
     union = origin is typing.Union or origin is types.UnionType  # noqa: E721
