@@ -273,11 +273,16 @@ def fields_to_search_str(fields: Iterable[str]) -> str:
 
 def field_names(nt: NamedTuple | type[NamedTuple]) -> tuple[str, ...]:
     """Get field names of NamedTuple."""
+    if not isinstance(nt, type) and hasattr(nt, '__class__'):
+        nt = type(nt)
     return tuple(typing.get_type_hints(nt))
 
 
 def field_types(nt: NamedTuple | type[NamedTuple]) -> dict[str, Field]:
     """Extracts dictionary of field data from NamedTuple."""
+    if not isinstance(nt, type) and hasattr(nt, '__class__'):
+        nt = type(nt)
+
     fields: dict[str, Field] = {}
 
     for name, types in typing.get_type_hints(nt).items():

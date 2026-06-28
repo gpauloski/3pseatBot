@@ -248,7 +248,10 @@ def test_youtube_download_errors(tmp_path: pathlib.Path) -> None:
             'threepseat.ext.sounds.data.YoutubeDL.download',
             side_effect=Exception('test'),
         ):
-            with pytest.raises(ValueError, match='downloading'):
+            with pytest.raises(
+                ValueError,
+                match='downloading',
+            ):  # pragma: no branch
                 download(link, filepath)
 
 
