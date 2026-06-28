@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-from typing import TypeAlias
 from typing import TypeVar
 
 import discord
@@ -11,14 +10,15 @@ from discord.app_commands.commands import Command as _Command
 from discord.app_commands.commands import Group
 from discord.ext import commands
 
-Command: TypeAlias = _Command[Any, Any, Any]
+type Command = _Command[Any, Any, Any]
 CommandType = TypeVar('CommandType', Command, Group)
+T = TypeVar('T')
 
 _app_commands: list[Command | Group] = []
 logger = logging.getLogger(__name__)
 
 
-def register_app_command(command: CommandType) -> CommandType:
+def register_app_command(command: CommandType) -> CommandType:  # noqa: UP047
     """Register the app command.
 
     Usage:

@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import os
 from typing import NamedTuple
-from typing import TypeAlias
 
 import discord
 import quart
@@ -18,7 +17,7 @@ from threepseat.ext.sounds.data import SoundsTable
 from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 
-Response: TypeAlias = str | quart.Response | werkseug_Response
+type Response = str | quart.Response | werkseug_Response
 
 logger = logging.getLogger(__name__)
 
