@@ -203,12 +203,13 @@ class SoundCommands(CommandGroupExtension):
             date = datetime.datetime.fromtimestamp(
                 sound.created_time,
             ).strftime('%B %d, %Y')
-            msg = f'**{sound.name}**: {sound.description}\n'
-            if len(sound.link) > 0:
-                msg += f'{sound.link}\n'
-                msg += f'*Added by {user_str} on {date}*'
-            else:
-                msg += f'*Uploaded by {user_str} on {date}*'
+            msg = f'**{sound.name}**: *{sound.description}*\n\n'
+            msg += f'Added by {user_str} on {date}\n\n'
+            msg += (
+                f'{sound.link}'
+                if len(sound.link) > 0
+                else '*User uploaded mp3 file*'
+            )
             await interaction.response.send_message(msg)
 
     @app_commands.command(
@@ -398,7 +399,7 @@ class SoundCommands(CommandGroupExtension):
 
         try:
             self.table.add(sound)
-        except ValueError as e:
+        except ValueError as e:  # pragma: no cover
             await interaction.followup.send(str(e), ephemeral=True)
         else:
             await interaction.followup.send(
@@ -418,7 +419,9 @@ class SoundCommands(CommandGroupExtension):
             logger.exception(error)
 
 
-async def _get_mp3_duration_s(file: discord.Attachment) -> float:
+async def _get_mp3_duration_s(
+    file: discord.Attachment,
+) -> float:  # pragma: no cover
     with tempfile.NamedTemporaryFile(suffix='.mp3') as temp_file:
         temp_file.write(await file.read())
         temp_file.flush()

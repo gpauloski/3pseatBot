@@ -6,6 +6,7 @@ import pathlib
 from collections.abc import Generator
 from unittest import mock
 
+import discord
 import pytest
 from discord import app_commands
 
@@ -16,6 +17,8 @@ from testing.mock import MockVoiceChannel
 from testing.utils import extract
 from threepseat.bot import Bot
 from threepseat.ext.sounds.commands import SoundCommands
+from threepseat.ext.sounds.data import MAX_SOUND_FILE_SIZE_BYTES
+from threepseat.ext.sounds.data import MAX_SOUND_LENGTH_SECONDS
 from threepseat.ext.sounds.data import MemberSound
 from threepseat.ext.sounds.data import Sound
 
@@ -31,6 +34,18 @@ def sound_fixtures(
     bot = Bot(extensions=[sound_commands])
     with mock.patch.object(bot.tree, 'sync', mock.AsyncMock()):
         yield bot, sound_commands
+
+
+def create_mock_attachment(
+    filename: str = 'test_sound.mp3',
+    size: int = 1024,
+    content: bytes = b'dummy_mp3_data',
+) -> mock.AsyncMock:
+    attachment = mock.AsyncMock(spec=discord.Attachment)
+    attachment.filename = filename
+    attachment.size = size
+    attachment.read.return_value = content
+    return attachment
 
 
 @pytest.mark.asyncio
@@ -498,6 +513,200 @@ async def test_remove_command(
     assert (
         interaction.response_message is not None
         and 'does not exist' in interaction.response_message
+    )
+
+
+@pytest.mark.asyncio
+async def test_upload_command_success(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
+    upload_ = extract(sounds.upload)
+
+    interaction = MockInteraction(
+        sounds.upload,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    with mock.patch(
+        'threepseat.ext.sounds.commands._get_mp3_duration_s',
+        return_value=15.0,
+    ):
+        await upload_(
+            sounds,
+            interaction,
+            file=create_mock_attachment(),
+            name='uploaded',
+            description='a fresh sound',
+        )
+
+    assert interaction.followed
+    assert interaction.followup_message is not None
+    assert 'Uploaded and added' in interaction.followup_message
+
+
+@pytest.mark.asyncio
+async def test_upload_command_invalid_extension(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
+    upload_ = extract(sounds.upload)
+
+    interaction = MockInteraction(
+        sounds.upload,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    await upload_(
+        sounds,
+        interaction,
+        file=create_mock_attachment(filename='test.wav'),
+        name='badext',
+        description='should fail extension check',
+    )
+
+    assert interaction.followed
+    assert interaction.followup_message is not None
+    assert 'must be an MP3' in interaction.followup_message
+
+
+@pytest.mark.asyncio
+async def test_upload_command_file_too_large(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
+    upload_ = extract(sounds.upload)
+
+    interaction = MockInteraction(
+        sounds.upload,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    await upload_(
+        sounds,
+        interaction,
+        file=create_mock_attachment(size=2 * MAX_SOUND_FILE_SIZE_BYTES),
+        name='toobig',
+        description='should fail size check',
+    )
+
+    assert interaction.followed
+    assert interaction.followup_message is not None
+    assert 'File size must be under' in interaction.followup_message
+
+
+@pytest.mark.asyncio
+async def test_upload_command_duration_too_long(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
+    upload_ = extract(sounds.upload)
+
+    interaction = MockInteraction(
+        sounds.upload,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    with mock.patch(
+        'threepseat.ext.sounds.commands._get_mp3_duration_s',
+        return_value=2 * MAX_SOUND_LENGTH_SECONDS,
+    ):
+        await upload_(
+            sounds,
+            interaction,
+            file=create_mock_attachment(),
+            name='toolong',
+            description='should fail duration check',
+        )
+
+    assert interaction.followed
+    assert interaction.followup_message is not None
+    assert 'Sound is too long' in interaction.followup_message
+
+
+@pytest.mark.asyncio
+async def test_upload_command_duration_extraction_error(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
+    upload_ = extract(sounds.upload)
+
+    interaction = MockInteraction(
+        sounds.upload,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    with mock.patch(
+        'threepseat.ext.sounds.commands._get_mp3_duration_s',
+        side_effect=Exception('FFmpeg error'),
+    ):
+        await upload_(
+            sounds,
+            interaction,
+            file=create_mock_attachment(),
+            name='corrupt',
+            description='should handle parsing exceptions gracefully',
+        )
+
+    assert interaction.followed
+    assert interaction.followup_message is not None
+    assert 'Could not process the audio file' in interaction.followup_message
+
+
+@pytest.mark.asyncio
+async def test_upload_command_write_disk_error(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
+    upload_ = extract(sounds.upload)
+
+    interaction = MockInteraction(
+        sounds.upload,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    # Force a write error when saving the file to disk
+    with (
+        mock.patch(
+            'threepseat.ext.sounds.commands._get_mp3_duration_s',
+            return_value=10.0,
+        ),
+        mock.patch(
+            'builtins.open',
+            side_effect=OSError('Disk Full or Permission Denied'),
+        ),
+    ):
+        await upload_(
+            sounds,
+            interaction,
+            file=create_mock_attachment(),
+            name='diskerror',
+            description='should fail gracefully on file save',
+        )
+
+    assert interaction.followed
+    assert interaction.followup_message is not None
+    assert (
+        'Failed to save the sound to the database'
+        in interaction.followup_message
     )
 
 
