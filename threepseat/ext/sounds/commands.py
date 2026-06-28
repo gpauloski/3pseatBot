@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import datetime
+import json
 import logging
+import tempfile
 import time
 
 import discord
@@ -12,9 +15,14 @@ from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
 from threepseat.ext.extension import MAX_CHOICES_LENGTH
 from threepseat.ext.extension import CommandGroupExtension
+from threepseat.ext.sounds.data import MAX_SOUND_FILE_SIZE_BYTES
+from threepseat.ext.sounds.data import MAX_SOUND_LENGTH_SECONDS
+from threepseat.ext.sounds.data import MAX_SOUND_NAME_CHARS
 from threepseat.ext.sounds.data import MemberSound
 from threepseat.ext.sounds.data import MemberSoundTable
+from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
+from threepseat.ext.sounds.data import download
 from threepseat.utils import LoopType
 from threepseat.utils import leave_on_empty
 from threepseat.utils import play_sound
@@ -91,7 +99,9 @@ class SoundCommands(CommandGroupExtension):
         name='add',
         description='Add a sound',
     )
-    @app_commands.describe(name='Name of sound (max 12 characters)')
+    @app_commands.describe(
+        name=f'Name of sound (max {MAX_SOUND_NAME_CHARS} characters)',
+    )
     @app_commands.describe(link='Link to YouTube clip (max 30 seconds)')
     @app_commands.describe(
         description='Sound description (max 100 characters)',
@@ -100,22 +110,33 @@ class SoundCommands(CommandGroupExtension):
     async def add(
         self,
         interaction: discord.Interaction[commands.Bot],
-        name: app_commands.Range[str, 1, 18],
+        name: app_commands.Range[str, 1, MAX_SOUND_NAME_CHARS],
         link: str,
         description: app_commands.Range[str, 1, 100],
     ) -> None:
         """Add a new sound."""
         await interaction.response.defer(thinking=True)
-
         assert interaction.guild is not None
+
+        existing = self.table.get(name=name, guild_id=interaction.guild.id)
+        if existing is not None:
+            message = f'A sound named {name} already exists.'
+            await interaction.followup.send(message, ephemeral=True)
+            return
+
+        sound = Sound.new(
+            name=name,
+            description=description,
+            link=link,
+            author_id=interaction.user.id,
+            guild_id=interaction.guild.id,
+        )
+        assert sound.link is not None
+        filepath = self.table.filepath(sound.filename)
+
         try:
-            self.table.add(
-                name=name,
-                description=description,
-                link=link,
-                author_id=interaction.user.id,
-                guild_id=interaction.guild.id,
-            )
+            await asyncio.to_thread(download, sound.link, filepath)
+            self.table.add(sound)
         except ValueError as e:
             await interaction.followup.send(str(e), ephemeral=True)
         else:
@@ -182,9 +203,13 @@ class SoundCommands(CommandGroupExtension):
             date = datetime.datetime.fromtimestamp(
                 sound.created_time,
             ).strftime('%B %d, %Y')
-            msg = f'**{sound.name}**: {sound.description}\n'
-            msg += f'{sound.link}\n'
-            msg += f'*Added by {user_str} on {date}*'
+            msg = f'**{sound.name}**: *{sound.description}*\n\n'
+            msg += f'Added by {user_str} on {date}\n\n'
+            msg += (
+                f'{sound.link}'
+                if len(sound.link) > 0
+                else '*User uploaded mp3 file*'
+            )
             await interaction.response.send_message(msg)
 
     @app_commands.command(
@@ -292,6 +317,95 @@ class SoundCommands(CommandGroupExtension):
                 ephemeral=True,
             )
 
+    @app_commands.command(
+        name='upload',
+        description='Upload an MP3 sound file directly',
+    )
+    @app_commands.describe(
+        file=f'MP3 file to upload (max {MAX_SOUND_LENGTH_SECONDS} seconds)',
+    )
+    @app_commands.describe(
+        name=f'Name of sound (max {MAX_SOUND_NAME_CHARS} characters)',
+    )
+    @app_commands.describe(
+        description='Sound description (max 100 characters)',
+    )
+    @app_commands.check(log_interaction)
+    async def upload(
+        self,
+        interaction: discord.Interaction[commands.Bot],
+        file: discord.Attachment,
+        name: app_commands.Range[str, 1, MAX_SOUND_NAME_CHARS],
+        description: app_commands.Range[str, 1, 100],
+    ) -> None:
+        """Upload a new sound via MP3 attachment."""
+        await interaction.response.defer(thinking=True)
+        assert interaction.guild is not None
+
+        if not file.filename.lower().endswith('.mp3'):
+            await interaction.followup.send(
+                'Error: The file must be an MP3.',
+                ephemeral=True,
+            )
+            return
+
+        if file.size > MAX_SOUND_FILE_SIZE_BYTES:
+            mb = MAX_SOUND_FILE_SIZE_BYTES // (1024 * 1024)
+            await interaction.followup.send(
+                f'Error: File size must be under {mb} MB.',
+                ephemeral=True,
+            )
+            return
+
+        try:
+            duration = await _get_mp3_duration_s(file)
+        except Exception as e:
+            logger.exception(f'Failed to validate uploaded file: {e}')
+            await interaction.followup.send(
+                'Error: Could not process the audio file.',
+                ephemeral=True,
+            )
+            return
+
+        if duration > MAX_SOUND_LENGTH_SECONDS:
+            await interaction.followup.send(
+                f'Error: Sound is too long ({duration:.1f}s). '
+                f'Maximum length is {MAX_SOUND_LENGTH_SECONDS} seconds.',
+                ephemeral=True,
+            )
+            return
+
+        sound = Sound.new(
+            name=name,
+            description=description,
+            link=None,
+            author_id=interaction.user.id,
+            guild_id=interaction.guild.id,
+        )
+        filepath = self.table.filepath(sound.filename)
+
+        try:
+            with open(filepath, 'wb') as f:
+                f.write(await file.read())
+        except OSError:
+            logger.exception(
+                f'Failed to save user-uploaded sound to {filepath}',
+            )
+            await interaction.followup.send(
+                'Error: Failed to save the sound to the database.',
+                ephemeral=True,
+            )
+            return
+
+        try:
+            self.table.add(sound)
+        except ValueError as e:  # pragma: no cover
+            await interaction.followup.send(str(e), ephemeral=True)
+        else:
+            await interaction.followup.send(
+                f'Uploaded and added *{name}* to the sounds.',
+            )
+
     async def on_error(
         self,
         interaction: discord.Interaction[discord.Client],
@@ -303,3 +417,45 @@ class SoundCommands(CommandGroupExtension):
             logger.info(f'app command check failed: {error}')
         else:
             logger.exception(error)
+
+
+async def _get_mp3_duration_s(
+    file: discord.Attachment,
+) -> float:  # pragma: no cover
+    with tempfile.NamedTemporaryFile(suffix='.mp3') as temp_file:
+        temp_file.write(await file.read())
+        temp_file.flush()
+
+        cmd = (
+            'ffprobe',
+            '-v',
+            'quiet',
+            '-print_format',
+            'json',
+            '-show_format',
+            temp_file.name,
+        )
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await proc.wait()
+
+    stdout, stderr = ('', '')
+    if proc.stdout is not None:
+        stdout = (await proc.stdout.read()).decode().strip()
+    if proc.stderr is not None:
+        stderr = (await proc.stderr.read()).decode().strip()
+
+    if proc.returncode != 0:
+        message = (
+            f'Get duration with ffmpeg failed (exit code {proc.returncode}): '
+            f'{" ".join(cmd)}'
+        )
+        if stderr != '':
+            message += f'\nstdout:\n{stdout}\nstderr:\n{stderr}'
+        raise RuntimeError(message)
+
+    probe_data = json.loads(stdout)
+    return float(probe_data['format']['duration'])

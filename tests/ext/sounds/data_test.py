@@ -13,21 +13,25 @@ from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
 from threepseat.ext.sounds.data import download
 
-TEST_SOUND = Sound(
-    uuid='abcd-efgh',
-    name='mysounds',
+TEST_SOUND = Sound.new(
+    name='mysound',
     description='test sound',
     link='https://youtube.com/abcd',
     author_id=1234,
     guild_id=5678,
-    created_time=0,
-    filename='mysound.mp3',
 )
 
 
-@pytest.fixture(autouse=True)
-def _mock_download(mock_download) -> None:
-    pass
+@pytest.fixture
+def sounds(tmp_path: pathlib.Path) -> SoundsTable:
+    db_path = os.path.join(tmp_path, 'sounds.db')
+    data_path = os.path.join(tmp_path, 'data')
+
+    sounds = SoundsTable(db_path=db_path, data_path=data_path)
+    test_sound_path = pathlib.Path(sounds.filepath(TEST_SOUND.filename))
+    test_sound_path.touch()
+
+    return sounds
 
 
 def test_filepath(tmp_path: pathlib.Path) -> None:
@@ -41,19 +45,8 @@ def test_filepath(tmp_path: pathlib.Path) -> None:
     assert os.path.isdir(data_path)
 
 
-def test_add_get_sound(tmp_path: pathlib.Path) -> None:
-    db_path = os.path.join(tmp_path, 'sounds.db')
-    data_path = os.path.join(tmp_path, 'data')
-
-    sounds = SoundsTable(db_path=db_path, data_path=data_path)
-
-    sounds.add(
-        name=TEST_SOUND.name,
-        description=TEST_SOUND.description,
-        link=TEST_SOUND.link,
-        author_id=TEST_SOUND.author_id,
-        guild_id=TEST_SOUND.guild_id,
-    )
+def test_add_get_sound(sounds: SoundsTable) -> None:
+    sounds.add(TEST_SOUND)
 
     found = sounds.get(name=TEST_SOUND.name, guild_id=TEST_SOUND.guild_id)
     assert found is not None
@@ -68,79 +61,31 @@ def test_add_get_sound(tmp_path: pathlib.Path) -> None:
     assert time.time() - found.created_time < 5
 
 
-def test_add_sound_validation(tmp_path: pathlib.Path) -> None:
-    db_path = os.path.join(tmp_path, 'sounds.db')
-    data_path = os.path.join(tmp_path, 'data')
-
-    sounds = SoundsTable(db_path=db_path, data_path=data_path)
+def test_add_sound_validation(sounds: SoundsTable) -> None:
+    with pytest.raises(ValueError, match='alphanumeric'):
+        sounds.add(TEST_SOUND._replace(name='my sound'))
 
     with pytest.raises(ValueError, match='alphanumeric'):
-        sounds.add(
-            name='my sound',
-            description=TEST_SOUND.description,
-            link=TEST_SOUND.link,
-            author_id=TEST_SOUND.author_id,
-            guild_id=TEST_SOUND.guild_id,
-        )
-
-    with pytest.raises(ValueError, match='alphanumeric'):
-        sounds.add(
-            name='mysound%',
-            description=TEST_SOUND.description,
-            link=TEST_SOUND.link,
-            author_id=TEST_SOUND.author_id,
-            guild_id=TEST_SOUND.guild_id,
-        )
+        sounds.add(TEST_SOUND._replace(name='mysound%'))
 
     with pytest.raises(ValueError, match='between'):
-        sounds.add(
-            name='',
-            description=TEST_SOUND.description,
-            link=TEST_SOUND.link,
-            author_id=TEST_SOUND.author_id,
-            guild_id=TEST_SOUND.guild_id,
-        )
+        sounds.add(TEST_SOUND._replace(name=''))
 
     with pytest.raises(ValueError, match='between'):
-        sounds.add(
-            name='xxxxxxxxxxxxxxxx',
-            description=TEST_SOUND.description,
-            link=TEST_SOUND.link,
-            author_id=TEST_SOUND.author_id,
-            guild_id=TEST_SOUND.guild_id,
-        )
+        sounds.add(TEST_SOUND._replace(name='x' * 32))
+
+    with pytest.raises(ValueError, match='does not exist'):
+        sounds.add(TEST_SOUND._replace(filename='foo.mp3'))
 
 
-def test_add_sound_exists(tmp_path: pathlib.Path) -> None:
-    db_path = os.path.join(tmp_path, 'sounds.db')
-    data_path = os.path.join(tmp_path, 'data')
-
-    sounds = SoundsTable(db_path=db_path, data_path=data_path)
-
-    sounds.add(
-        name=TEST_SOUND.name,
-        description=TEST_SOUND.description,
-        link=TEST_SOUND.link,
-        author_id=TEST_SOUND.author_id,
-        guild_id=TEST_SOUND.guild_id,
-    )
+def test_add_sound_exists(sounds: SoundsTable) -> None:
+    sounds.add(TEST_SOUND)
 
     with pytest.raises(ValueError, match='exists'):
-        sounds.add(
-            name=TEST_SOUND.name,
-            description=TEST_SOUND.description,
-            link=TEST_SOUND.link,
-            author_id=TEST_SOUND.author_id,
-            guild_id=TEST_SOUND.guild_id,
-        )
+        sounds.add(TEST_SOUND)
 
 
-def test_all_sounds(tmp_path: pathlib.Path) -> None:
-    db_path = os.path.join(tmp_path, 'sounds.db')
-    data_path = os.path.join(tmp_path, 'data')
-
-    sounds = SoundsTable(db_path=db_path, data_path=data_path)
-
+def test_all_sounds(sounds: SoundsTable) -> None:
     sounds_list = [
         dict(
             name='mysound1',
@@ -165,14 +110,16 @@ def test_all_sounds(tmp_path: pathlib.Path) -> None:
         ),
     ]
 
-    for sound in sounds_list:
-        sounds.add(
-            name=sound['name'],  # type: ignore
-            description=sound['description'],  # type: ignore
-            link=sound['link'],  # type: ignore
-            author_id=sound['author_id'],  # type: ignore
-            guild_id=sound['guild_id'],  # type: ignore
+    for sound_data in sounds_list:
+        sound = Sound.new(
+            name=sound_data['name'],  # type: ignore[arg-type]
+            description=sound_data['description'],  # type: ignore[arg-type]
+            link=sound_data['link'],  # type: ignore[arg-type]
+            author_id=sound_data['author_id'],  # type: ignore[arg-type]
+            guild_id=sound_data['guild_id'],  # type: ignore[arg-type]
         )
+        pathlib.Path(sounds.filepath(sound.filename)).touch()
+        sounds.add(sound)
 
     assert len(sounds.all(guild_id=-1)) == 0
     assert len(sounds.all(guild_id=0)) == 1
@@ -183,19 +130,8 @@ def test_all_sounds(tmp_path: pathlib.Path) -> None:
     assert names == {'mysound1', 'mysound2'}
 
 
-def test_remove_sound(tmp_path: pathlib.Path) -> None:
-    db_path = os.path.join(tmp_path, 'sounds.db')
-    data_path = os.path.join(tmp_path, 'data')
-
-    sounds = SoundsTable(db_path=db_path, data_path=data_path)
-
-    sounds.add(
-        name=TEST_SOUND.name,
-        description=TEST_SOUND.description,
-        link=TEST_SOUND.link,
-        author_id=TEST_SOUND.author_id,
-        guild_id=TEST_SOUND.guild_id,
-    )
+def test_remove_sound(sounds: SoundsTable) -> None:
+    sounds.add(TEST_SOUND)
 
     found1 = sounds.get(name=TEST_SOUND.name, guild_id=TEST_SOUND.guild_id)
     assert found1 is not None
