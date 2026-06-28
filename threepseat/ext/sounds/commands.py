@@ -22,6 +22,9 @@ from threepseat.utils import voice_channel
 
 logger = logging.getLogger(__name__)
 
+# Maximum character length for sound names
+_NAME_CHAR_LIMIT = 18
+
 
 class SoundCommands(CommandGroupExtension):
     """App commands for sound board."""
@@ -91,7 +94,9 @@ class SoundCommands(CommandGroupExtension):
         name='add',
         description='Add a sound',
     )
-    @app_commands.describe(name='Name of sound (max 12 characters)')
+    @app_commands.describe(
+        name=f'Name of sound (max {_NAME_CHAR_LIMIT} characters)',
+    )
     @app_commands.describe(link='Link to YouTube clip (max 30 seconds)')
     @app_commands.describe(
         description='Sound description (max 100 characters)',
@@ -100,7 +105,7 @@ class SoundCommands(CommandGroupExtension):
     async def add(
         self,
         interaction: discord.Interaction[commands.Bot],
-        name: app_commands.Range[str, 1, 18],
+        name: app_commands.Range[str, 1, _NAME_CHAR_LIMIT],
         link: str,
         description: app_commands.Range[str, 1, 100],
     ) -> None:
