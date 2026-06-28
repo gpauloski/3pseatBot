@@ -6,6 +6,7 @@ import pathlib
 import time
 import uuid
 from typing import NamedTuple
+from typing import Self
 
 from yt_dlp import YoutubeDL
 
@@ -13,6 +14,7 @@ from threepseat.table import SQLTableInterface
 from threepseat.utils import alphanumeric
 
 MAX_SOUND_LENGTH_SECONDS = 30
+MAX_SOUND_NAME_CHARS = 18
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,28 @@ class Sound(NamedTuple):
     guild_id: int
     created_time: float
     filename: str
+
+    @classmethod
+    def new(
+        cls,
+        name: str,
+        description: str,
+        link: str,
+        author_id: int,
+        guild_id: int,
+    ) -> Self:
+        """Create a new sound."""
+        uuid_ = uuid.uuid4()
+        return cls(
+            uuid=str(uuid_),
+            name=name,
+            description=description,
+            link=link,
+            author_id=author_id,
+            guild_id=guild_id,
+            created_time=time.time(),
+            filename=f'{uuid_}-{name}-{guild_id}.mp3',
+        )
 
 
 class SoundsTable(SQLTableInterface[Sound]):
@@ -54,46 +78,30 @@ class SoundsTable(SQLTableInterface[Sound]):
         os.makedirs(self.data_path, exist_ok=True)
         return os.path.join(self.data_path, filename)
 
-    def add(
-        self,
-        name: str,
-        description: str,
-        link: str,
-        author_id: int,
-        guild_id: int,
-    ) -> None:
+    def add(self, sound: Sound) -> None:
         """Add sound to database.
 
         Raises:
             ValueError:
                 if name contains non-alphanumeric characters.
             ValueError:
-                if name is not between 1 and 15 characters long.
+                if name is an invalid length.
+            ValueError:
+                if the filepath does not exist in the data directory.
+            ValueError:
+                if the name already exists.
             ValueError:
                 any additional errors raises by download().
         """
-        if not alphanumeric(name):
-            raise ValueError('Name must contain only alphanumeric characters.')
-        if len(name) == 0 or len(name) > 15:
-            raise ValueError('Name must be between 1 and 15 characters long.')
-
-        existing = self.get(name=name, guild_id=guild_id)
-        if existing is not None:
+        if self.get(name=sound.name, guild_id=sound.guild_id) is not None:
             raise ValueError('Sound with that name already exists.')
-
-        uuid_ = uuid.uuid4()
-        sound = Sound(
-            uuid=str(uuid_),
-            name=name,
-            description=description,
-            link=link,
-            author_id=author_id,
-            guild_id=guild_id,
-            created_time=time.time(),
-            filename=f'{uuid_}-{name}-{guild_id}.mp3',
-        )
-
-        download(sound.link, self.filepath(sound.filename))
+        if not alphanumeric(sound.name):
+            raise ValueError('Name must contain only alphanumeric characters.')
+        if len(sound.name) == 0 or len(sound.name) > MAX_SOUND_NAME_CHARS:
+            raise ValueError('Name must be between 1 and 15 characters long.')
+        filepath = self.filepath(sound.filename)
+        if not os.path.isfile(filepath):
+            raise ValueError(f'{filepath} does not exist.')
 
         self.update(sound)
         logger.info(f'added sound to database: {sound}')

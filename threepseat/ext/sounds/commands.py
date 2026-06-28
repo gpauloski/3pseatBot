@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import datetime
 import logging
 import time
@@ -12,18 +13,18 @@ from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import log_interaction
 from threepseat.ext.extension import MAX_CHOICES_LENGTH
 from threepseat.ext.extension import CommandGroupExtension
+from threepseat.ext.sounds.data import MAX_SOUND_NAME_CHARS
 from threepseat.ext.sounds.data import MemberSound
 from threepseat.ext.sounds.data import MemberSoundTable
+from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
+from threepseat.ext.sounds.data import download
 from threepseat.utils import LoopType
 from threepseat.utils import leave_on_empty
 from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 
 logger = logging.getLogger(__name__)
-
-# Maximum character length for sound names
-_NAME_CHAR_LIMIT = 18
 
 
 class SoundCommands(CommandGroupExtension):
@@ -95,7 +96,7 @@ class SoundCommands(CommandGroupExtension):
         description='Add a sound',
     )
     @app_commands.describe(
-        name=f'Name of sound (max {_NAME_CHAR_LIMIT} characters)',
+        name=f'Name of sound (max {MAX_SOUND_NAME_CHARS} characters)',
     )
     @app_commands.describe(link='Link to YouTube clip (max 30 seconds)')
     @app_commands.describe(
@@ -105,22 +106,31 @@ class SoundCommands(CommandGroupExtension):
     async def add(
         self,
         interaction: discord.Interaction[commands.Bot],
-        name: app_commands.Range[str, 1, _NAME_CHAR_LIMIT],
+        name: app_commands.Range[str, 1, MAX_SOUND_NAME_CHARS],
         link: str,
         description: app_commands.Range[str, 1, 100],
     ) -> None:
         """Add a new sound."""
         await interaction.response.defer(thinking=True)
-
         assert interaction.guild is not None
+
+        existing = self.table.get(name=name, guild_id=interaction.guild.id)
+        if existing is not None:
+            message = f'A sound named {name} already exists.'
+            await interaction.followup.send(message, ephemeral=True)
+
+        sound = Sound.new(
+            name=name,
+            description=description,
+            link=link,
+            author_id=interaction.user.id,
+            guild_id=interaction.guild.id,
+        )
+        filepath = self.table.filepath(sound.filename)
+
         try:
-            self.table.add(
-                name=name,
-                description=description,
-                link=link,
-                author_id=interaction.user.id,
-                guild_id=interaction.guild.id,
-            )
+            await asyncio.to_thread(download, sound.link, filepath)
+            self.table.add(sound)
         except ValueError as e:
             await interaction.followup.send(str(e), ephemeral=True)
         else:

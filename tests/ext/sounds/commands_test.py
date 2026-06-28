@@ -17,6 +17,7 @@ from testing.utils import extract
 from threepseat.bot import Bot
 from threepseat.ext.sounds.commands import SoundCommands
 from threepseat.ext.sounds.data import MemberSound
+from threepseat.ext.sounds.data import Sound
 
 
 @pytest.fixture
@@ -61,6 +62,37 @@ async def test_add_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
 
 
 @pytest.mark.asyncio
+async def test_add_command_exists(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
+    add_ = extract(sounds.add)
+
+    interaction = MockInteraction(
+        sounds.add,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    with mock.patch.object(sounds.table, 'get', return_value=True):
+        await add_(
+            sounds,
+            interaction,
+            name='name',
+            link='localhost',
+            description='a sound',
+        )
+
+    assert interaction.followed
+    assert (
+        interaction.followup_message is not None
+        and 'already exists' in interaction.followup_message
+    )
+
+
+@pytest.mark.asyncio
 async def test_add_command_failure(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -75,13 +107,14 @@ async def test_add_command_failure(
         client=mockbot,
     )
 
-    await add_(
-        sounds,
-        interaction,
-        name='invalid sound name',
-        link='localhost',
-        description='a sound',
-    )
+    with mock.patch('os.path.isfile', return_value=True):
+        await add_(
+            sounds,
+            interaction,
+            name='invalid sound name (too long)',
+            link='localhost',
+            description='a sound',
+        )
 
     assert interaction.followed
     assert (
@@ -548,13 +581,15 @@ async def test_voice_state_update(
         assert mock_play.await_count == 0
 
         # succeed
-        sounds.table.add(
+        sound = Sound.new(
             name='test',
             description='test',
             link='https://youtube.com',
             author_id=2,
             guild_id=1,
         )
+        with mock.patch('os.path.isfile', return_value=True):
+            sounds.table.add(sound)
         await sounds.on_voice_state_update(member, before, after)
         assert mock_play.await_count == 1
 
@@ -610,13 +645,15 @@ async def test_register_command(
     assert interaction.guild is not None
     assert interaction.user is not None
 
-    sounds.table.add(
+    sound = Sound.new(
         name='mysound',
         description='test',
         link='https://youtube.com',
         author_id=interaction.user.id,
         guild_id=interaction.guild.id,
     )
+    with mock.patch('os.path.isfile', return_value=True):
+        sounds.table.add(sound)
     assert len(sounds.join_table.all(interaction.guild.id)) == 0
     await register_(sounds, interaction, name='mysound')
     assert len(sounds.join_table.all(interaction.guild.id)) == 1
