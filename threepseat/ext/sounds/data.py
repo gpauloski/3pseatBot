@@ -13,6 +13,7 @@ from yt_dlp import YoutubeDL
 from threepseat.table import SQLTableInterface
 from threepseat.utils import alphanumeric
 
+MAX_SOUND_FILE_SIZE_BYTES = 1 * 1024 * 1024
 MAX_SOUND_LENGTH_SECONDS = 30
 MAX_SOUND_NAME_CHARS = 18
 
@@ -36,7 +37,7 @@ class Sound(NamedTuple):
         cls,
         name: str,
         description: str,
-        link: str,
+        link: str | None,
         author_id: int,
         guild_id: int,
     ) -> Self:
@@ -46,7 +47,7 @@ class Sound(NamedTuple):
             uuid=str(uuid_),
             name=name,
             description=description,
-            link=link,
+            link=link if link is not None else '',
             author_id=author_id,
             guild_id=guild_id,
             created_time=time.time(),
