@@ -43,7 +43,7 @@ class Field(NamedTuple):
     sql_type: str
 
 
-class SQLTableInterface(Generic[RowType]):
+class SQLTableInterface(Generic[RowType]):  # noqa: UP046
     """Abstract interface to a SQLite3 table.
 
     Table formats are determined using an input RowType.
