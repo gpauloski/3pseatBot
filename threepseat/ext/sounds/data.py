@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import os
 import pathlib
@@ -223,3 +225,51 @@ def download(link: str, filepath: str) -> None:
         except Exception as e:
             logger.exception(f'caught error downloading sound: {e}')
             raise ValueError('Error downloading sound.') from e
+
+
+async def mp3_duration_seconds(filepath: str) -> float:
+    """Get the duration of an MP3 file in seconds.
+
+    Args:
+        filepath (str): path to the MP3 file to probe.
+
+    Returns:
+        duration of the audio in seconds.
+
+    Raises:
+        RuntimeError:
+            if ffprobe fails to process the file.
+    """
+    cmd = (
+        'ffprobe',
+        '-v',
+        'quiet',
+        '-print_format',
+        'json',
+        '-show_format',
+        filepath,
+    )
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    await proc.wait()
+
+    stdout, stderr = ('', '')
+    if proc.stdout is not None:
+        stdout = (await proc.stdout.read()).decode().strip()
+    if proc.stderr is not None:
+        stderr = (await proc.stderr.read()).decode().strip()
+
+    if proc.returncode != 0:
+        message = (
+            f'Get duration with ffmpeg failed (exit code {proc.returncode}): '
+            f'{" ".join(cmd)}'
+        )
+        if stderr != '':
+            message += f'\nstdout:\n{stdout}\nstderr:\n{stderr}'
+        raise RuntimeError(message)
+
+    probe_data = json.loads(stdout)
+    return float(probe_data['format']['duration'])
