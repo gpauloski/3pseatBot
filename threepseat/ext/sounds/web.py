@@ -13,7 +13,12 @@ from quart_discord import requires_authorization
 from werkzeug.wrappers.response import Response as werkseug_Response
 
 from threepseat.bot import Bot
+from threepseat.ext.sounds.data import MAX_SOUND_DESCRIPTION_CHARS
+from threepseat.ext.sounds.data import MAX_SOUND_FILE_SIZE_BYTES
+from threepseat.ext.sounds.data import MAX_SOUND_LENGTH_SECONDS
+from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
+from threepseat.ext.sounds.data import mp3_duration_seconds
 from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 
@@ -72,6 +77,14 @@ def create_app(
     app = quart.Quart(__name__)
 
     app.secret_key = os.urandom(128)
+
+    # Cap request bodies so oversized uploads are rejected before we buffer
+    # them. Allow some headroom above the file limit for multipart overhead
+    # (form fields, boundaries); the exact file size is validated in the
+    # upload handler for a friendlier error message.
+    app.config['MAX_CONTENT_LENGTH'] = MAX_SOUND_FILE_SIZE_BYTES + (
+        1 * 1024 * 1024
+    )
 
     if 'http://' in redirect_uri:  # pragma: no branch
         os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = 'true'
@@ -192,6 +205,7 @@ async def sound_grid(guild_id: int) -> Response:
     return await quart.render_template(
         'sounds.html',
         guild=guild,
+        guild_id=guild_id,
         sounds=sound_data,
         logout_url=quart.url_for('sounds.logout'),
     )
@@ -230,6 +244,84 @@ async def sound_play(guild_id: int, sound_name: str) -> Response:
         return quart.Response('', 200)
 
 
+@sounds_blueprint.route('/sounds/<int:guild_id>/add', methods=['POST'])
+@requires_authorization
+async def sound_add(guild_id: int) -> Response:
+    """Add a sound to a guild from an uploaded MP3 file."""
+    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
+    bot = quart.current_app.config['bot']
+    sounds = quart.current_app.config['sounds']
+
+    user = await discord.fetch_user()
+    member = get_member(bot, user, guild_id)
+    if member is None:
+        return quart.Response('Cannot find your membership in the Guild.', 400)
+
+    form = await quart.request.form
+    files = await quart.request.files
+    name = form.get('name', '').strip()
+    description = form.get('description', '').strip()
+    file = files.get('file')
+
+    if file is None or file.filename is None or file.filename == '':
+        return quart.Response('No file was uploaded.', 400)
+    if not file.filename.lower().endswith('.mp3'):
+        return quart.Response('The file must be an MP3.', 400)
+    if len(description) == 0 or len(description) > MAX_SOUND_DESCRIPTION_CHARS:
+        return quart.Response(
+            'Description must be between 1 and '
+            f'{MAX_SOUND_DESCRIPTION_CHARS} characters.',
+            400,
+        )
+
+    content = file.read()
+    if len(content) > MAX_SOUND_FILE_SIZE_BYTES:
+        mb = MAX_SOUND_FILE_SIZE_BYTES // (1024 * 1024)
+        return quart.Response(f'File size must be under {mb} MB.', 400)
+
+    sound = Sound.new(
+        name=name,
+        description=description,
+        link=None,
+        author_id=member.id,
+        guild_id=guild_id,
+    )
+    filepath = sounds.filepath(sound.filename)
+
+    try:
+        with open(filepath, 'wb') as f:
+            f.write(content)
+
+        duration = await mp3_duration_seconds(filepath)
+        if duration > MAX_SOUND_LENGTH_SECONDS:
+            return quart.Response(
+                f'Sound is too long ({duration:.1f}s). Maximum length is '
+                f'{MAX_SOUND_LENGTH_SECONDS} seconds.',
+                400,
+            )
+
+        # add() validates the name (alphanumeric, length, uniqueness) and
+        # that the file exists on disk.
+        sounds.add(sound)
+    except ValueError as e:
+        _remove_if_exists(filepath)
+        return quart.Response(str(e), 400)
+    except Exception as e:
+        logger.exception(f'Error saving uploaded sound: {e}')
+        _remove_if_exists(filepath)
+        return quart.Response('Failed to save the sound.', 400)
+
+    return quart.Response('', 200)
+
+
+def _remove_if_exists(filepath: str) -> None:
+    """Remove a file if it exists, ignoring missing files."""
+    try:
+        os.remove(filepath)
+    except FileNotFoundError:  # pragma: no cover
+        pass
+
+
 @sounds_blueprint.route('/login/')
 async def login() -> Response:  # pragma: no cover
     """Login with discord OAuth."""
@@ -258,3 +350,10 @@ async def callback() -> Response:  # pragma: no cover
 async def redirect_unauthorized(e: Exception) -> Response:  # pragma: no cover
     """Redirect to home if unauthorized."""
     return quart.redirect(quart.url_for('sounds.index'))
+
+
+@sounds_blueprint.app_errorhandler(413)
+async def request_too_large(e: Exception) -> Response:
+    """Return a friendly message when an upload exceeds the size limit."""
+    mb = MAX_SOUND_FILE_SIZE_BYTES // (1024 * 1024)
+    return quart.Response(f'File size must be under {mb} MB.', 413)

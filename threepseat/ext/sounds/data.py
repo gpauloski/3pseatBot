@@ -18,6 +18,7 @@ from threepseat.utils import alphanumeric
 MAX_SOUND_FILE_SIZE_BYTES = 1 * 1024 * 1024
 MAX_SOUND_LENGTH_SECONDS = 30
 MAX_SOUND_NAME_CHARS = 18
+MAX_SOUND_DESCRIPTION_CHARS = 100
 
 logger = logging.getLogger(__name__)
 
