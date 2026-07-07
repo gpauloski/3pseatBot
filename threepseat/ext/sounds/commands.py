@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import datetime
-import json
 import logging
 import tempfile
 import time
@@ -23,6 +22,7 @@ from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
 from threepseat.ext.sounds.data import download
+from threepseat.ext.sounds.data import mp3_duration_seconds
 from threepseat.utils import LoopType
 from threepseat.utils import leave_on_empty
 from threepseat.utils import play_sound
@@ -425,37 +425,4 @@ async def _get_mp3_duration_s(
     with tempfile.NamedTemporaryFile(suffix='.mp3') as temp_file:
         temp_file.write(await file.read())
         temp_file.flush()
-
-        cmd = (
-            'ffprobe',
-            '-v',
-            'quiet',
-            '-print_format',
-            'json',
-            '-show_format',
-            temp_file.name,
-        )
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        await proc.wait()
-
-    stdout, stderr = ('', '')
-    if proc.stdout is not None:
-        stdout = (await proc.stdout.read()).decode().strip()
-    if proc.stderr is not None:
-        stderr = (await proc.stderr.read()).decode().strip()
-
-    if proc.returncode != 0:
-        message = (
-            f'Get duration with ffmpeg failed (exit code {proc.returncode}): '
-            f'{" ".join(cmd)}'
-        )
-        if stderr != '':
-            message += f'\nstdout:\n{stdout}\nstderr:\n{stderr}'
-        raise RuntimeError(message)
-
-    probe_data = json.loads(stdout)
-    return float(probe_data['format']['duration'])
+        return await mp3_duration_seconds(temp_file.name)

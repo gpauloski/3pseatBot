@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import pathlib
 from collections.abc import AsyncGenerator
 from unittest import mock
@@ -7,16 +8,26 @@ from unittest import mock
 import pytest
 import pytest_asyncio
 import quart
+from quart.datastructures import FileStorage
 
 from testing.mock import MockClient
 from testing.mock import MockGuild
 from testing.mock import MockUser
 from threepseat.bot import Bot
+from threepseat.ext.sounds.data import MAX_SOUND_FILE_SIZE_BYTES
 from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
 from threepseat.ext.sounds.web import create_app
 from threepseat.ext.sounds.web import get_member
 from threepseat.ext.sounds.web import get_mutual_guilds
+from threepseat.ext.sounds.web import request_too_large
+
+
+def _upload_file(
+    content: bytes = b'fake mp3 data',
+    filename: str = 'test.mp3',
+) -> FileStorage:
+    return FileStorage(stream=io.BytesIO(content), filename=filename)
 
 
 @pytest_asyncio.fixture
@@ -25,7 +36,8 @@ async def quart_app(
     tmp_path: pathlib.Path,
 ) -> AsyncGenerator[quart.typing.TestAppProtocol, None]:
     """Generate Quart test app."""
-    sounds = SoundsTable(db_path=tmp_file, data_path=tmp_file)
+    data_path = str(tmp_path / 'sounds')
+    sounds = SoundsTable(db_path=tmp_file, data_path=data_path)
 
     with (
         mock.patch('threepseat.bot.Bot.user'),
@@ -283,3 +295,450 @@ def test_get_member() -> None:
         mock.patch.object(guild, 'get_member', return_value=1),
     ):
         assert get_member(client, user, 1234) == 1
+
+
+@pytest.mark.asyncio
+async def test_sound_add_success(quart_app) -> None:
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            mock.AsyncMock(return_value=1.0),
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'mysound', 'description': 'a test sound'},
+            files={'file': _upload_file()},
+        )
+
+    assert response.status_code == 200
+    # The sound was actually persisted to the table.
+    assert sounds.get('mysound', guild_id=5678) is not None
+
+
+@pytest.mark.asyncio
+async def test_sound_add_no_member(quart_app) -> None:
+    client = quart_app.test_client()
+
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=None,
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'mysound', 'description': 'a test sound'},
+            files={'file': _upload_file()},
+        )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_sound_add_no_file(quart_app) -> None:
+    client = quart_app.test_client()
+
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'mysound', 'description': 'a test sound'},
+        )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_sound_add_empty_filename(quart_app) -> None:
+    client = quart_app.test_client()
+
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'mysound', 'description': 'a test sound'},
+            files={'file': _upload_file(filename='')},
+        )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_sound_add_bad_extension(quart_app) -> None:
+    client = quart_app.test_client()
+
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'mysound', 'description': 'a test sound'},
+            files={'file': _upload_file(filename='test.txt')},
+        )
+
+    assert response.status_code == 400
+    assert b'MP3' in await response.get_data()
+
+
+@pytest.mark.asyncio
+async def test_sound_add_bad_description(quart_app) -> None:
+    client = quart_app.test_client()
+
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'mysound', 'description': ''},
+            files={'file': _upload_file()},
+        )
+
+    assert response.status_code == 400
+    assert b'Description' in await response.get_data()
+
+
+@pytest.mark.asyncio
+async def test_sound_add_file_too_large(quart_app) -> None:
+    client = quart_app.test_client()
+
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    # Over the file limit but under MAX_CONTENT_LENGTH so it reaches the
+    # handler's explicit size check.
+    content = b'x' * (MAX_SOUND_FILE_SIZE_BYTES + 1)
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'mysound', 'description': 'a test sound'},
+            files={'file': _upload_file(content=content)},
+        )
+
+    assert response.status_code == 400
+    assert b'File size' in await response.get_data()
+
+
+@pytest.mark.asyncio
+async def test_sound_add_too_long(quart_app) -> None:
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            mock.AsyncMock(return_value=999.0),
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'mysound', 'description': 'a test sound'},
+            files={'file': _upload_file()},
+        )
+
+    assert response.status_code == 400
+    assert b'too long' in await response.get_data()
+    # The partially-written file was cleaned up and nothing was persisted.
+    assert sounds.get('mysound', guild_id=5678) is None
+
+
+@pytest.mark.asyncio
+async def test_sound_add_duplicate_name(quart_app) -> None:
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    # Pre-existing sound with the same name.
+    existing = Sound.new(
+        name='mysound',
+        description='existing',
+        link=None,
+        author_id=1234,
+        guild_id=5678,
+    )
+    pathlib.Path(sounds.filepath(existing.filename)).touch()
+    sounds.add(existing)
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            mock.AsyncMock(return_value=1.0),
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'mysound', 'description': 'a test sound'},
+            files={'file': _upload_file()},
+        )
+
+    assert response.status_code == 400
+    assert b'already exists' in await response.get_data()
+
+
+@pytest.mark.asyncio
+async def test_sound_add_save_error(quart_app) -> None:
+    client = quart_app.test_client()
+
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            mock.AsyncMock(side_effect=RuntimeError('probe failed')),
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'mysound', 'description': 'a test sound'},
+            files={'file': _upload_file()},
+        )
+
+    assert response.status_code == 400
+    assert b'Failed to save' in await response.get_data()
+
+
+@pytest.mark.asyncio
+async def test_sound_add_youtube_success(quart_app) -> None:
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    # download() would fetch and write the mp3; emulate it creating the file
+    # so that SoundsTable.add finds it on disk.
+    def fake_download(link: str, filepath: str) -> None:
+        pathlib.Path(filepath).touch()
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.download',
+            side_effect=fake_download,
+        ) as mock_download,
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={
+                'name': 'mysound',
+                'description': 'a test sound',
+                'link': 'https://youtube.com/watch?v=abc',
+            },
+        )
+
+    assert response.status_code == 200
+    assert mock_download.call_count == 1
+    saved = sounds.get('mysound', guild_id=5678)
+    assert saved is not None
+    assert saved.link == 'https://youtube.com/watch?v=abc'
+
+
+@pytest.mark.asyncio
+async def test_sound_add_youtube_error(quart_app) -> None:
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.download',
+            side_effect=ValueError('Clip is longer than 30 seconds.'),
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={
+                'name': 'mysound',
+                'description': 'a test sound',
+                'link': 'https://youtube.com/watch?v=abc',
+            },
+        )
+
+    assert response.status_code == 400
+    assert b'longer than' in await response.get_data()
+    assert sounds.get('mysound', guild_id=5678) is None
+
+
+@pytest.mark.asyncio
+async def test_sound_add_link_and_file(quart_app) -> None:
+    client = quart_app.test_client()
+
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={
+                'name': 'mysound',
+                'description': 'a test sound',
+                'link': 'https://youtube.com/watch?v=abc',
+            },
+            files={'file': _upload_file()},
+        )
+
+    assert response.status_code == 400
+    assert b'not both' in await response.get_data()
+
+
+@pytest.mark.asyncio
+async def test_request_too_large_handler() -> None:
+    # Uploads exceeding MAX_CONTENT_LENGTH are rejected by the ASGI server
+    # with a 413 before reaching the handler; verify the friendly response.
+    response = await request_too_large(Exception())
+    assert isinstance(response, quart.Response)
+    assert response.status_code == 413
+    assert b'File size' in await response.get_data()

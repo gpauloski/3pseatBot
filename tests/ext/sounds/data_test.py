@@ -12,6 +12,7 @@ from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
 from threepseat.ext.sounds.data import download
+from threepseat.ext.sounds.data import mp3_duration_seconds
 
 TEST_SOUND = Sound.new(
     name='mysound',
@@ -189,6 +190,76 @@ def test_youtube_download_errors(tmp_path: pathlib.Path) -> None:
                 match='downloading',
             ):  # pragma: no branch
                 download(link, filepath)
+
+
+def _mock_ffprobe_process(
+    *,
+    returncode: int,
+    stdout: bytes,
+    stderr: bytes = b'',
+) -> mock.MagicMock:
+    proc = mock.MagicMock()
+    proc.returncode = returncode
+    proc.wait = mock.AsyncMock()
+    proc.stdout = mock.MagicMock()
+    proc.stdout.read = mock.AsyncMock(return_value=stdout)
+    proc.stderr = mock.MagicMock()
+    proc.stderr.read = mock.AsyncMock(return_value=stderr)
+    return proc
+
+
+@pytest.mark.asyncio
+async def test_mp3_duration_seconds(tmp_path: pathlib.Path) -> None:
+    filepath = os.path.join(tmp_path, 'test.mp3')
+    proc = _mock_ffprobe_process(
+        returncode=0,
+        stdout=b'{"format": {"duration": "12.5"}}',
+    )
+
+    with mock.patch(
+        'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
+        mock.AsyncMock(return_value=proc),
+    ):
+        duration = await mp3_duration_seconds(filepath)
+
+    assert duration == 12.5
+
+
+@pytest.mark.asyncio
+async def test_mp3_duration_seconds_ffprobe_error(
+    tmp_path: pathlib.Path,
+) -> None:
+    filepath = os.path.join(tmp_path, 'test.mp3')
+    proc = _mock_ffprobe_process(
+        returncode=1,
+        stdout=b'',
+        stderr=b'invalid data',
+    )
+
+    with mock.patch(
+        'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
+        mock.AsyncMock(return_value=proc),
+    ):
+        with pytest.raises(RuntimeError, match='ffmpeg failed'):
+            await mp3_duration_seconds(filepath)
+
+
+@pytest.mark.asyncio
+async def test_mp3_duration_seconds_no_pipes(tmp_path: pathlib.Path) -> None:
+    # ffprobe fails and the subprocess has no stdout/stderr pipes attached.
+    filepath = os.path.join(tmp_path, 'test.mp3')
+    proc = mock.MagicMock()
+    proc.returncode = 1
+    proc.wait = mock.AsyncMock()
+    proc.stdout = None
+    proc.stderr = None
+
+    with mock.patch(
+        'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
+        mock.AsyncMock(return_value=proc),
+    ):
+        with pytest.raises(RuntimeError, match='ffmpeg failed'):
+            await mp3_duration_seconds(filepath)
 
 
 def test_member_sounds_table(tmp_path: pathlib.Path) -> None:
