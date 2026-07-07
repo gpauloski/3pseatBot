@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "threepseat"
-version = "2.2.0"
+dynamic = ["version"]
 authors = [
     {name = "Greg Pauloski", email = "jgpauloski@uchicago.edu"},
 ]
@@ -124,3 +124,5 @@ convention = "google"
 [tool.setuptools.packages.find]
 exclude = ["tests*", "testing*"]
 namespaces = false
+
+[tool.setuptools_scm]
