@@ -17,6 +17,7 @@
       $(document).ready(function(){
         $('.sidenav').sidenav();
         $('.modal').modal();
+        $('.tabs').tabs();
       });
 
       function play(val) {
@@ -31,24 +32,40 @@
         });
       }
 
+      function activeSource() {
+        var active = document.querySelector(".tabs .tab a.active");
+        return active ? active.getAttribute("href") : "#tab-youtube";
+      }
+
       function uploadSound() {
         var form = document.getElementById("add-sound-form");
-        var fileInput = document.getElementById("sound-file");
-        if (fileInput.files.length === 0) {
-          alert("Please choose an MP3 file to upload.");
-          return;
-        }
-
         var formData = new FormData();
         formData.append("name", document.getElementById("sound-name").value);
         formData.append(
           "description",
           document.getElementById("sound-description").value
         );
-        formData.append("file", fileInput.files[0]);
+
+        if (activeSource() === "#tab-mp3") {
+          var fileInput = document.getElementById("sound-file");
+          if (fileInput.files.length === 0) {
+            alert("Please choose an MP3 file to upload.");
+            return;
+          }
+          formData.append("file", fileInput.files[0]);
+        } else {
+          var link = document.getElementById("sound-link").value.trim();
+          if (link === "") {
+            alert("Please enter a YouTube link.");
+            return;
+          }
+          formData.append("link", link);
+        }
 
         var button = document.getElementById("add-sound-submit");
+        var progress = document.getElementById("upload-progress");
         button.classList.add("disabled");
+        progress.style.display = "block";
 
         $.ajax({
           type: "POST",
@@ -61,6 +78,7 @@
           },
           error: function (response) {
             button.classList.remove("disabled");
+            progress.style.display = "none";
             alert(response.responseText || "Failed to upload the sound.");
           }
         });
@@ -120,9 +138,11 @@
           <div onclick="play('{{ sound.url }}')" class="waves-effect waves-light btn">
             <i class="medium material-icons blue-grey-text text-darken-4">play_arrow</i>
           </div>
+          {% if sound.youtube_link %}
           <a href="{{ sound.youtube_link }}" target="_blank" class="light-green-text text-accent-1" style="margin-left: auto; margin-right: 0px">
             Watch on YouTube
           </a>
+          {% endif %}
         </div>
       </div>
       {% endfor %}
@@ -141,7 +161,7 @@
     <div class="modal-content blue-grey-text text-lighten-4">
       <h5>Add a Sound to {{ guild.name }}</h5>
       <p class="blue-grey-text text-lighten-2" style="margin-bottom: 24px;">
-        Upload an MP3 file (max 1 MB, up to 30 seconds).
+        Add from a YouTube link or upload an MP3 (max 1 MB, up to 30 seconds).
       </p>
       <form
         id="add-sound-form"
@@ -157,17 +177,42 @@
                  class="blue-grey-text text-lighten-4">
           <label for="sound-description">Description (max 100 characters)</label>
         </div>
-        <div class="file-field input-field">
-          <div class="btn blue-grey-text text-darken-4">
-            <span>MP3</span>
-            <input id="sound-file" type="file" accept=".mp3,audio/mpeg">
+
+        <ul class="tabs blue-grey darken-2">
+          <li class="tab">
+            <a class="active light-green-text text-accent-1" href="#tab-youtube">YouTube Link</a>
+          </li>
+          <li class="tab">
+            <a class="light-green-text text-accent-1" href="#tab-mp3">Upload MP3</a>
+          </li>
+        </ul>
+
+        <div id="tab-youtube" style="padding-top: 8px;">
+          <div class="input-field">
+            <input id="sound-link" type="text"
+                   class="blue-grey-text text-lighten-4">
+            <label for="sound-link">YouTube URL (max 30 seconds)</label>
           </div>
-          <div class="file-path-wrapper">
-            <input class="file-path validate" type="text"
-                   placeholder="Choose an MP3 file">
+        </div>
+
+        <div id="tab-mp3" style="padding-top: 8px;">
+          <div class="file-field input-field">
+            <div class="btn blue-grey-text text-darken-4">
+              <span>MP3</span>
+              <input id="sound-file" type="file" accept=".mp3,audio/mpeg">
+            </div>
+            <div class="file-path-wrapper">
+              <input class="file-path validate" type="text"
+                     placeholder="Choose an MP3 file">
+            </div>
           </div>
         </div>
       </form>
+
+      <div id="upload-progress" class="progress blue-grey darken-1"
+           style="display: none;">
+        <div class="indeterminate light-green"></div>
+      </div>
     </div>
     <div class="modal-footer blue-grey darken-2">
       <a href="#!" class="modal-close waves-effect btn-flat light-green-text text-accent-1">Cancel</a>

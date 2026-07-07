@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from typing import NamedTuple
@@ -18,6 +19,7 @@ from threepseat.ext.sounds.data import MAX_SOUND_FILE_SIZE_BYTES
 from threepseat.ext.sounds.data import MAX_SOUND_LENGTH_SECONDS
 from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
+from threepseat.ext.sounds.data import download
 from threepseat.ext.sounds.data import mp3_duration_seconds
 from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
@@ -247,7 +249,7 @@ async def sound_play(guild_id: int, sound_name: str) -> Response:
 @sounds_blueprint.route('/sounds/<int:guild_id>/add', methods=['POST'])
 @requires_authorization
 async def sound_add(guild_id: int) -> Response:
-    """Add a sound to a guild from an uploaded MP3 file."""
+    """Add a sound to a guild from a YouTube link or an uploaded MP3 file."""
     discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
     bot = quart.current_app.config['bot']
     sounds = quart.current_app.config['sounds']
@@ -261,44 +263,65 @@ async def sound_add(guild_id: int) -> Response:
     files = await quart.request.files
     name = form.get('name', '').strip()
     description = form.get('description', '').strip()
+    link = form.get('link', '').strip()
     file = files.get('file')
+    has_file = file is not None and bool(file.filename)
 
-    if file is None or file.filename is None or file.filename == '':
-        return quart.Response('No file was uploaded.', 400)
-    if not file.filename.lower().endswith('.mp3'):
-        return quart.Response('The file must be an MP3.', 400)
     if len(description) == 0 or len(description) > MAX_SOUND_DESCRIPTION_CHARS:
         return quart.Response(
             'Description must be between 1 and '
             f'{MAX_SOUND_DESCRIPTION_CHARS} characters.',
             400,
         )
+    if link and has_file:
+        return quart.Response(
+            'Provide either a YouTube link or an MP3 file, not both.',
+            400,
+        )
 
-    content = file.read()
-    if len(content) > MAX_SOUND_FILE_SIZE_BYTES:
-        mb = MAX_SOUND_FILE_SIZE_BYTES // (1024 * 1024)
-        return quart.Response(f'File size must be under {mb} MB.', 400)
+    # Validate the MP3 upload before touching disk. The YouTube link is
+    # validated (including duration) by download() below.
+    content: bytes | None = None
+    if not link and has_file:
+        assert file is not None
+        filename = file.filename or ''
+        if not filename.lower().endswith('.mp3'):
+            return quart.Response('The file must be an MP3.', 400)
+        content = file.read()
+        if len(content) > MAX_SOUND_FILE_SIZE_BYTES:
+            mb = MAX_SOUND_FILE_SIZE_BYTES // (1024 * 1024)
+            return quart.Response(f'File size must be under {mb} MB.', 400)
+    elif not link:
+        return quart.Response(
+            'Provide a YouTube link or an MP3 file.',
+            400,
+        )
 
     sound = Sound.new(
         name=name,
         description=description,
-        link=None,
+        link=link if link else None,
         author_id=member.id,
         guild_id=guild_id,
     )
     filepath = sounds.filepath(sound.filename)
 
     try:
-        with open(filepath, 'wb') as f:
-            f.write(content)
-
-        duration = await mp3_duration_seconds(filepath)
-        if duration > MAX_SOUND_LENGTH_SECONDS:
-            return quart.Response(
-                f'Sound is too long ({duration:.1f}s). Maximum length is '
-                f'{MAX_SOUND_LENGTH_SECONDS} seconds.',
-                400,
-            )
+        if link:
+            # download() enforces the duration limit and raises ValueError
+            # on any download/extraction error. It is blocking, so run it in
+            # a thread to avoid stalling the event loop.
+            await asyncio.to_thread(download, link, filepath)
+        else:
+            assert content is not None
+            with open(filepath, 'wb') as f:
+                f.write(content)
+            duration = await mp3_duration_seconds(filepath)
+            if duration > MAX_SOUND_LENGTH_SECONDS:
+                raise ValueError(
+                    f'Sound is too long ({duration:.1f}s). Maximum length '
+                    f'is {MAX_SOUND_LENGTH_SECONDS} seconds.',
+                )
 
         # add() validates the name (alphanumeric, length, uniqueness) and
         # that the file exists on disk.
