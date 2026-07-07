@@ -65,3 +65,25 @@ The test suite uses `tox`. Run the tests with:
 ```
 $ tox -e py314
 ```
+
+### Releasing
+
+Versioning is managed automatically from git tags via
+[`setuptools_scm`](https://setuptools-scm.readthedocs.io), so the package
+version is derived from the latest tag—there is no version string to bump
+in `pyproject.toml`.
+
+To cut a new release, create and push a signed tag:
+```
+$ git tag -s v2.3.0 -m '3pseatBot v2.3.0'
+$ git push origin v2.3.0
+```
+
+Tags use a `vMAJOR.MINOR.PATCH` format. When building from a tagged commit
+the version matches the tag exactly (e.g., `2.3.0`); builds from commits
+after a tag get a development version derived from the distance to the last
+tag (e.g., `2.3.1.dev4+g3eca272`).
+
+Pushing a `v*` tag also triggers the `docker` GitHub Actions workflow, which
+builds the image and publishes it to Docker Hub tagged with both the version
+(e.g., `3pseatbot:v2.3.0`) and `latest`.
