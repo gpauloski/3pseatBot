@@ -81,6 +81,12 @@ class ReminderCommands(CommandGroupExtension):
             guilds,
         )
 
+    async def post_shutdown(self) -> None:
+        """Cancel all running reminder tasks and close the database."""
+        for key in list(self._tasks):
+            self.stop_reminder(key.guild_id, key.name)
+        self.table.close()
+
     def start_reminder(
         self,
         client: discord.Client,

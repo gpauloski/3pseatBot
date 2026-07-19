@@ -58,6 +58,11 @@ class RulesDatabase:
         self.config_table = GuildConfigTable(db_path)
         self.offenses_table = UserOffensesTable(db_path)
 
+    def close(self) -> None:
+        """Close the underlying table connections."""
+        self.config_table.close()
+        self.offenses_table.close()
+
     def get_config(self, guild_id: int) -> GuildConfig | None:
         """Get configuration for guild."""
         return self.config_table.get(guild_id)

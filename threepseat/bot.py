@@ -63,6 +63,21 @@ class Bot(commands.Bot):
             len(self.guilds),
         )
 
+    async def close(self) -> None:
+        """Close the bot, shutting down registered extensions first."""
+        if self._cmd_group_exts is not None:
+            for ext in self._cmd_group_exts:
+                try:
+                    await ext.post_shutdown()
+                except Exception:
+                    # Mirror post_init: isolate a failing extension so one
+                    # bad teardown does not block the others or the shutdown.
+                    logger.exception(
+                        'post_shutdown failed for %s command group',
+                        ext.name,
+                    )
+        await super().close()
+
     async def setup(self) -> None:
         """Setup operations to perform once bot is ready."""
         if self.playing_title is not None:

@@ -114,3 +114,15 @@ async def test_log_interaction(caplog) -> None:
     await log_interaction(interaction)
     assert any('user1' in record.message for record in caplog.records)
     assert any('1234' in record.message for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_log_interaction_without_channel(caplog) -> None:
+    caplog.set_level(logging.INFO)
+    interaction = MockInteraction(
+        command=None,  # type: ignore[arg-type]
+        user=MockUser('user1', 1234),
+    )
+    interaction.data = None
+    await log_interaction(interaction)
+    assert any('Channel: None' in record.message for record in caplog.records)

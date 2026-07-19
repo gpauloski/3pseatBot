@@ -65,6 +65,12 @@ dist,
 [tool.coverage.run]
 plugins = ["covdefaults"]
 
+[tool.coverage.report]
+# covdefaults already excludes `raise AssertionError`, but ruff's EM101
+# requires the message be bound to a variable first, which splits each
+# unreachable guard across two lines and leaves the assignment counted.
+exclude_lines = ["^\\s*msg = 'Unreachable\\.'$"]
+
 [tool.mypy]
 python_version = "3.12"
 strict = true

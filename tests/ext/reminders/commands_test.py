@@ -50,10 +50,13 @@ async def test_start_repeating_reminders(reminders) -> None:
 
     assert len(reminders._tasks) == 2
 
-    for key, value in list(reminders._tasks.items()):
-        reminders.stop_reminder(key.guild_id, key.name)
+    tasks = [value.task for value in reminders._tasks.values()]
+    await reminders.post_shutdown()
+    assert len(reminders._tasks) == 0
+    assert reminders.table._db is None
+    for task in tasks:
         with pytest.raises(asyncio.CancelledError):
-            await value.task._task
+            await task._task
 
 
 @pytest.mark.asyncio

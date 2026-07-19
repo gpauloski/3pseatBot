@@ -48,6 +48,7 @@ class RulesCommands(CommandGroupExtension):
 
         # Mapping of guild IDs to the current task handling the event
         self.event_handlers: dict[int, asyncio.Task[None]] = {}
+        self._event_starter_task: LoopType | None = None
 
         super().__init__(
             name='rules',
@@ -82,6 +83,16 @@ class RulesCommands(CommandGroupExtension):
 
         self._event_starter_task = self.event_starter(bot)
         self._event_starter_task.start()
+
+    async def post_shutdown(self) -> None:
+        """Cancel the event tasks and close the database."""
+        if self._event_starter_task is not None:
+            self._event_starter_task.cancel()
+            self._event_starter_task = None
+        for handler in self.event_handlers.values():
+            handler.cancel()
+        self.event_handlers.clear()
+        self.database.close()
 
     async def handle_offending_message(self, message: discord.Message) -> None:
         """Handle side effects for message that breaks rules.

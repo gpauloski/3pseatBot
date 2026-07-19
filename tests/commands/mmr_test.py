@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 from unittest import mock
 
 import pytest
+import requests
 
 from testing.mock import MockChannel
 from testing.mock import MockGuild
@@ -52,6 +54,20 @@ def test_get_stats_404() -> None:
         assert stats.summoner == 'foo'
         assert stats.status == Status.UNKNOWN
         assert stats.gamemode == GameMode.ARAM
+
+
+def test_get_stats_request_error(caplog) -> None:
+    caplog.set_level(logging.ERROR)
+    with (
+        mock.patch(
+            'requests.get',
+            side_effect=requests.RequestException('timed out'),
+        ),
+        pytest.raises(requests.RequestException, match='timed out'),
+    ):
+        get_stats('foo', GameMode.ARAM)
+
+    assert any('request to' in record.message for record in caplog.records)
 
 
 def test_get_stats_not_200() -> None:

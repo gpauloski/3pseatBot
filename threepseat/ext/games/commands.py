@@ -35,6 +35,10 @@ class GamesCommands(CommandGroupExtension):
             guild_only=True,
         )
 
+    async def post_shutdown(self) -> None:
+        """Close the database."""
+        self.table.close()
+
     async def autocomplete(
         self,
         interaction: discord.Interaction[commands.Bot],

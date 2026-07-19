@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import logging
 import pathlib
 import shutil
 import subprocess
+from typing import Any
 from unittest import mock
 
 import pytest
 
 import threepseat
 from testing.config import TEMPLATE_CONFIG
+from threepseat.main import amain
 from threepseat.main import main
 
 
@@ -101,3 +104,69 @@ def test_cli() -> None:
     )
     assert result.returncode == 0
     assert threepseat.__version__ in str(result.stdout)
+
+
+@pytest.mark.asyncio
+async def test_amain_shutdown_trigger(config: str) -> None:
+    shutdown_event = asyncio.Event()
+    triggers: list[Any] = []
+
+    # Patched onto the class, so this receives the Quart app as self.
+    async def _run_task(_self: Any, **kwargs: Any) -> None:
+        triggers.append(kwargs['shutdown_trigger'])
+
+    with (
+        mock.patch('threepseat.main.Bot.start', mock.AsyncMock()),
+        mock.patch('quart.Quart.run_task', _run_task),
+    ):
+        await amain(threepseat.config.load(config), shutdown_event)
+
+    # The wrapper handed to hypercorn resolves once the event is set.
+    (trigger,) = triggers
+    shutdown_event.set()
+    assert await trigger() is None
+
+
+@pytest.mark.asyncio
+async def test_amain_surfaces_service_error(config: str, caplog) -> None:
+    caplog.set_level(logging.ERROR)
+    with (
+        mock.patch(
+            'threepseat.main.Bot.start',
+            mock.AsyncMock(side_effect=asyncio.CancelledError),
+        ),
+        mock.patch(
+            'quart.Quart.run_task',
+            mock.AsyncMock(side_effect=RuntimeError('webapp died')),
+        ),
+        pytest.raises(RuntimeError, match='webapp died'),
+    ):
+        await amain(threepseat.config.load(config), asyncio.Event())
+
+    # A clean shutdown (CancelledError) is not reported as a failure.
+    assert any('webapp exited' in record.message for record in caplog.records)
+    assert not any('bot exited' in record.message for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_amain_surfaces_first_of_many_errors(
+    config: str,
+    caplog,
+) -> None:
+    caplog.set_level(logging.ERROR)
+    with (
+        mock.patch(
+            'threepseat.main.Bot.start',
+            mock.AsyncMock(side_effect=RuntimeError('bot died')),
+        ),
+        mock.patch(
+            'quart.Quart.run_task',
+            mock.AsyncMock(side_effect=RuntimeError('webapp died')),
+        ),
+        # Both services failed, but only the first is raised.
+        pytest.raises(RuntimeError, match='bot died'),
+    ):
+        await amain(threepseat.config.load(config), asyncio.Event())
+
+    assert any('bot exited' in record.message for record in caplog.records)
+    assert any('webapp exited' in record.message for record in caplog.records)

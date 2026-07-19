@@ -330,3 +330,40 @@ def test_field_types() -> None:
     assert len(expected) == len(found_type) == len(found_instance)
     for field, expected_value in expected.items():
         assert expected_value == found_type[field] == found_instance[field]
+
+
+def test_connection_is_reused(table) -> None:
+    with table.connect() as db1:
+        pass
+    with table.connect() as db2:
+        pass
+    assert db1 is db2
+
+
+def test_in_memory_database_persists() -> None:
+    # A reopened connection would give each operation a fresh, empty
+    # ':memory:' database, dropping both the table and the row.
+    table = SQLTableInterface(
+        ExampleRow,
+        'mytable',
+        ':memory:',
+        primary_keys=('guild_id', 'user_id'),
+    )
+    row = ExampleRow(0, 0, 0.0, None, True)
+    table.update(row)
+    assert table.get(guild_id=0, user_id=0) == row
+
+
+def test_close_reopens_on_demand(table) -> None:
+    row = ExampleRow(0, 0, 0.0, None, True)
+    table.update(row)
+    table.close()
+
+    # Closing releases the handle rather than disabling the table, so the
+    # committed row is still readable afterwards.
+    assert table.get(guild_id=0, user_id=0) == row
+
+
+def test_close_is_idempotent(table) -> None:
+    table.close()
+    table.close()

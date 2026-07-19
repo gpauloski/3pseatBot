@@ -49,6 +49,7 @@ class SoundCommands(CommandGroupExtension):
         """
         self.table = SoundsTable(db_path, data_path)
         self.join_table = MemberSoundTable(db_path)
+        self._vc_leaver_task: LoopType | None = None
 
         super().__init__(
             name='sounds',
@@ -58,10 +59,18 @@ class SoundCommands(CommandGroupExtension):
 
     async def post_init(self, bot: discord.ext.commands.Bot) -> None:
         """Spawn task that leaves channels when they are empty."""
-        self._vc_leaver_task: LoopType = leave_on_empty(bot, 60)
+        self._vc_leaver_task = leave_on_empty(bot, 60)
         self._vc_leaver_task.start()
 
         bot.add_listener(self.on_voice_state_update, 'on_voice_state_update')
+
+    async def post_shutdown(self) -> None:
+        """Cancel the voice channel leaver task and close the databases."""
+        if self._vc_leaver_task is not None:
+            self._vc_leaver_task.cancel()
+            self._vc_leaver_task = None
+        self.table.close()
+        self.join_table.close()
 
     async def on_voice_state_update(
         self,

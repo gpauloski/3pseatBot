@@ -10,6 +10,7 @@ from testing.mock import MockUser
 from threepseat.bot import Bot
 from threepseat.ext.birthdays import BirthdayCommands
 from threepseat.ext.custom import CustomCommands
+from threepseat.ext.games import GamesCommands
 from threepseat.ext.reminders import ReminderCommands
 from threepseat.ext.rules import RulesCommands
 from threepseat.ext.sounds import SoundCommands
@@ -70,3 +71,98 @@ async def test_bot_startup(tmp_file: str, caplog) -> None:
             await bot.on_ready()
 
     assert any('ready!' in record.message for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_bot_startup_isolates_failures(tmp_file: str, caplog) -> None:
+    caplog.set_level(logging.INFO)
+    bad = GamesCommands(tmp_file)
+    good = BirthdayCommands(tmp_file)
+
+    with (
+        mock.patch.object(
+            bad,
+            'post_init',
+            mock.AsyncMock(side_effect=RuntimeError('boom')),
+        ),
+        mock.patch(
+            'discord.app_commands.tree.CommandTree.sync',
+            mock.AsyncMock(),
+        ),
+        mock.patch(
+            'threepseat.bot.Bot.change_presence',
+            mock.AsyncMock(),
+        ),
+    ):
+        bot = Bot(extensions=[bad, good])
+        await bot.setup()
+
+    # A failing extension is logged but does not stop the others from
+    # registering.
+    assert any('post_init failed' in r.message for r in caplog.records)
+    assert any(
+        'registered birthdays command group' in r.message
+        for r in caplog.records
+    )
+
+
+@pytest.mark.asyncio
+async def test_bot_shutdown_closes_extensions(tmp_file: str) -> None:
+    birthdays = BirthdayCommands(tmp_file)
+    custom = CustomCommands(tmp_file)
+    reminders = ReminderCommands(tmp_file)
+    rules = RulesCommands(tmp_file)
+    sounds = SoundCommands(tmp_file, data_path='/tmp/threepseat-test')
+    bot = Bot(
+        extensions=[birthdays, custom, reminders, rules, sounds],
+    )
+
+    with mock.patch(
+        'discord.ext.commands.Bot.close',
+        mock.AsyncMock(),
+    ) as mock_close:
+        await bot.close()
+
+    assert mock_close.called
+    assert birthdays.table._db is None
+    assert custom.table._db is None
+    assert reminders.table._db is None
+    assert rules.database.config_table._db is None
+    assert rules.database.offenses_table._db is None
+    assert sounds.table._db is None
+    assert sounds.join_table._db is None
+
+
+@pytest.mark.asyncio
+async def test_bot_shutdown_without_extensions() -> None:
+    bot = Bot()
+
+    with mock.patch(
+        'discord.ext.commands.Bot.close',
+        mock.AsyncMock(),
+    ) as mock_close:
+        await bot.close()
+
+    assert mock_close.called
+
+
+@pytest.mark.asyncio
+async def test_bot_shutdown_isolates_failures(tmp_file: str, caplog) -> None:
+    caplog.set_level(logging.ERROR)
+    bad = GamesCommands(tmp_file)
+    good = BirthdayCommands(tmp_file)
+    bot = Bot(extensions=[bad, good])
+
+    with (
+        mock.patch.object(
+            bad,
+            'post_shutdown',
+            mock.AsyncMock(side_effect=RuntimeError('boom')),
+        ),
+        mock.patch('discord.ext.commands.Bot.close', mock.AsyncMock()),
+    ):
+        await bot.close()
+
+    # A failing extension is logged but does not stop the others.
+    assert any('post_shutdown failed' in r.message for r in caplog.records)
+    assert good.table._db is None

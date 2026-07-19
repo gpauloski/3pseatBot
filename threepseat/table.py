@@ -87,6 +87,7 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
 
         self._field_names = field_names(self._row_type)
         self._fields = field_types(self._row_type)
+        self._db: sqlite3.Connection | None = None
 
         for key in self._primary_keys:
             if key not in self.field_names:
@@ -134,10 +135,31 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
 
     @contextlib.contextmanager
     def connect(self) -> Generator[sqlite3.Connection, None, None]:
-        """Database connection context manager."""
-        # Source: https://github.com/pre-commit/pre-commit/blob/354b900f15e88a06ce8493e0316c288c44777017/pre_commit/store.py#L91  # noqa: E501
-        with contextlib.closing(sqlite3.connect(self._filepath)) as db, db:
+        """Database transaction context manager.
+
+        The underlying connection is opened on first use and reused for the
+        lifetime of this instance (or until close() is called), so a
+        ':memory:' database persists across operations. The context manager
+        scopes a transaction, committing on success and rolling back if the
+        body raises.
+        """
+        if self._db is None:
+            self._db = sqlite3.connect(self._filepath)
+            # Other table instances share this file, so WAL lets them keep
+            # reading while this one writes. It is a no-op for ':memory:'.
+            self._db.execute('PRAGMA journal_mode=WAL')
+        with self._db as db:
             yield db
+
+    def close(self) -> None:
+        """Close the database connection.
+
+        Connections are reopened on demand, so this releases the handle
+        rather than permanently disabling the table.
+        """
+        if self._db is not None:
+            self._db.close()
+            self._db = None
 
     def validate_kwargs(self, kwargs: dict[str, Any]) -> None:
         """Validate that every key/value in kwargs.

@@ -49,6 +49,10 @@ class CustomCommands(CommandGroupExtension):
             await self.register(command, bot, sync=False)
         logger.info('registered %s saved custom command(s)', len(commands))
 
+    async def post_shutdown(self) -> None:
+        """Close the database."""
+        self.table.close()
+
     async def register(
         self,
         command: CustomCommand,

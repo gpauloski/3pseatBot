@@ -52,6 +52,7 @@ class BirthdayCommands(CommandGroupExtension):
             db_path (str): path to database to use.
         """
         self.table = BirthdayTable(db_path)
+        self._birthday_task: LoopType | None = None
 
         super().__init__(
             name='birthdays',
@@ -64,6 +65,13 @@ class BirthdayCommands(CommandGroupExtension):
         self._birthday_task = self.birthday_task(bot)
         self._birthday_task.start()
         logger.info('spawning birthday checker background task')
+
+    async def post_shutdown(self) -> None:
+        """Cancel the birthday checker task and close the database."""
+        if self._birthday_task is not None:
+            self._birthday_task.cancel()
+            self._birthday_task = None
+        self.table.close()
 
     def birthday_task(self, client: discord.Client) -> LoopType:
         """Return async task that will check for birthdays once per day."""

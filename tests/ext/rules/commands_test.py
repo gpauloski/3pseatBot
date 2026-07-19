@@ -174,7 +174,11 @@ async def test_start_event(commands) -> None:
     ):
         await commands.start_event(guild)
         assert guild.id in commands.event_handlers
-        commands.event_handlers[guild.id].cancel()
+        handler = commands.event_handlers[guild.id]
+
+        await commands.post_shutdown()
+        assert handler.cancelled() or handler.cancelling()
+        assert len(commands.event_handlers) == 0
 
 
 @pytest.mark.asyncio
@@ -537,7 +541,11 @@ async def test_resume_events(commands) -> None:
     ):
         await commands.post_init(client)
         assert mock_start.await_count == 1
-    commands._event_starter_task.cancel()
+    assert commands._event_starter_task is not None
+
+    await commands.post_shutdown()
+    assert commands._event_starter_task is None
+    assert commands.database.config_table._db is None
 
     # Retest with guild not found
     with (
@@ -551,4 +559,4 @@ async def test_resume_events(commands) -> None:
     ):
         await commands.post_init(client)
         assert mock_start.await_count == 0
-    commands._event_starter_task.cancel()
+    await commands.post_shutdown()

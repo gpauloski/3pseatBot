@@ -880,7 +880,12 @@ async def test_post_init(
 
     with mock.patch.object(mockbot, 'add_listener'):
         await sounds.post_init(mockbot)
-    sounds._vc_leaver_task.cancel()
+    assert sounds._vc_leaver_task is not None
+
+    await sounds.post_shutdown()
+    assert sounds._vc_leaver_task is None
+    assert sounds.table._db is None
+    assert sounds.join_table._db is None
 
 
 @pytest.mark.asyncio

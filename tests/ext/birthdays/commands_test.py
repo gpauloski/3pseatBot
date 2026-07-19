@@ -52,6 +52,19 @@ async def test_birthday_task(birthdays) -> None:
 
 
 @pytest.mark.asyncio
+async def test_post_init_shutdown(birthdays) -> None:
+    with mock.patch('discord.Client'):
+        client = discord.Client()  # type: ignore[call-arg]
+
+    await birthdays.post_init(client)
+    assert birthdays._birthday_task is not None
+
+    await birthdays.post_shutdown()
+    assert birthdays._birthday_task is None
+    assert birthdays.table._db is None
+
+
+@pytest.mark.asyncio
 async def test_send_birthday_messages(birthdays) -> None:
     guild = MockGuild('guild', BIRTHDAY.guild_id)
     channel = MockChannel('channel', 42)
