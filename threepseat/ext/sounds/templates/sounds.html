@@ -71,22 +71,18 @@
           <span>by {{ sound.author }}</span>
           <span class="sep">·</span>
           <time class="js-date" data-ts="{{ sound.created_ts }}">{{ sound.created }}</time>
-          {% if sound.youtube_link %}
-          <span class="sep">·</span>
-          <a class="watch-link" href="{{ sound.youtube_link }}" target="_blank"
-             rel="noopener">
-            YouTube
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 4h6v6"></path>
-              <path d="M20 4l-9 9"></path>
-              <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path>
-            </svg>
-          </a>
-          {% endif %}
         </div>
       </div>
       <div class="card-tools">
+        {% if sound.youtube_link %}
+        <a class="watch-link" href="{{ sound.youtube_link }}" target="_blank"
+           rel="noopener" aria-label="Watch {{ sound.name }} on YouTube"
+           title="Watch on YouTube">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M23 12s0-3.9-.5-5.8a3 3 0 0 0-2.1-2.1C18.5 3.5 12 3.5 12 3.5s-6.5 0-8.4.6a3 3 0 0 0-2.1 2.1C1 8.1 1 12 1 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 8.4.6 8.4.6s6.5 0 8.4-.6a3 3 0 0 0 2.1-2.1c.5-1.9.5-5.8.5-5.8zM9.8 15.5v-7l6.2 3.5z"></path>
+          </svg>
+        </a>
+        {% endif %}
         <button class="preview-btn" type="button"
                 data-url="{{ url_for('sounds.sound_file', guild_id=guild_id, sound_name=sound.name) }}"
                 data-name="{{ sound.name }}"
