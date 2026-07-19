@@ -16,11 +16,20 @@ from threepseat.table import SQLTableInterface
 from threepseat.utils import alphanumeric
 
 MAX_SOUND_FILE_SIZE_BYTES = 1 * 1024 * 1024
+MAX_VIDEO_FILE_SIZE_BYTES = 25 * 1024 * 1024
 MAX_SOUND_LENGTH_SECONDS = 30
 MAX_SOUND_NAME_CHARS = 18
 MAX_SOUND_DESCRIPTION_CHARS = 100
+SUPPORTED_VIDEO_EXTENSIONS = frozenset({'.mp4', '.m4v', '.mov'})
 
 logger = logging.getLogger(__name__)
+
+
+def supported_video_extensions_str() -> str:
+    """Human-readable list of supported video extensions (without dots)."""
+    return ', '.join(
+        sorted(ext.lstrip('.') for ext in SUPPORTED_VIDEO_EXTENSIONS),
+    )
 
 
 class Sound(NamedTuple):
@@ -274,3 +283,47 @@ async def mp3_duration_seconds(filepath: str) -> float:
 
     probe_data = json.loads(stdout)
     return float(probe_data['format']['duration'])
+
+
+async def extract_audio(source_path: str, mp3_path: str) -> None:
+    """Extract the audio track of a media file to an MP3.
+
+    Args:
+        source_path (str): path to the source media file (e.g. a video).
+        mp3_path (str): path to write the extracted MP3 audio to.
+
+    Raises:
+        ValueError:
+            if ffmpeg fails to extract the audio (e.g. the source has no
+            audio track or is not decodable).
+    """
+    cmd = (
+        'ffmpeg',
+        '-y',
+        '-i',
+        source_path,
+        '-vn',
+        '-acodec',
+        'libmp3lame',
+        '-b:a',
+        '128k',
+        '-f',
+        'mp3',
+        mp3_path,
+    )
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    await proc.wait()
+
+    if proc.returncode != 0:
+        stderr = ''
+        if proc.stderr is not None:  # pragma: no branch
+            stderr = (await proc.stderr.read()).decode().strip()
+        logger.error(
+            f'Extract audio with ffmpeg failed (exit code '
+            f'{proc.returncode}):\nstderr:\n{stderr}',
+        )
+        raise ValueError('Could not extract audio from the video.')

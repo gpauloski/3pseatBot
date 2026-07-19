@@ -333,6 +333,163 @@ async def test_sound_add_success(quart_app) -> None:
 
 
 @pytest.mark.asyncio
+async def test_sound_add_video_success(quart_app) -> None:
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    # extract_audio would write the MP3; emulate it so table.add finds the
+    # file on disk.
+    async def fake_extract(source, mp3_path) -> None:
+        pathlib.Path(mp3_path).touch()
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            mock.AsyncMock(return_value=1.0),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.extract_audio',
+            side_effect=fake_extract,
+        ) as mock_extract,
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'fromvideo', 'description': 'a video sound'},
+            files={'file': _upload_file(filename='clip.mp4')},
+        )
+
+    assert response.status_code == 200
+    assert mock_extract.call_count == 1
+    assert sounds.get('fromvideo', guild_id=5678) is not None
+
+
+@pytest.mark.asyncio
+async def test_sound_add_unsupported_type(quart_app) -> None:
+    client = quart_app.test_client()
+
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'badtype', 'description': 'a test sound'},
+            files={'file': _upload_file(filename='clip.mkv')},
+        )
+
+    assert response.status_code == 400
+    assert b'supported video' in await response.get_data()
+
+
+@pytest.mark.asyncio
+async def test_sound_add_video_extract_error(quart_app) -> None:
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            mock.AsyncMock(return_value=1.0),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.extract_audio',
+            mock.AsyncMock(
+                side_effect=ValueError(
+                    'Could not extract audio from the video.',
+                ),
+            ),
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'badvideo', 'description': 'a test sound'},
+            files={'file': _upload_file(filename='clip.mov')},
+        )
+
+    assert response.status_code == 400
+    assert b'Could not extract audio' in await response.get_data()
+    assert sounds.get('badvideo', guild_id=5678) is None
+
+
+@pytest.mark.asyncio
+async def test_sound_add_video_too_long(quart_app) -> None:
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            mock.AsyncMock(return_value=999.0),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.extract_audio',
+            mock.AsyncMock(),
+        ) as mock_extract,
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': 'longvideo', 'description': 'a test sound'},
+            files={'file': _upload_file(filename='clip.mp4')},
+        )
+
+    assert response.status_code == 400
+    assert b'too long' in await response.get_data()
+    # Rejected before any extraction and nothing was persisted.
+    assert mock_extract.await_count == 0
+    assert sounds.get('longvideo', guild_id=5678) is None
+
+
+@pytest.mark.asyncio
 async def test_sound_add_no_member(quart_app) -> None:
     client = quart_app.test_client()
 

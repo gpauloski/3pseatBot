@@ -19,6 +19,7 @@ from threepseat.bot import Bot
 from threepseat.ext.sounds.commands import SoundCommands
 from threepseat.ext.sounds.data import MAX_SOUND_FILE_SIZE_BYTES
 from threepseat.ext.sounds.data import MAX_SOUND_LENGTH_SECONDS
+from threepseat.ext.sounds.data import MAX_VIDEO_FILE_SIZE_BYTES
 from threepseat.ext.sounds.data import MemberSound
 from threepseat.ext.sounds.data import Sound
 
@@ -708,6 +709,168 @@ async def test_upload_command_write_disk_error(
         'Failed to save the sound to the database'
         in interaction.followup_message
     )
+
+
+@pytest.mark.asyncio
+async def test_upload_command_video_success(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
+    upload_ = extract(sounds.upload)
+
+    interaction = MockInteraction(
+        sounds.upload,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    # Emulate extraction by creating the destination MP3 so table.add finds it.
+    async def fake_extract(file, ext, filepath) -> None:
+        pathlib.Path(filepath).touch()
+
+    with mock.patch(
+        'threepseat.ext.sounds.commands._extract_video_audio',
+        side_effect=fake_extract,
+    ):
+        await upload_(
+            sounds,
+            interaction,
+            file=create_mock_attachment(filename='clip.mp4'),
+            name='fromvideo',
+            description='a video sound',
+        )
+
+    assert interaction.followed
+    assert interaction.followup_message is not None
+    assert 'Uploaded and added' in interaction.followup_message
+
+
+@pytest.mark.asyncio
+async def test_upload_command_unsupported_type(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
+    upload_ = extract(sounds.upload)
+
+    interaction = MockInteraction(
+        sounds.upload,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    await upload_(
+        sounds,
+        interaction,
+        file=create_mock_attachment(filename='clip.mkv'),
+        name='badtype',
+        description='unsupported container',
+    )
+
+    assert interaction.followed
+    assert interaction.followup_message is not None
+    assert 'supported video' in interaction.followup_message
+
+
+@pytest.mark.asyncio
+async def test_upload_command_video_too_large(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
+    upload_ = extract(sounds.upload)
+
+    interaction = MockInteraction(
+        sounds.upload,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    await upload_(
+        sounds,
+        interaction,
+        file=create_mock_attachment(
+            filename='clip.mp4',
+            size=2 * MAX_VIDEO_FILE_SIZE_BYTES,
+        ),
+        name='bigvideo',
+        description='should fail size check',
+    )
+
+    assert interaction.followed
+    assert interaction.followup_message is not None
+    assert 'File size must be under' in interaction.followup_message
+
+
+@pytest.mark.asyncio
+async def test_upload_command_video_too_long(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
+    upload_ = extract(sounds.upload)
+
+    interaction = MockInteraction(
+        sounds.upload,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    with mock.patch(
+        'threepseat.ext.sounds.commands._extract_video_audio',
+        side_effect=ValueError(
+            f'Sound is too long (99.0s). Maximum length is '
+            f'{MAX_SOUND_LENGTH_SECONDS} seconds.',
+        ),
+    ):
+        await upload_(
+            sounds,
+            interaction,
+            file=create_mock_attachment(filename='clip.mov'),
+            name='longvideo',
+            description='should fail duration check',
+        )
+
+    assert interaction.followed
+    assert interaction.followup_message is not None
+    assert 'Sound is too long' in interaction.followup_message
+
+
+@pytest.mark.asyncio
+async def test_upload_command_video_extract_error(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    mockbot, sounds = sound_fixtures
+    upload_ = extract(sounds.upload)
+
+    interaction = MockInteraction(
+        sounds.upload,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    with mock.patch(
+        'threepseat.ext.sounds.commands._extract_video_audio',
+        side_effect=RuntimeError('ffprobe blew up'),
+    ):
+        await upload_(
+            sounds,
+            interaction,
+            file=create_mock_attachment(filename='clip.mp4'),
+            name='badvideo',
+            description='should handle extraction failures',
+        )
+
+    assert interaction.followed
+    assert interaction.followup_message is not None
+    assert 'Could not process the video file' in interaction.followup_message
 
 
 @pytest.mark.asyncio
