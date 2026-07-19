@@ -18,6 +18,7 @@ from discord import app_commands
 
 from threepseat.commands.commands import log_interaction
 from threepseat.commands.commands import register_app_command
+from threepseat.logging import log_timing
 from threepseat.utils import split_strings
 
 logger = logging.getLogger(__name__)
@@ -93,8 +94,31 @@ def get_stats(summoner: str, gamemode: GameMode) -> Stats:
     Returns:
         `Stats` object where the status attribute indicates if the
         query was successful or not.
+
+    Raises:
+        requests.RequestException:
+            if the request to the external API fails (e.g. timeout or
+            connection error).
     """
-    result = requests.get(API_URL, params={'name': summoner}, timeout=10)
+    try:
+        with log_timing(
+            logger,
+            'queried MMR API for summoner %s (%s)',
+            summoner,
+            gamemode.value,
+        ):
+            result = requests.get(
+                API_URL,
+                params={'name': summoner},
+                timeout=10,
+            )
+    except requests.RequestException:
+        logger.exception(
+            'request to %s failed for summoner %s',
+            API_URL,
+            summoner,
+        )
+        raise
 
     if result.status_code == HTTPStatus.NOT_FOUND:
         if (

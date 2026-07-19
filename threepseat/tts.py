@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import contextlib
 import enum
+import logging
 import random
 import tempfile
 from collections.abc import Generator
 
 from gtts import gTTS
+
+from threepseat.logging import log_timing
+
+logger = logging.getLogger(__name__)
 
 
 class Accent(enum.Enum):
@@ -64,6 +69,8 @@ def tts_as_mp3(
     """
     tts = gTTS(text, lang='en', tld=accent.value, slow=slow)
     with tempfile.NamedTemporaryFile() as fp:
-        tts.write_to_fp(fp)
+        # write_to_fp makes a network call to Google's TTS endpoint.
+        with log_timing(logger, 'synthesized TTS for %s accent', accent.name):
+            tts.write_to_fp(fp)
         fp.flush()
         yield fp.name

@@ -96,6 +96,13 @@ class BirthdayCommands(CommandGroupExtension):
                 member = guild.get_member(birthday.user_id)
                 if member is not None:
                     await channel.send(f'Happy Birthday, {member.mention}!')
+                    logger.info(
+                        'sent birthday message to %s (%s) in %s (%s)',
+                        member.name,
+                        member.id,
+                        guild.name,
+                        guild.id,
+                    )
 
     @app_commands.command(
         name='add',

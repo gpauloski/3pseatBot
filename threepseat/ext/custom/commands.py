@@ -44,8 +44,10 @@ class CustomCommands(CommandGroupExtension):
 
     async def post_init(self, bot: discord.ext.commands.Bot) -> None:
         """Register all saved custom commands to the client."""
-        for command in self.table.all():
+        commands = self.table.all()
+        for command in commands:
             await self.register(command, bot, sync=False)
+        logger.info('registered %s saved custom command(s)', len(commands))
 
     async def register(
         self,

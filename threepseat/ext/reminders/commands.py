@@ -66,9 +66,20 @@ class ReminderCommands(CommandGroupExtension):
 
     async def post_init(self, bot: discord.ext.commands.Bot) -> None:
         """Spawn all saved repeating reminder tasks."""
+        restored = 0
+        guilds = 0
         for guild in bot.guilds:
-            for reminder in self.table.all(guild.id):
+            reminders = self.table.all(guild.id)
+            if reminders:
+                guilds += 1
+            for reminder in reminders:
                 self.start_reminder(bot, reminder, ReminderType.REPEATING)
+                restored += 1
+        logger.info(
+            'restored %s repeating reminder(s) across %s guild(s)',
+            restored,
+            guilds,
+        )
 
     def start_reminder(
         self,

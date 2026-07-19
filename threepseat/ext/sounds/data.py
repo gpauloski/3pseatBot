@@ -11,6 +11,7 @@ from typing import Self
 
 from yt_dlp import YoutubeDL
 
+from threepseat.logging import log_timing
 from threepseat.table import SQLTableInterface
 from threepseat.utils import alphanumeric
 
@@ -233,7 +234,10 @@ def download(link: str, filepath: str) -> None:
             raise ValueError(msg)
 
         try:
-            ydl.download([link])
+            # Network download plus an ffmpeg transcode; the slowest operation
+            # the bot performs, so time it.
+            with log_timing(logger, 'downloaded sound from %s', link):
+                ydl.download([link])
         except Exception as e:
             logger.exception('caught error downloading sound')
             msg = 'Error downloading sound.'
@@ -314,19 +318,20 @@ async def extract_audio(source_path: str, mp3_path: str) -> None:
         'mp3',
         mp3_path,
     )
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    await proc.wait()
+    with log_timing(logger, 'extracted audio from %s', source_path):
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await proc.wait()
 
     if proc.returncode != 0:
         stderr = ''
         if proc.stderr is not None:  # pragma: no branch
             stderr = (await proc.stderr.read()).decode().strip()
         logger.error(
-            'Extract audio with ffmpeg failed (exit code %s):\nstderr:\n%s',
+            'extract audio with ffmpeg failed (exit code %s):\nstderr:\n%s',
             proc.returncode,
             stderr,
         )

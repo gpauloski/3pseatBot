@@ -60,7 +60,7 @@ def reminder_task(
         guild = client.get_guild(reminder.guild_id)
         if guild is None:
             logger.error(
-                'Failed to find guild %s for reminder named %s',
+                'failed to find guild %s for reminder named %s',
                 reminder.guild_id,
                 reminder.name,
             )
@@ -73,7 +73,7 @@ def reminder_task(
             await send_voice_reminder(client, channel, reminder.text)
         else:
             logger.error(
-                'Failed to find text/voice channel with ID %s in %s (%s) '
+                'failed to find text/voice channel with ID %s in %s (%s) '
                 'for reminder named %s',
                 reminder.channel_id,
                 guild.name,

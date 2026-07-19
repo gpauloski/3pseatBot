@@ -3,7 +3,7 @@ from python:3.14-slim
 RUN :\
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
-        build-essential opus-tools ffmpeg git \
+        build-essential opus-tools ffmpeg git tzdata \
     && apt-get clean autoclean \
     && rm -rf /var/lib/apt/lists/*
 

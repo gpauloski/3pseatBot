@@ -62,8 +62,9 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
         # asyncio.Event.wait() resolves to True, hence this wrapper.
         await shutdown_event.wait()
 
+    services = ('bot', 'webapp')
     async with bot:
-        await asyncio.gather(
+        results = await asyncio.gather(
             bot.start(cfg.bot_token, reconnect=True),
             webapp.run_task(
                 # Bind to all interfaces since this runs in a container and
@@ -76,6 +77,21 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
             ),
             return_exceptions=True,
         )
+
+    # gather(return_exceptions=True) prevents one service crashing from tearing
+    # down the other, but it also swallows the exceptions. Surface any real
+    # failures (a CancelledError is the expected result of a clean shutdown) so
+    # they are logged and main() exits non-zero rather than silently.
+    first_error: BaseException | None = None
+    for service, result in zip(services, results, strict=True):
+        if isinstance(result, asyncio.CancelledError):
+            continue
+        if isinstance(result, BaseException):
+            logger.error('%s exited with an error', service, exc_info=result)
+            if first_error is None:
+                first_error = result
+    if first_error is not None:
+        raise first_error
 
 
 def main(argv: Sequence[str] | None = None) -> int:

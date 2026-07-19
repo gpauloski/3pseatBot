@@ -199,7 +199,7 @@ def author_name(
         if resolved is not None:
             return resolved.display_name
     except Exception:  # pragma: no cover
-        logger.exception('Failed to resolve author name for %s', author_id)
+        logger.exception('failed to resolve author name for %s', author_id)
     return 'unknown'
 
 
@@ -308,7 +308,7 @@ async def sound_grid(guild_id: int) -> Response:
         if current is not None:
             entrance_sound = current.name
     except Exception:  # pragma: no cover
-        logger.exception('Failed to resolve entrance sound.')
+        logger.exception('failed to resolve entrance sound')
 
     return await quart.render_template(
         'sounds.html',
@@ -349,7 +349,7 @@ async def sound_play(guild_id: int, sound_name: str) -> Response:
     try:
         await play_sound(sound_file, channel)
     except Exception as e:
-        logger.exception('Error playing sound')
+        logger.exception('error playing sound')
         return quart.Response(str(e), 400)
     else:
         return quart.Response('', 200)
@@ -418,7 +418,7 @@ async def sound_file(guild_id: int, sound_name: str) -> Response:
 
 @sounds_blueprint.route('/sounds/<int:guild_id>/add', methods=['POST'])
 @requires_authorization
-async def sound_add(guild_id: int) -> Response:  # noqa: C901, PLR0911, PLR0912
+async def sound_add(guild_id: int) -> Response:  # noqa: C901, PLR0911, PLR0912, PLR0915
     """Add a sound to a guild from a YouTube link or an uploaded MP3 file."""
     sounds = quart.current_app.config['sounds']
 
@@ -485,6 +485,15 @@ async def sound_add(guild_id: int) -> Response:  # noqa: C901, PLR0911, PLR0912
     )
     filepath = sounds.filepath(sound.filename)
 
+    logger.info(
+        'processing sound upload %r from %s (%s) for guild %s (source: %s)',
+        name,
+        member.display_name,
+        member.id,
+        guild_id,
+        'link' if link else ext.lstrip('.'),
+    )
+
     try:
         if link:
             # download() enforces the duration limit and raises ValueError
@@ -516,7 +525,7 @@ async def sound_add(guild_id: int) -> Response:  # noqa: C901, PLR0911, PLR0912
         _remove_if_exists(filepath)
         return quart.Response(str(e), 400)
     except Exception:
-        logger.exception('Error saving uploaded sound')
+        logger.exception('error saving uploaded sound')
         _remove_if_exists(filepath)
         return quart.Response('Failed to save the sound.', 400)
 
@@ -588,4 +597,5 @@ async def redirect_unauthorized(_e: Exception) -> Response:  # pragma: no cover
 async def request_too_large(_e: Exception) -> Response:
     """Return a friendly message when an upload exceeds the size limit."""
     mb = MAX_VIDEO_FILE_SIZE_BYTES // (1024 * 1024)
+    logger.warning('rejected upload exceeding the %s MB limit', mb)
     return quart.Response(f'File size must be under {mb} MB.', 413)

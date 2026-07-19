@@ -17,6 +17,8 @@ from typing import cast
 import discord
 from discord.ext import tasks
 
+from threepseat.logging import log_timing
+
 logger = logging.getLogger(__name__)
 
 LF = Callable[..., Coroutine[Any, Any, Any]]
@@ -175,8 +177,21 @@ async def play_sound(
         voice_client = cast('discord.VoiceClient', channel.guild.voice_client)
         await voice_client.move_to(channel)
     else:
-        voice_client = await channel.connect()
+        # Voice handshakes can be slow or hang, so time the connect.
+        with log_timing(
+            logger,
+            'connected to voice channel %s in %s',
+            channel.name,
+            channel.guild.name,
+        ):
+            voice_client = await channel.connect()
 
+    logger.info(
+        'playing %s in voice channel %s in %s',
+        sound,
+        channel.name,
+        channel.guild.name,
+    )
     source = discord.FFmpegOpusAudio(sound)
 
     if voice_client.is_playing():

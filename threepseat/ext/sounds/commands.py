@@ -418,7 +418,7 @@ class SoundCommands(CommandGroupExtension):
         try:
             duration = await _get_mp3_duration_s(file)
         except Exception:
-            logger.exception('Failed to validate uploaded file')
+            logger.exception('failed to validate uploaded file')
             await interaction.followup.send(
                 'Error: Could not process the audio file.',
                 ephemeral=True,
@@ -438,7 +438,7 @@ class SoundCommands(CommandGroupExtension):
             await asyncio.to_thread(pathlib.Path(filepath).write_bytes, data)
         except OSError:
             logger.exception(
-                'Failed to save user-uploaded sound to %s', filepath
+                'failed to save user-uploaded sound to %s', filepath
             )
             await interaction.followup.send(
                 'Error: Failed to save the sound to the database.',
@@ -468,7 +468,7 @@ class SoundCommands(CommandGroupExtension):
             await interaction.followup.send(f'Error: {e}', ephemeral=True)
             return False
         except Exception:
-            logger.exception('Failed to process uploaded video')
+            logger.exception('failed to process uploaded video')
             _remove_if_exists(filepath)
             await interaction.followup.send(
                 'Error: Could not process the video file.',
