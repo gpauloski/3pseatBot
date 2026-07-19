@@ -42,12 +42,61 @@ skip `tox` and just create a new virtual environment and install with
 
 ### Run the Bot
 
-The bot can be run using the CLI if the `threepseat` package is installed
-via pip or as an executable module.
+The bot is configured with a JSON file. Once the `threepseat` package is
+installed (via pip or as an executable module), generate a config template,
+fill in the values (see [Configuration](#configuration) below), and start the
+bot with it.
+
 ```
-$ threepseatbot {args}
-$ python -m threepseat {args}
+# 1. Write a config template to fill in
+$ threepseatbot --template config.json
+
+# 2. Edit config.json with your Discord credentials and paths
+
+# 3. Start the bot with your config
+$ threepseatbot --config config.json
+$ python -m threepseat --config config.json
 ```
+
+Optional flags: `--log-dir PATH` writes logs to a directory and `--log-level
+{DEBUG,INFO,WARNING}` sets the verbosity (default `INFO`).
+
+### Configuration
+
+The config file is JSON. Generate a template with `threepseatbot --template
+config.json` and fill in the fields below.
+
+**Discord credentials** — create an application in the
+[Discord Developer Portal](https://discord.com/developers/applications):
+
+- `bot_token` — the bot's token from the application's **Bot** page.
+- `client_id` — the application's **Client ID** (Application ID) from the
+  **General Information** / **OAuth2** page.
+- `client_secret` — the OAuth2 **Client Secret** from the **OAuth2** page.
+- `redirect_uri` — an OAuth2 **Redirect** registered on the **OAuth2** page. It
+  must exactly match the URL the soundboard is served from plus `/callback/`,
+  e.g. `http://localhost:5001/callback/` for local use or your HTTPS URL in
+  production.
+
+**Web sessions**
+
+- `secret_key` — key used to sign the soundboard's session cookies. Optional
+  but **recommended**: set a stable random value so users stay logged in across
+  bot restarts. Generate one with:
+  ```
+  $ python -c "import secrets; print(secrets.token_hex(64))"
+  ```
+  If omitted, an ephemeral key is generated at startup and users must
+  re-authenticate with Discord after every restart (a warning is logged).
+
+**Storage & runtime**
+
+- `sounds_path` — directory where uploaded/downloaded sound files are stored.
+- `sqlite_database` — path to the SQLite database file.
+- `sounds_port` — port the soundboard web server listens on (default `5001`).
+- `sounds_certfile` / `sounds_keyfile` — optional paths to a TLS certificate and
+  private key to serve the soundboard over HTTPS (leave `null` for HTTP).
+- `playing_title` — the "Playing ..." status text shown for the bot.
 
 ### Develop
 

@@ -14,6 +14,7 @@ TEMPLATE_CONFIG = """\
     "bot_token": <str>,
     "client_id": <int>,
     "client_secret": <str>,
+    "secret_key": null,
     "redirect_uri": <str>,
     "sounds_path": <str>,
     "sqlite_database": <str>,

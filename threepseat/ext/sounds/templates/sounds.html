@@ -1,251 +1,203 @@
- <!DOCTYPE html>
-<html>
+{% extends 'base.html' %}
 
-<head>
-    <title>{{ guild.name }} Soundboard</title>
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
-    <!-- Compiled and minified CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-    <!-- JS Stuff -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <!-- Compiled and minified JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-    <!--Let browser know website is optimized for mobile-->
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script>
-      $(document).ready(function(){
-        $('.sidenav').sidenav();
-        $('.modal').modal();
-        $('.tabs').tabs();
-      });
+{% block title %}{{ guild.name }} Soundboard{% endblock %}
 
-      function play(val) {
-        $.ajax({
-          type: "POST",
-          url: val,
-          statusCode: {
-            400: function (response) {
-              alert(response.responseText);
-            }
-          }
-        });
-      }
+{% block content %}
+<main class="wrap wrap-wide">
+  <header class="board-header">
+    {% if guild_icon %}
+    <img class="board-avatar" src="{{ guild_icon }}" alt="{{ guild.name }} icon">
+    {% else %}
+    <span class="board-avatar">{{ guild.name[0] if guild.name else '?' }}</span>
+    {% endif %}
+    <h1 class="board-title">
+      Play Sounds in <span class="accent">{{ guild.name }}</span>
+    </h1>
+  </header>
 
-      function activeSource() {
-        var active = document.querySelector(".tabs .tab a.active");
-        return active ? active.getAttribute("href") : "#tab-youtube";
-      }
+  {% if sounds %}
+  <p class="board-hint">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 3l2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.4l6-.9z"></path>
+    </svg>
+    Tap the star on a sound to set it as your voice-channel entrance sound.
+  </p>
 
-      function uploadSound() {
-        var form = document.getElementById("add-sound-form");
-        var formData = new FormData();
-        formData.append("name", document.getElementById("sound-name").value);
-        formData.append(
-          "description",
-          document.getElementById("sound-description").value
-        );
-
-        if (activeSource() === "#tab-mp3") {
-          var fileInput = document.getElementById("sound-file");
-          if (fileInput.files.length === 0) {
-            alert("Please choose an MP3 file to upload.");
-            return;
-          }
-          formData.append("file", fileInput.files[0]);
-        } else if (activeSource() === "#tab-video") {
-          var videoInput = document.getElementById("sound-file-video");
-          if (videoInput.files.length === 0) {
-            alert("Please choose a video file to upload.");
-            return;
-          }
-          formData.append("file", videoInput.files[0]);
-        } else {
-          var link = document.getElementById("sound-link").value.trim();
-          if (link === "") {
-            alert("Please enter a YouTube link.");
-            return;
-          }
-          formData.append("link", link);
-        }
-
-        var button = document.getElementById("add-sound-submit");
-        var progress = document.getElementById("upload-progress");
-        button.classList.add("disabled");
-        progress.style.display = "block";
-
-        $.ajax({
-          type: "POST",
-          url: form.action,
-          data: formData,
-          processData: false,
-          contentType: false,
-          success: function () {
-            location.reload();
-          },
-          error: function (response) {
-            button.classList.remove("disabled");
-            progress.style.display = "none";
-            alert(response.responseText || "Failed to upload the sound.");
-          }
-        });
-      }
-    </script>
-
-    <style>
-      @media only screen and (max-width: 600px) {
-        .brand-logo {
-          font-size: 24px !important;
-          width: 300px;
-          text-align: center;
-        }
-      }
-      .btn {
-        background-color: #ccff90;
-        border-radius: 6px;
-      }
-      .btn:hover {
-        background-color: #f1f8e9;
-      }
-      .btn:active {
-        background-color: #558b2f;
-      }
-      .card .card-content {
-        padding-top: 16px;
-        padding-bottom: 16px;
-        padding-left: 24px;
-        padding-right: 24px;
-      }
-      .card .card-content .card-title {
-        font-size: 19px;
-        line-height: 28px;
-        font-weight: 500;
-      }
-    </style>
-</head>
-
-<body class="blue-grey darken-4" style="padding-bottom: 24px;">
-
-    {% include 'navbar.html' %}
-
-  <div style="padding-left: 40px; padding-right: 40px;">
-    <div>
-      <h5 class="center-align blue-grey-text text-lighten-5">Play Sounds in {{ guild.name }}</h5>
+  <div class="board-controls">
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="M21 21l-4.3-4.3"></path>
+      </svg>
+      <input id="sound-search" type="text" placeholder="Search sounds…"
+             autocomplete="off">
     </div>
-    <div style="display: grid; grid-gap: 24px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: stretch; margin-top: 24px;">
-      {% for sound in sounds %}
-      <div class="card blue-grey darken-2" style="margin: 0; display: flex; flex-direction: column;">
-        <div class="card-content blue-grey-text text-lighten-4">
-          <span class="card-title blue-grey-text text-lighten-4">
-            <b>{{ sound.name }}</b>
-          </span>
-          <p>{{ sound.description }}</p>
-        </div>
-        <div class="card-action valign-wrapper" style="margin-top: auto;">
-          <div onclick="play('{{ sound.url }}')" class="waves-effect waves-light btn">
-            <i class="medium material-icons blue-grey-text text-darken-4">play_arrow</i>
-          </div>
+    <label class="control-sort">
+      <span>Sort</span>
+      <select id="sound-sort" aria-label="Sort sounds">
+        <option value="name">Name A–Z</option>
+        <option value="newest">Newest</option>
+        <option value="author">Uploader</option>
+      </select>
+    </label>
+    <div class="filter-chips" role="group" aria-label="Filter sounds">
+      <button class="chip" type="button" data-filter="youtube"
+              aria-pressed="false">Has YouTube</button>
+      <button class="chip" type="button" data-filter="entrance"
+              aria-pressed="false">★ My entrance sound</button>
+    </div>
+  </div>
+
+  <div id="sound-grid" class="grid">
+    {% for sound in sounds %}
+    <article class="card"
+             data-search="{{ (sound.name ~ ' ' ~ sound.description ~ ' ' ~ sound.author)|lower }}"
+             data-name="{{ sound.name|lower }}"
+             data-created="{{ sound.created_ts }}"
+             data-author="{{ sound.author|lower }}"
+             data-youtube="{{ '1' if sound.youtube_link else '0' }}"
+             data-entrance="{{ '1' if sound.name == entrance_sound else '0' }}">
+      <button class="play-btn" type="button" data-url="{{ sound.url }}"
+              data-name="{{ sound.name }}" aria-label="Play {{ sound.name }} in Discord">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M8 5v14l11-7z"></path>
+        </svg>
+      </button>
+      <div class="card-body">
+        <h2 class="card-title">{{ sound.name }}</h2>
+        <p class="card-desc">{{ sound.description }}</p>
+        <div class="card-meta">
+          <span>by {{ sound.author }}</span>
+          <span class="sep">·</span>
+          <time class="js-date" data-ts="{{ sound.created_ts }}">{{ sound.created }}</time>
           {% if sound.youtube_link %}
-          <a href="{{ sound.youtube_link }}" target="_blank" class="light-green-text text-accent-1" style="margin-left: auto; margin-right: 0px">
-            Watch on YouTube
+          <span class="sep">·</span>
+          <a class="watch-link" href="{{ sound.youtube_link }}" target="_blank"
+             rel="noopener">
+            YouTube
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 4h6v6"></path>
+              <path d="M20 4l-9 9"></path>
+              <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path>
+            </svg>
           </a>
           {% endif %}
         </div>
       </div>
-      {% endfor %}
-    </div>
-  </div>
-
-  <!-- Floating button to open the add-sound modal -->
-  <div class="fixed-action-btn">
-    <a class="btn-floating btn-large modal-trigger" href="#add-sound-modal">
-      <i class="large material-icons blue-grey-text text-darken-4">add</i>
-    </a>
-  </div>
-
-  <!-- Add sound modal -->
-  <div id="add-sound-modal" class="modal blue-grey darken-2">
-    <div class="modal-content blue-grey-text text-lighten-4">
-      <h5>Add a Sound to {{ guild.name }}</h5>
-      <p class="blue-grey-text text-lighten-2" style="margin-bottom: 24px;">
-        Add from a YouTube link, upload an MP3 (max 1 MB), or upload a video
-        (max 25 MB, audio is extracted). Clips must be up to 30 seconds.
-      </p>
-      <form
-        id="add-sound-form"
-        action="{{ url_for('sounds.sound_add', guild_id=guild_id) }}"
-      >
-        <div class="input-field">
-          <input id="sound-name" type="text" maxlength="18" required
-                 class="blue-grey-text text-lighten-4">
-          <label for="sound-name">Name (max 18 characters)</label>
-        </div>
-        <div class="input-field">
-          <input id="sound-description" type="text" maxlength="100" required
-                 class="blue-grey-text text-lighten-4">
-          <label for="sound-description">Description (max 100 characters)</label>
-        </div>
-
-        <ul class="tabs blue-grey darken-2">
-          <li class="tab">
-            <a class="active light-green-text text-accent-1" href="#tab-youtube">YouTube Link</a>
-          </li>
-          <li class="tab">
-            <a class="light-green-text text-accent-1" href="#tab-mp3">Upload MP3</a>
-          </li>
-          <li class="tab">
-            <a class="light-green-text text-accent-1" href="#tab-video">Upload Video</a>
-          </li>
-        </ul>
-
-        <div id="tab-youtube" style="padding-top: 8px;">
-          <div class="input-field">
-            <input id="sound-link" type="text"
-                   class="blue-grey-text text-lighten-4">
-            <label for="sound-link">YouTube URL (max 30 seconds)</label>
-          </div>
-        </div>
-
-        <div id="tab-mp3" style="padding-top: 8px;">
-          <div class="file-field input-field">
-            <div class="btn blue-grey-text text-darken-4">
-              <span>MP3</span>
-              <input id="sound-file" type="file" accept=".mp3,audio/mpeg">
-            </div>
-            <div class="file-path-wrapper">
-              <input class="file-path validate" type="text"
-                     placeholder="Choose an MP3 file">
-            </div>
-          </div>
-        </div>
-
-        <div id="tab-video" style="padding-top: 8px;">
-          <div class="file-field input-field">
-            <div class="btn blue-grey-text text-darken-4">
-              <span>Video</span>
-              <input id="sound-file-video" type="file"
-                     accept=".mp4,.m4v,.mov,video/mp4,video/quicktime">
-            </div>
-            <div class="file-path-wrapper">
-              <input class="file-path validate" type="text"
-                     placeholder="Choose a video file (audio is extracted)">
-            </div>
-          </div>
-        </div>
-      </form>
-
-      <div id="upload-progress" class="progress blue-grey darken-1"
-           style="display: none;">
-        <div class="indeterminate light-green"></div>
+      <div class="card-tools">
+        <button class="preview-btn" type="button"
+                data-url="{{ url_for('sounds.sound_file', guild_id=guild_id, sound_name=sound.name) }}"
+                data-name="{{ sound.name }}"
+                aria-label="Preview {{ sound.name }} in your browser"
+                title="Preview in your browser">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 5L6 9H3v6h3l5 4V5z"></path>
+            <path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+            <path d="M18.5 5.5a9 9 0 0 1 0 13"></path>
+          </svg>
+        </button>
+        <button class="entrance-btn{% if sound.name == entrance_sound %} active{% endif %}"
+                type="button"
+                data-url="{{ url_for('sounds.set_entrance', guild_id=guild_id, sound_name=sound.name) }}"
+                data-name="{{ sound.name }}"
+                aria-pressed="{{ 'true' if sound.name == entrance_sound else 'false' }}"
+                aria-label="Set {{ sound.name }} as your entrance sound"
+                title="Set as your voice-channel entrance sound">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.4l6-.9z"></path>
+          </svg>
+        </button>
       </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  <p id="empty-state" class="empty-state">No sounds match your search. 🔍</p>
+  {% else %}
+  <div class="notice">
+    <h2>No sounds here yet 🔈</h2>
+    <p>
+      Be the first to add one — grab a short YouTube clip, or upload an MP3 or
+      a video (audio is extracted).
+    </p>
+    <button class="btn" type="button" data-open-modal>Add the first sound</button>
+  </div>
+  {% endif %}
+</main>
+
+<!-- Floating button to open the add-sound modal -->
+<button id="add-sound-fab" class="fab" type="button" aria-label="Add a sound"
+        data-open-modal>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"
+       stroke-linecap="round">
+    <line x1="12" y1="5" x2="12" y2="19"></line>
+    <line x1="5" y1="12" x2="19" y2="12"></line>
+  </svg>
+</button>
+
+<!-- Add sound modal -->
+<div id="add-sound-modal" class="modal-overlay">
+  <div class="modal">
+    <h2>Add a Sound to {{ guild.name }}</h2>
+    <p class="hint">
+      Add from a YouTube link, upload an MP3 (max 1&nbsp;MB), or upload a video
+      (max 25&nbsp;MB, audio is extracted). Clips must be up to 30&nbsp;seconds.
+    </p>
+
+    <form id="add-sound-form"
+          action="{{ url_for('sounds.sound_add', guild_id=guild_id) }}">
+      <div class="field">
+        <label for="sound-name">Name (max 18 characters)</label>
+        <input id="sound-name" type="text" maxlength="18" required>
+      </div>
+      <div class="field">
+        <label for="sound-description">Description (max 100 characters)</label>
+        <input id="sound-description" type="text" maxlength="100" required>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" type="button" data-tab="youtube">YouTube</button>
+        <button class="tab" type="button" data-tab="mp3">Upload MP3</button>
+        <button class="tab" type="button" data-tab="video">Upload Video</button>
+      </div>
+
+      <div class="tab-panel active" data-tab="youtube">
+        <div class="field">
+          <label for="sound-link">YouTube URL (max 30 seconds)</label>
+          <input id="sound-link" type="text" placeholder="https://youtube.com/watch?v=…">
+        </div>
+      </div>
+
+      <div class="tab-panel" data-tab="mp3">
+        <label class="file-drop" for="sound-file">
+          <span class="btn btn-ghost">Choose MP3</span>
+          <span class="file-name" data-placeholder="No MP3 selected">No MP3 selected</span>
+          <input id="sound-file" type="file" accept=".mp3,audio/mpeg">
+        </label>
+      </div>
+
+      <div class="tab-panel" data-tab="video">
+        <label class="file-drop" for="sound-file-video">
+          <span class="btn btn-ghost">Choose Video</span>
+          <span class="file-name" data-placeholder="No video selected">No video selected</span>
+          <input id="sound-file-video" type="file"
+                 accept=".mp4,.m4v,.mov,video/mp4,video/quicktime">
+        </label>
+      </div>
+    </form>
+
+    <div id="upload-progress" class="progress">
+      <div class="bar"></div>
     </div>
-    <div class="modal-footer blue-grey darken-2">
-      <a href="#!" class="modal-close waves-effect btn-flat light-green-text text-accent-1">Cancel</a>
-      <a id="add-sound-submit" class="waves-effect waves-light btn blue-grey-text text-darken-4" onclick="uploadSound()">
-        Upload
-      </a>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" data-close>Cancel</button>
+      <button id="add-sound-submit" class="btn" type="button">Upload</button>
     </div>
   </div>
-</body>
-
-</html>
+</div>
+{% endblock %}

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import logging
 import os
+import secrets
 import tempfile
+import time
 from typing import NamedTuple
 
 import discord
@@ -20,6 +23,8 @@ from threepseat.ext.sounds.data import MAX_SOUND_FILE_SIZE_BYTES
 from threepseat.ext.sounds.data import MAX_SOUND_LENGTH_SECONDS
 from threepseat.ext.sounds.data import MAX_VIDEO_FILE_SIZE_BYTES
 from threepseat.ext.sounds.data import SUPPORTED_VIDEO_EXTENSIONS
+from threepseat.ext.sounds.data import MemberSound
+from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
 from threepseat.ext.sounds.data import download
@@ -33,12 +38,7 @@ type Response = str | quart.Response | werkseug_Response
 
 logger = logging.getLogger(__name__)
 
-sounds_blueprint = quart.Blueprint(
-    'sounds',
-    __name__,
-    template_folder='sounds/templates',
-    static_folder='sounds/static',
-)
+sounds_blueprint = quart.Blueprint('sounds', __name__)
 
 
 class GuildData(NamedTuple):
@@ -56,34 +56,53 @@ class SoundData(NamedTuple):
     description: str
     youtube_link: str
     url: str
+    author: str
+    created: str
+    created_ts: float
 
 
 def create_app(
     *,
     bot: Bot,
     sounds: SoundsTable,
+    member_sounds: MemberSoundTable,
     client_id: int,
     client_secret: str,
     bot_token: str,
     redirect_uri: str,
+    secret_key: str | None = None,
 ) -> quart.Quart:
     """Create the Quart app for serving the web interface.
 
     Args:
         bot (Bot): bot instance to use for playing sounds.
         sounds (SoundsTable): sounds table.
+        member_sounds (MemberSoundTable): table of members' voice-channel
+            entrance sounds.
         client_id (int): client ID of bot.
         client_secret (str): client secret of bot.
         bot_token (str): bot token.
         redirect_uri (str): discord OAuth redirect URI. Should match a URI in
             the bot's management page.
+        secret_key (str | None): key used to sign session cookies. When set,
+            user logins persist across bot restarts. When None, an ephemeral
+            key is generated and users must re-authenticate after each restart.
 
     Returns:
         Quart app.
     """
     app = quart.Quart(__name__)
 
-    app.secret_key = os.urandom(128)
+    if secret_key:
+        app.secret_key = secret_key
+    else:
+        app.secret_key = secrets.token_hex(64)
+        logger.warning(
+            'No secret_key is configured; generated an ephemeral key. Web '
+            'sessions will not persist across restarts, so users must '
+            're-authenticate with Discord each time the bot restarts. Set '
+            '"secret_key" in the config to keep users logged in.',
+        )
 
     # Cap request bodies so oversized uploads are rejected before we buffer
     # them. Size to the largest allowed upload (video) plus some headroom for
@@ -103,11 +122,9 @@ def create_app(
 
     app.config['DISCORD_OAUTH2_SESSION'] = DiscordOAuth2Session(app)
 
-    # https://github.com/pallets/quart/issues/280
-    app.config['EXPLAIN_TEMPLATE_LOADING'] = True
-
     app.config['bot'] = bot
     app.config['sounds'] = sounds
+    app.config['member_sounds'] = member_sounds
 
     app.register_blueprint(sounds_blueprint, url_prefix='')
 
@@ -143,6 +160,49 @@ def get_member(
     if guild is None:
         return None
     return guild.get_member(user.id)
+
+
+def author_name(
+    client: discord.Client,
+    guild: discord.Guild | None,
+    author_id: int,
+) -> str:
+    """Resolve a sound's author id to a display name.
+
+    Falls back to 'unknown' if the uploader can no longer be resolved (e.g.
+    they left the guild) so the grid always renders.
+    """
+    try:
+        member = guild.get_member(author_id) if guild is not None else None
+        if member is not None:
+            return member.display_name
+        resolved = client.get_user(author_id)
+        if resolved is not None:
+            return resolved.display_name
+    except Exception:  # pragma: no cover
+        pass
+    return 'unknown'
+
+
+async def resolve_member(
+    guild_id: int,
+) -> tuple[discord.Member | None, quart.Response | None]:
+    """Resolve the current OAuth user to a member of the guild.
+
+    Returns:
+        a ``(member, None)`` pair on success, or ``(None, response)`` with a
+        400 response to return to the caller when the user is not a member.
+    """
+    discord_session = quart.current_app.config['DISCORD_OAUTH2_SESSION']
+    bot = quart.current_app.config['bot']
+    user = await discord_session.fetch_user()
+    member = get_member(bot, user, guild_id)
+    if member is None:
+        return None, quart.Response(
+            'Cannot find your membership in the Guild.',
+            400,
+        )
+    return member, None
 
 
 @sounds_blueprint.route('/')
@@ -203,32 +263,58 @@ async def sound_grid(guild_id: int) -> Response:
                 guild_id=guild_id,
                 sound_name=sound.name,
             ),
+            author_name(bot, guild, sound.author_id),
+            datetime.datetime.fromtimestamp(
+                sound.created_time,
+                tz=datetime.UTC,
+            ).strftime('%b %d, %Y'),
+            sound.created_time,
         )
         for sound in sound_list
     ]
 
     sound_data.sort(key=lambda x: x.name.lower())
 
+    guild_icon = (
+        guild.icon.url if guild is not None and guild.icon is not None else ''
+    )
+
+    # The name of the current user's registered entrance sound (if any) so the
+    # template can mark that card. Best-effort: never let it break the grid.
+    entrance_sound: str | None = None
+    try:
+        discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
+        member_sounds = quart.current_app.config['member_sounds']
+        user = await discord.fetch_user()
+        current = member_sounds.get(member_id=user.id, guild_id=guild_id)
+        if current is not None:
+            entrance_sound = current.name
+    except Exception:  # pragma: no cover
+        logger.exception('Failed to resolve entrance sound.')
+
     return await quart.render_template(
         'sounds.html',
         guild=guild,
         guild_id=guild_id,
+        guild_icon=guild_icon,
         sounds=sound_data,
+        entrance_sound=entrance_sound,
         logout_url=quart.url_for('sounds.logout'),
     )
 
 
-@sounds_blueprint.route('/play/<int:guild_id>/<sound_name>', methods=['POST'])
+@sounds_blueprint.route(
+    '/sounds/<int:guild_id>/<sound_name>/play',
+    methods=['POST'],
+)
 @requires_authorization
 async def sound_play(guild_id: int, sound_name: str) -> Response:
-    """Play a sound and redirect back to grid."""
-    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    bot = quart.current_app.config['bot']
+    """Play a sound into the user's voice channel."""
     sounds = quart.current_app.config['sounds']
-    user = await discord.fetch_user()
-    member = get_member(bot, user, guild_id)
-    if member is None:
-        return quart.Response('Cannot find your membership in the Guild.', 400)
+    member, error = await resolve_member(guild_id)
+    if error is not None:
+        return error
+    assert member is not None
 
     sound = sounds.get(sound_name, guild_id=guild_id)
     if sound is None:
@@ -251,18 +337,77 @@ async def sound_play(guild_id: int, sound_name: str) -> Response:
         return quart.Response('', 200)
 
 
+@sounds_blueprint.route(
+    '/sounds/<int:guild_id>/<sound_name>/entrance',
+    methods=['POST'],
+)
+@requires_authorization
+async def set_entrance(guild_id: int, sound_name: str) -> Response:
+    """Toggle a sound as the user's voice-channel entrance sound.
+
+    Setting the sound that is already registered clears it, so the same
+    endpoint both selects and deselects.
+    """
+    sounds = quart.current_app.config['sounds']
+    member_sounds = quart.current_app.config['member_sounds']
+
+    member, error = await resolve_member(guild_id)
+    if error is not None:
+        return error
+    assert member is not None
+
+    sound = sounds.get(sound_name, guild_id=guild_id)
+    if sound is None:
+        return quart.Response(
+            f'Unable to locate a sound named {sound_name}.',
+            400,
+        )
+
+    current = member_sounds.get(member_id=member.id, guild_id=guild_id)
+    if current is not None and current.name == sound_name:
+        member_sounds.remove(member_id=member.id, guild_id=guild_id)
+        active = False
+    else:
+        member_sounds.update(
+            MemberSound(
+                member_id=member.id,
+                guild_id=guild_id,
+                name=sound_name,
+                updated_time=time.time(),
+            ),
+        )
+        active = True
+
+    return quart.jsonify({'active': active, 'name': sound_name})
+
+
+@sounds_blueprint.route('/sounds/<int:guild_id>/<sound_name>/file')
+@requires_authorization
+async def sound_file(guild_id: int, sound_name: str) -> Response:
+    """Serve a sound's MP3 for in-browser preview."""
+    sounds = quart.current_app.config['sounds']
+    sound = sounds.get(sound_name, guild_id=guild_id)
+    if sound is None:
+        return quart.Response(
+            f'Unable to locate a sound named {sound_name}.',
+            404,
+        )
+    return await quart.send_file(
+        sounds.filepath(sound.filename),
+        mimetype='audio/mpeg',
+    )
+
+
 @sounds_blueprint.route('/sounds/<int:guild_id>/add', methods=['POST'])
 @requires_authorization
 async def sound_add(guild_id: int) -> Response:
     """Add a sound to a guild from a YouTube link or an uploaded MP3 file."""
-    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    bot = quart.current_app.config['bot']
     sounds = quart.current_app.config['sounds']
 
-    user = await discord.fetch_user()
-    member = get_member(bot, user, guild_id)
-    if member is None:
-        return quart.Response('Cannot find your membership in the Guild.', 400)
+    member, error = await resolve_member(guild_id)
+    if error is not None:
+        return error
+    assert member is not None
 
     form = await quart.request.form
     files = await quart.request.files
