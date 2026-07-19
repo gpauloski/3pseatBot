@@ -25,7 +25,7 @@ REMINDER = Reminder(
     creation_time=0,
     name='test',
     text='test message',
-    delay_minutes=0.0001,  # type: ignore
+    delay_minutes=0.0001,  # type: ignore[arg-type]
 )
 
 
@@ -79,7 +79,7 @@ async def test_reminder_task_missing_guild(caplog) -> None:
     await asyncio.sleep(0.02)
     task.cancel()
 
-    assert any(['find guild' in record.message for record in caplog.records])
+    assert any('find guild' in record.message for record in caplog.records)
 
 
 @pytest.mark.asyncio
@@ -100,7 +100,7 @@ async def test_reminder_task_missing_channel(caplog) -> None:
     task.cancel()
 
     assert any(
-        ['find text/voice' in record.message for record in caplog.records],
+        'find text/voice' in record.message for record in caplog.records
     )
 
 
@@ -116,7 +116,7 @@ async def test_reminder_task_callback() -> None:
             return_value=guild,
         )
 
-        guild.get_channel = mock.MagicMock(  # type: ignore
+        guild.get_channel = mock.MagicMock(  # type: ignore[method-assign]
             return_value=text_channel,
         )
 
@@ -126,9 +126,8 @@ async def test_reminder_task_callback() -> None:
         waited = 0
         while mock_text.await_count == 0:
             if waited >= 10:  # pragma: no cover
-                raise TimeoutError(
-                    'Timeout waiting for reminder task to execute.',
-                )
+                msg = 'Timeout waiting for reminder task to execute.'
+                raise TimeoutError(msg)
             await asyncio.sleep(0.01)
             waited += 1
         task.cancel()

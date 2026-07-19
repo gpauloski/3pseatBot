@@ -69,10 +69,10 @@ async def log_interaction(
     """
     channel = interaction.channel
     channel_name = (
-        None if not hasattr(channel, 'name') else channel.name  # type: ignore
+        None if not hasattr(channel, 'name') else channel.name  # type: ignore[union-attr]
     )
     channel_name = (
-        channel_name if channel_name is not None else channel.id  # type: ignore
+        channel_name if channel_name is not None else channel.id  # type: ignore[union-attr]
     )
 
     guild = None if interaction.guild is None else interaction.guild.name
@@ -80,9 +80,13 @@ async def log_interaction(
     options = extract_command_options(interaction)
 
     logger.info(
-        f'[Channel: {channel_name}, Guild: {guild}] '
-        f'{interaction.user.name} ({interaction.user.id}) called '
-        f'/{command}: {options}',
+        '[Channel: %s, Guild: %s] %s (%s) called /%s: %s',
+        channel_name,
+        guild,
+        interaction.user.name,
+        interaction.user.id,
+        command,
+        options,
     )
 
     return True
@@ -96,15 +100,15 @@ async def admin_or_owner(interaction: discord.Interaction[Any]) -> bool:
         >>> @app_commands.check(admin_or_owner)
         >>> def mycommand(...): ...
     """
-    if isinstance(
-        interaction.client,
-        commands.Bot,
-    ) and await interaction.client.is_owner(interaction.user):
-        return True
-    elif (
+    if (
+        isinstance(
+            interaction.client,
+            commands.Bot,
+        )
+        and await interaction.client.is_owner(interaction.user)
+    ) or (
         isinstance(interaction.user, discord.Member)
         and interaction.user.guild_permissions.administrator
     ):
         return True
-    else:
-        raise app_commands.MissingPermissions(['admin'])
+    raise app_commands.MissingPermissions(['admin'])

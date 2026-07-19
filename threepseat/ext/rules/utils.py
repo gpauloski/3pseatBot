@@ -43,7 +43,7 @@ def is_url(text: str) -> bool:
     return bool(re.match(URL_RE, text)) and len(text.split(' ')) == 1
 
 
-def ignore_message(message: discord.Message) -> bool:
+def ignore_message(message: discord.Message) -> bool:  # noqa: PLR0911
     """Determine if message should be ignored by rules enforcement.
 
     A message will be ignored if it:
@@ -83,7 +83,4 @@ def ignore_message(message: discord.Message) -> bool:
         return True
     if text.startswith('> '):
         return True
-    if text.startswith('```'):
-        return True
-
-    return False
+    return text.startswith('```')

@@ -24,14 +24,14 @@ def test_app_commands_registered() -> None:
 @pytest.mark.asyncio
 async def test_admin_or_owner() -> None:
     interaction = MockInteraction(
-        command=None,  # type: ignore
+        command=None,  # type: ignore[arg-type]
         user=MockUser('user1', 1234),
     )
     with pytest.raises(app_commands.MissingPermissions):
         await admin_or_owner(interaction)
 
     interaction = MockInteraction(
-        command=None,  # type: ignore
+        command=None,  # type: ignore[arg-type]
         user=MockUser('user1', 1234),
         client=MockClient(MockUser('user1', 1234)),
     )
@@ -41,26 +41,26 @@ async def test_admin_or_owner() -> None:
         administrator = True
 
     class Admin(discord.Member):
-        guild_permissions = _Perms()  # type: ignore
+        guild_permissions = _Perms()  # type: ignore[assignment]
         id = 123123132
 
         def __init__(self) -> None:
             pass
 
     interaction = MockInteraction(
-        command=None,  # type: ignore
+        command=None,  # type: ignore[arg-type]
         user=Admin(),
     )
     assert await admin_or_owner(interaction)
 
 
 def test_extract_command_options() -> None:
-    interaction = MockInteraction(command=None, user='user')  # type: ignore
+    interaction = MockInteraction(command=None, user='user')  # type: ignore[arg-type]
 
     interaction.data = None
     assert extract_command_options(interaction) is None
 
-    interaction.data = {}  # type: ignore
+    interaction.data = {}  # type: ignore[assignment]
     assert extract_command_options(interaction) is None
 
     interaction.data = {
@@ -90,7 +90,7 @@ def test_extract_command_options() -> None:
                         'value': True,
                         'type': 2,
                         'name': 'flag',
-                    },  # type: ignore
+                    },  # type: ignore[assignment]
                 ],
                 'name': 'list',
             },
@@ -106,11 +106,11 @@ def test_extract_command_options() -> None:
 async def test_log_interaction(caplog) -> None:
     caplog.set_level(logging.INFO)
     interaction = MockInteraction(
-        command=None,  # type: ignore
+        command=None,  # type: ignore[arg-type]
         user=MockUser('user1', 1234),
         channel=MockChannel('channel', 3),
     )
     interaction.data = None
     await log_interaction(interaction)
-    assert any(['user1' in record.message for record in caplog.records])
-    assert any(['1234' in record.message for record in caplog.records])
+    assert any('user1' in record.message for record in caplog.records)
+    assert any('1234' in record.message for record in caplog.records)

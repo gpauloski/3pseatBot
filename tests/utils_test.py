@@ -33,7 +33,7 @@ def test_alphanumeric() -> None:
 def test_cached_load(tmp_path: pathlib.Path) -> None:
     test_file = tmp_path / 'file.bytes'
     data = b'12345'
-    with open(test_file, 'wb') as f:
+    with test_file.open('wb') as f:
         f.write(data)
 
     found = cached_load(test_file)
@@ -51,7 +51,7 @@ def test_split_strings() -> None:
 def test_primary_channel() -> None:
     guild = MockGuild('myguild', 5678)
     with mock.patch('discord.TextChannel'):
-        channel = discord.TextChannel()  # type: ignore
+        channel = discord.TextChannel()  # type: ignore[call-arg]
     with mock.patch(
         'discord.Guild.system_channel',
         mock.PropertyMock(return_value=channel),
@@ -71,13 +71,13 @@ def test_primary_channel() -> None:
         guild._channels = {}
         assert primary_channel(guild) is None
 
-        guild._channels = {'c1': channel}  # type: ignore
+        guild._channels = {'c1': channel}  # type: ignore[dict-item]
         with mock.patch('threepseat.utils.isinstance', return_value=True):
             assert primary_channel(guild) == channel
 
         with mock.patch('discord.VoiceChannel'):
-            channel = discord.VoiceChannel()  # type: ignore
-        guild._channels = {'c1': channel}  # type: ignore
+            channel = discord.VoiceChannel()  # type: ignore[assignment, call-arg]
+        guild._channels = {'c1': channel}  # type: ignore[dict-item]
         with mock.patch(
             'threepseat.utils.isinstance',
             return_value=False,
@@ -86,13 +86,13 @@ def test_primary_channel() -> None:
 
 
 @pytest.mark.parametrize(
-    'values,conjunction,expected',
-    (
+    ('values', 'conjunction', 'expected'),
+    [
         ([], 'and', ''),
         (['a'], 'and', 'a'),
         (['a', 'b'], 'and', 'a and b'),
         (['a', 'b', 'c', 'd'], 'or', 'a, b, c, or d'),
-    ),
+    ],
 )
 def test_readable_sequence(
     values: list[str],
@@ -103,8 +103,8 @@ def test_readable_sequence(
 
 
 @pytest.mark.parametrize(
-    'args,expected',
-    (
+    ('args', 'expected'),
+    [
         # Default value
         ({}, '0 seconds'),
         # Singular vs plural
@@ -130,7 +130,7 @@ def test_readable_sequence(
         # Negative values
         ({'minutes': 3, 'seconds': -1}, '2 minutes and 59 seconds'),
         ({'days': -3, 'minutes': -1}, '-4 days, 23 hours, and 59 minutes'),
-    ),
+    ],
 )
 def test_readable_timedelta(args: dict[str, float], expected: str) -> None:
     assert readable_timedelta(**args) == expected
@@ -144,34 +144,34 @@ def test_voice_channel() -> None:
     class Voice1:
         channel = MockVoiceChannel()
 
-    member._voice = Voice1()  # type: ignore
+    member._voice = Voice1()  # type: ignore[assignment]
     assert member.voice is not None
     assert voice_channel(member) == member.voice.channel
 
     class Voice2:
         channel = object()
 
-    member._voice = Voice2()  # type: ignore
+    member._voice = Voice2()  # type: ignore[assignment]
     assert voice_channel(member) is None
 
 
 @pytest.mark.asyncio
 @mock.patch('discord.FFmpegPCMAudio')
-async def test_play_sound(mock_audio) -> None:
+async def test_play_sound(mock_audio) -> None:  # noqa: ARG001
     sound = 'filepath'
     channel = MockVoiceChannel()
 
     client = MockClient(MockUser('name', 1234))
     voice_client = discord.VoiceProtocol(client=client, channel=channel)
-    voice_client.move_to = mock.AsyncMock()  # type: ignore
-    voice_client.play = mock.AsyncMock()  # type: ignore
+    voice_client.move_to = mock.AsyncMock()  # type: ignore[attr-defined]
+    voice_client.play = mock.AsyncMock()  # type: ignore[attr-defined]
 
     # Note: first True to see if there is a current sound to be stopped,
     # then True to allow wait to happen, then False to exit wait loop
-    voice_client.is_playing = mock.MagicMock(  # type: ignore
+    voice_client.is_playing = mock.MagicMock(  # type: ignore[attr-defined]
         side_effect=[True, True, False],
     )
-    voice_client.stop = mock.MagicMock()  # type: ignore
+    voice_client.stop = mock.MagicMock()  # type: ignore[attr-defined]
 
     with (
         mock.patch.object(channel, 'guild', mock.PropertyMock()),
@@ -183,7 +183,7 @@ async def test_play_sound(mock_audio) -> None:
     ):
         await play_sound(sound, channel, wait=True)
 
-    voice_client.is_playing = mock.MagicMock(  # type: ignore
+    voice_client.is_playing = mock.MagicMock(  # type: ignore[attr-defined]
         return_value=False,
     )
 

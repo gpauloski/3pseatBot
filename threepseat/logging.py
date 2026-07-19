@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import datetime
 import logging.handlers
-import os
 import sys
+from pathlib import Path
 from typing import Literal
 
 
@@ -17,9 +17,9 @@ def configure_logging(
 
     handlers: list[logging.Handler] = [stream_handler]
     if logdir is not None:
-        os.makedirs(logdir, exist_ok=True)
+        Path(logdir).mkdir(parents=True, exist_ok=True)
         file_handler = logging.handlers.TimedRotatingFileHandler(
-            os.path.join(logdir, 'bot.log'),
+            Path(logdir) / 'bot.log',
             # Rotate logs Sunday at midnight
             when='W6',
             atTime=datetime.time(hour=0, minute=0, second=0),
@@ -37,10 +37,3 @@ def configure_logging(
     )
 
     logging.captureWarnings(True)
-
-    # discord.utils.setup_logging(
-    #     handler=stream_handler if file_handler is None else file_handler,
-    #     formatter=logging.Formatter(fmt, datefmt),
-    #     level=logging.getLevelName(level),
-    #     root=False,
-    # )

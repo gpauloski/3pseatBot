@@ -22,18 +22,19 @@ def base_type(t: types.UnionType | type) -> type:
             types.
     """
     types_ = split_types(t)
-    if len(types_) == 2 and type(None) in types_:
-        return [t for t in types_ if t is not type(None)].pop()  # noqa: E721
-    raise ValueError(
+    if len(types_) == 2 and type(None) in types_:  # noqa: PLR2004
+        return [t for t in types_ if t is not type(None)].pop()
+    msg = (
         'Argument must contain two types with one of them being type[None] '
-        f'but got {types_} instead.',
+        f'but got {types_} instead.'
     )
+    raise ValueError(msg)
 
 
 def is_optional(t: types.UnionType | type) -> bool:
     """Check if the type is an optional type."""
     origin = typing.get_origin(t)
-    union = origin is typing.Union or origin is types.UnionType  # noqa: E721
+    union = origin is typing.Union or origin is types.UnionType
     return union and type(None) in typing.get_args(t)
 
 

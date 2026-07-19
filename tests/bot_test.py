@@ -69,6 +69,4 @@ async def test_bot_startup(tmp_file: str, caplog) -> None:
             bot = Bot(extensions=extensions)
             await bot.on_ready()
 
-    assert any(
-        ['ready!' in record.message for record in caplog.records],
-    )
+    assert any('ready!' in record.message for record in caplog.records)

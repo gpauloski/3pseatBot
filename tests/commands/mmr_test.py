@@ -124,12 +124,10 @@ async def test_mmr() -> None:
         await mmr_(interaction, 'foo, bar', GameMode.ARAM)
 
     assert interaction.followed
-    assert (
-        interaction.followup_message is not None
-        and 'foo' in interaction.followup_message
-        and 'bar' in interaction.followup_message
-        and 'aram' in interaction.followup_message
-    )
+    assert interaction.followup_message is not None
+    assert 'foo' in interaction.followup_message
+    assert 'bar' in interaction.followup_message
+    assert 'aram' in interaction.followup_message
 
 
 @pytest.mark.asyncio
@@ -148,10 +146,8 @@ async def test_mmr_error() -> None:
         await mmr_(interaction, 'foo, bar', GameMode.ARAM)
 
     assert interaction.followed
-    assert (
-        interaction.followup_message is not None
-        and 'API error' in interaction.followup_message
-    )
+    assert interaction.followup_message is not None
+    assert 'API error' in interaction.followup_message
 
 
 @pytest.mark.asyncio
@@ -170,10 +166,8 @@ async def test_mmr_summoner_does_not_exist() -> None:
         await mmr_(interaction, 'foo, bar', GameMode.ARAM)
 
     assert interaction.followed
-    assert (
-        interaction.followup_message is not None
-        and 'does not exist' in interaction.followup_message
-    )
+    assert interaction.followup_message is not None
+    assert 'does not exist' in interaction.followup_message
 
 
 @pytest.mark.asyncio
@@ -182,31 +176,31 @@ async def test_cache() -> None:
 
     # Test guild cache
     guild = MockGuild('guild', 1234)
-    interaction = MockInteraction(None, user=user, guild=guild)  # type: ignore
+    interaction = MockInteraction(None, user=user, guild=guild)  # type: ignore[arg-type]
     cache_add('test', guild=guild, channel=None, user=user)
     options = await autocomplete_summoners(interaction, current='test')
-    assert any(['test' in option.value for option in options])
+    assert any('test' in option.value for option in options)
     assert len(await autocomplete_summoners(interaction, current='abc')) == 0
     assert len(await autocomplete_summoners(interaction, current='')) == 1
 
     # Test channel cache
     channel = MockChannel('channel', 4321)
     interaction = MockInteraction(
-        None,  # type: ignore
+        None,  # type: ignore[arg-type]
         user=user,
         channel=channel,
     )
     cache_add('foo', guild=None, channel=channel, user=user)
     options = await autocomplete_summoners(interaction, current='foo')
-    assert any(['foo' in option.value for option in options])
+    assert any('foo' in option.value for option in options)
     assert len(await autocomplete_summoners(interaction, current='abc')) == 0
     assert len(await autocomplete_summoners(interaction, current='')) == 1
 
     # Test users cache
-    interaction = MockInteraction(None, user=user)  # type: ignore
+    interaction = MockInteraction(None, user=user)  # type: ignore[arg-type]
     cache_add('bar', guild=None, channel=None, user=user)
     options = await autocomplete_summoners(interaction, current='bar')
-    assert any(['bar' in option.value for option in options])
+    assert any('bar' in option.value for option in options)
     assert len(await autocomplete_summoners(interaction, current='abc')) == 0
     assert len(await autocomplete_summoners(interaction, current='')) == 1
 
@@ -214,7 +208,7 @@ async def test_cache() -> None:
 @pytest.mark.asyncio
 async def test_cache_duplicates() -> None:
     user = MockUser('user', 1)
-    interaction = MockInteraction(None, user=user)  # type: ignore
+    interaction = MockInteraction(None, user=user)  # type: ignore[arg-type]
     cache_add('bar', guild=None, channel=None, user=user)
     assert len(await autocomplete_summoners(interaction, current='')) == 1
     cache_add('bar', guild=None, channel=None, user=user)
@@ -224,10 +218,10 @@ async def test_cache_duplicates() -> None:
 @pytest.mark.asyncio
 async def test_cache_eviction() -> None:
     user = MockUser('user', 1)
-    interaction = MockInteraction(None, user=user)  # type: ignore
+    interaction = MockInteraction(None, user=user)  # type: ignore[arg-type]
     for i in range(11):
         cache_add(str(i), guild=None, channel=None, user=user)
     options = await autocomplete_summoners(interaction, current='')
     assert len(options) == 10
     # 0, the first value added, should be evicted
-    assert all([int(option.value) > 0 for option in options])
+    assert all(int(option.value) > 0 for option in options)

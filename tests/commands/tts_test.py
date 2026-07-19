@@ -30,9 +30,8 @@ async def test_tts_command() -> None:
         await tts_(interaction, 'test message')
 
     assert interaction.followed
-    assert interaction.followup_message is not None and (
-        'Played' in interaction.followup_message
-    )
+    assert interaction.followup_message is not None
+    assert 'Played' in interaction.followup_message
 
 
 @pytest.mark.asyncio
@@ -49,9 +48,8 @@ async def test_tts_command_text_too_long() -> None:
     await tts_(interaction, 'x' * 201)
 
     assert interaction.responded
-    assert interaction.response_message is not None and (
-        'Text length is limited' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'Text length is limited' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -72,9 +70,8 @@ async def test_tts_command_not_in_voice_channel() -> None:
         await tts_(interaction, 'test message')
 
     assert interaction.followed
-    assert interaction.followup_message is not None and (
-        'must be in a voice channel' in interaction.followup_message
-    )
+    assert interaction.followup_message is not None
+    assert 'must be in a voice channel' in interaction.followup_message
 
 
 @pytest.mark.asyncio
@@ -99,6 +96,5 @@ async def test_tts_command_exception() -> None:
         await tts_(interaction, 'test message')
 
     assert interaction.followed
-    assert interaction.followup_message is not None and (
-        'Failed to play TTS' in interaction.followup_message
-    )
+    assert interaction.followup_message is not None
+    assert 'Failed to play TTS' in interaction.followup_message

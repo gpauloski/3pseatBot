@@ -42,7 +42,7 @@ def test_main_template(tmp_path: pathlib.Path) -> None:
     filepath = tmp_path / 'template.json'
     retcode = main(['--template', str(filepath)])
     assert retcode == 0
-    with open(filepath) as f:
+    with filepath.open() as f:
         assert f.read() == TEMPLATE_CONFIG
 
 
@@ -81,7 +81,7 @@ def test_main_errors(config: str, caplog) -> None:
     ):
         ret = main(['--config', config])
     assert ret != 0
-    assert any(['uh oh' in record.message for record in caplog.records])
+    assert 'uh oh' in caplog.text
 
 
 def test_logging(config: str, tmp_path: pathlib.Path) -> None:
@@ -95,8 +95,8 @@ def test_logging(config: str, tmp_path: pathlib.Path) -> None:
 
 
 def test_cli() -> None:
-    result = subprocess.run(
-        ['threepseatbot', '--version'],
+    result = subprocess.run(  # noqa: PLW1510
+        ['threepseatbot', '--version'],  # noqa: S607
         capture_output=True,
     )
     assert result.returncode == 0

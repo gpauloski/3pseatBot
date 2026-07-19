@@ -4,6 +4,7 @@ import io
 import logging
 import pathlib
 from collections.abc import AsyncGenerator
+from http import HTTPStatus
 from unittest import mock
 
 import pytest
@@ -74,7 +75,7 @@ async def test_index_authorized(quart_app) -> None:
 
     response = await client.get('/')
     # Redirect to /guilds/
-    assert response.status_code == 302
+    assert response.status_code == HTTPStatus.FOUND
     location = [h for h in response.headers if 'location' in h].pop()
     assert location[1] == '/guilds/'
 
@@ -91,7 +92,7 @@ async def test_index_unauthorized(quart_app) -> None:
         mock.AsyncMock(return_value=False)(),
     ):
         response = await client.get('/')
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
 
 
 @pytest.mark.asyncio
@@ -104,7 +105,7 @@ async def test_guilds(quart_app) -> None:
     ):
         response = await client.get('/guilds/')
 
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
 
 
 @pytest.mark.asyncio
@@ -143,7 +144,7 @@ async def test_sound_grid(quart_app) -> None:
     ):
         response = await client.get('/sounds/1234')
 
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     assert b'entrance-btn active' not in await response.get_data()
 
 
@@ -191,7 +192,7 @@ async def test_sound_grid_marks_entrance_sound(quart_app) -> None:
     ):
         response = await client.get('/sounds/1234')
 
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     # The matching card's star badge is rendered active.
     assert b'entrance-btn active' in await response.get_data()
 
@@ -233,7 +234,7 @@ async def test_sound_play(quart_app) -> None:
         response = await client.post('/sounds/1234/mysound/play')
         assert mocked.await_count == 1
 
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
 
 
 @pytest.mark.asyncio
@@ -254,7 +255,7 @@ async def test_sound_play_no_member(quart_app) -> None:
         response = await client.post('/sounds/1234/mysound/play')
         assert mocked.await_count == 0
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 @pytest.mark.asyncio
@@ -277,7 +278,7 @@ async def test_sound_play_no_sound(quart_app) -> None:
         response = await client.post('/sounds/1234/mysound/play')
         assert mocked.await_count == 0
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 @pytest.mark.asyncio
@@ -305,7 +306,7 @@ async def test_sound_play_no_channel(quart_app) -> None:
         response = await client.post('/sounds/1234/mysound/play')
         assert mocked.await_count == 0
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 @pytest.mark.asyncio
@@ -334,7 +335,7 @@ async def test_sound_play_error(quart_app) -> None:
         response = await client.post('/sounds/1234/mysound/play')
         assert mocked.await_count == 1
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 @pytest.mark.asyncio
@@ -361,7 +362,7 @@ async def test_set_entrance_new(quart_app) -> None:
     ):
         response = await client.post('/sounds/5678/mysound/entrance')
 
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     body = await response.get_json()
     assert body == {'active': True, 'name': 'mysound'}
     saved = member_sounds.get(member_id=1234, guild_id=5678)
@@ -403,7 +404,7 @@ async def test_set_entrance_toggle_clear(quart_app) -> None:
     ):
         response = await client.post('/sounds/5678/mysound/entrance')
 
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     body = await response.get_json()
     assert body == {'active': False, 'name': 'mysound'}
     assert member_sounds.get(member_id=1234, guild_id=5678) is None
@@ -428,7 +429,7 @@ async def test_set_entrance_no_member(quart_app) -> None:
     ):
         response = await client.post('/sounds/5678/mysound/entrance')
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 @pytest.mark.asyncio
@@ -454,7 +455,7 @@ async def test_set_entrance_no_sound(quart_app) -> None:
     ):
         response = await client.post('/sounds/5678/mysound/entrance')
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     assert b'Unable to locate' in await response.get_data()
 
 
@@ -477,7 +478,7 @@ async def test_sound_file_success(quart_app) -> None:
 
     response = await client.get('/sounds/5678/mysound/file')
 
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     assert response.content_type == 'audio/mpeg'
     assert await response.get_data() == b'id3 audio'
 
@@ -491,7 +492,7 @@ async def test_sound_file_missing(quart_app) -> None:
     with mock.patch.object(sounds, 'get', return_value=None):
         response = await client.get('/sounds/5678/nope/file')
 
-    assert response.status_code == 404
+    assert response.status_code == HTTPStatus.NOT_FOUND
     assert b'Unable to locate' in await response.get_data()
 
 
@@ -573,7 +574,7 @@ async def test_sound_add_success(quart_app) -> None:
             files={'file': _upload_file()},
         )
 
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     # The sound was actually persisted to the table.
     assert sounds.get('mysound', guild_id=5678) is not None
 
@@ -589,7 +590,7 @@ async def test_sound_add_video_success(quart_app) -> None:
 
     # extract_audio would write the MP3; emulate it so table.add finds the
     # file on disk.
-    async def fake_extract(source, mp3_path) -> None:
+    async def fake_extract(_source, mp3_path) -> None:
         pathlib.Path(mp3_path).touch()
 
     with (
@@ -617,7 +618,7 @@ async def test_sound_add_video_success(quart_app) -> None:
             files={'file': _upload_file(filename='clip.mp4')},
         )
 
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     assert mock_extract.call_count == 1
     assert sounds.get('fromvideo', guild_id=5678) is not None
 
@@ -647,7 +648,7 @@ async def test_sound_add_unsupported_type(quart_app) -> None:
             files={'file': _upload_file(filename='clip.mkv')},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     assert b'supported video' in await response.get_data()
 
 
@@ -689,7 +690,7 @@ async def test_sound_add_video_extract_error(quart_app) -> None:
             files={'file': _upload_file(filename='clip.mov')},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     assert b'Could not extract audio' in await response.get_data()
     assert sounds.get('badvideo', guild_id=5678) is None
 
@@ -728,7 +729,7 @@ async def test_sound_add_video_too_long(quart_app) -> None:
             files={'file': _upload_file(filename='clip.mp4')},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     assert b'too long' in await response.get_data()
     # Rejected before any extraction and nothing was persisted.
     assert mock_extract.await_count == 0
@@ -758,7 +759,7 @@ async def test_sound_add_no_member(quart_app) -> None:
             files={'file': _upload_file()},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 @pytest.mark.asyncio
@@ -785,7 +786,7 @@ async def test_sound_add_no_file(quart_app) -> None:
             form={'name': 'mysound', 'description': 'a test sound'},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 @pytest.mark.asyncio
@@ -813,7 +814,7 @@ async def test_sound_add_empty_filename(quart_app) -> None:
             files={'file': _upload_file(filename='')},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 @pytest.mark.asyncio
@@ -841,7 +842,7 @@ async def test_sound_add_bad_extension(quart_app) -> None:
             files={'file': _upload_file(filename='test.txt')},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     assert b'MP3' in await response.get_data()
 
 
@@ -870,7 +871,7 @@ async def test_sound_add_bad_description(quart_app) -> None:
             files={'file': _upload_file()},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     assert b'Description' in await response.get_data()
 
 
@@ -903,7 +904,7 @@ async def test_sound_add_file_too_large(quart_app) -> None:
             files={'file': _upload_file(content=content)},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     assert b'File size' in await response.get_data()
 
 
@@ -937,7 +938,7 @@ async def test_sound_add_too_long(quart_app) -> None:
             files={'file': _upload_file()},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     assert b'too long' in await response.get_data()
     # The partially-written file was cleaned up and nothing was persisted.
     assert sounds.get('mysound', guild_id=5678) is None
@@ -984,7 +985,7 @@ async def test_sound_add_duplicate_name(quart_app) -> None:
             files={'file': _upload_file()},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     assert b'already exists' in await response.get_data()
 
 
@@ -1017,7 +1018,7 @@ async def test_sound_add_save_error(quart_app) -> None:
             files={'file': _upload_file()},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     assert b'Failed to save' in await response.get_data()
 
 
@@ -1032,7 +1033,7 @@ async def test_sound_add_youtube_success(quart_app) -> None:
 
     # download() would fetch and write the mp3; emulate it creating the file
     # so that SoundsTable.add finds it on disk.
-    def fake_download(link: str, filepath: str) -> None:
+    def fake_download(_link: str, filepath: str) -> None:
         pathlib.Path(filepath).touch()
 
     with (
@@ -1059,7 +1060,7 @@ async def test_sound_add_youtube_success(quart_app) -> None:
             },
         )
 
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     assert mock_download.call_count == 1
     saved = sounds.get('mysound', guild_id=5678)
     assert saved is not None
@@ -1099,7 +1100,7 @@ async def test_sound_add_youtube_error(quart_app) -> None:
             },
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     assert b'longer than' in await response.get_data()
     assert sounds.get('mysound', guild_id=5678) is None
 
@@ -1133,7 +1134,7 @@ async def test_sound_add_link_and_file(quart_app) -> None:
             files={'file': _upload_file()},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     assert b'not both' in await response.get_data()
 
 
@@ -1143,7 +1144,7 @@ async def test_request_too_large_handler() -> None:
     # with a 413 before reaching the handler; verify the friendly response.
     response = await request_too_large(Exception())
     assert isinstance(response, quart.Response)
-    assert response.status_code == 413
+    assert response.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
     assert b'File size' in await response.get_data()
 
 

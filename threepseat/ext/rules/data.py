@@ -89,10 +89,11 @@ class RulesDatabase:
     def add_offense(self, guild_id: int, user_id: int, count: int = 1) -> int:
         """Add offense to user in guild."""
         if count < 1:
-            raise ValueError('Count must be greater than zero.')
+            msg = 'Count must be greater than zero.'
+            raise ValueError(msg)
         config = self.get_config(guild_id)
         if config is None:
-            raise GuildNotConfiguredError()
+            raise GuildNotConfiguredError
         user = self.get_user(guild_id, user_id)
         if user is None:
             user = UserOffenses(
@@ -109,7 +110,7 @@ class RulesDatabase:
             )
         self.update_user(user)
         if user.current_offenses >= config.max_offenses:
-            raise MaxOffensesExceededError()
+            raise MaxOffensesExceededError
         return user.current_offenses
 
     def remove_offense(
@@ -120,7 +121,8 @@ class RulesDatabase:
     ) -> None:
         """Remove offense from user in guild."""
         if count < 1:
-            raise ValueError('Count must be greater than zero.')
+            msg = 'Count must be greater than zero.'
+            raise ValueError(msg)
         user = self.get_user(guild_id, user_id)
         if user is not None:
             user = user._replace(
@@ -153,15 +155,15 @@ class GuildConfigTable(SQLTableInterface[GuildConfig]):
             primary_keys=('guild_id',),
         )
 
-    def _all(self) -> list[GuildConfig]:  # type: ignore
+    def _all(self) -> list[GuildConfig]:  # type: ignore[override]
         """Get guild configs."""
         return super()._all()
 
-    def _get(self, guild_id: int) -> GuildConfig | None:  # type: ignore
+    def _get(self, guild_id: int) -> GuildConfig | None:  # type: ignore[override]
         """Get guild config."""
         return super()._get(guild_id=guild_id)
 
-    def remove(self, guild_id: int) -> int:  # type: ignore
+    def remove(self, guild_id: int) -> int:  # type: ignore[override]
         """Remove a guild config from the table."""
         raise NotImplementedError
 
@@ -182,11 +184,11 @@ class UserOffensesTable(SQLTableInterface[UserOffenses]):
             primary_keys=('guild_id', 'user_id'),
         )
 
-    def _all(self, guild_id: int) -> list[UserOffenses]:  # type: ignore
+    def _all(self, guild_id: int) -> list[UserOffenses]:  # type: ignore[override]
         """Get all user offenses in the guild."""
         return super()._all(guild_id=guild_id)
 
-    def _get(  # type: ignore
+    def _get(  # type: ignore[override]
         self,
         guild_id: int,
         user_id: int,
@@ -194,6 +196,6 @@ class UserOffensesTable(SQLTableInterface[UserOffenses]):
         """Get user offenses."""
         return super()._get(guild_id=guild_id, user_id=user_id)
 
-    def remove(self, guild_id: int, user_id: int) -> int:  # type: ignore
+    def remove(self, guild_id: int, user_id: int) -> int:  # type: ignore[override]
         """Remove a row."""
         raise NotImplementedError

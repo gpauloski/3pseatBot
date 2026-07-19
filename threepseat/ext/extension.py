@@ -18,4 +18,3 @@ class CommandGroupExtension(app_commands.Group):
         Subclasses can use this method to launch background tasks that need
         the client, register commands, etc.
         """
-        pass

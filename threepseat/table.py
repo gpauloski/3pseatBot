@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import contextlib
 import functools
-import os
 import sqlite3
 import typing
 from collections.abc import Generator
 from collections.abc import Iterable
 from collections.abc import Sequence
+from pathlib import Path
 from types import UnionType
 from typing import Any
 from typing import Generic
@@ -81,7 +81,7 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
         """
         self._row_type = row_type
         self._row_name = row_type.__name__
-        self._primary_keys = tuple() if primary_keys is None else primary_keys
+        self._primary_keys = () if primary_keys is None else primary_keys
         self._name = name
         self._filepath = filepath
 
@@ -90,12 +90,12 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
 
         for key in self._primary_keys:
             if key not in self.field_names:
-                raise ValueError(
-                    f'Primary key {key} is not a field in {self._row_name}.',
-                )
+                msg = f'Primary key {key} is not a field in {self._row_name}.'
+                raise ValueError(msg)
 
-        if len(os.path.dirname(self._filepath)) > 0:
-            os.makedirs(os.path.dirname(self._filepath), exist_ok=True)
+        parent = Path(self._filepath).parent
+        if str(parent) not in ('', '.'):
+            parent.mkdir(parents=True, exist_ok=True)
 
         # Create table
         columns = [
@@ -103,6 +103,8 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
         ]
         columns_str = ', '.join(columns)
         with self.connect() as db:
+            # Table/column names come from the RowType definition, not user
+            # input, so this is not susceptible to SQL injection.
             db.execute(
                 f'CREATE TABLE IF NOT EXISTS {self.name} ({columns_str})',
             )
@@ -134,9 +136,8 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
     def connect(self) -> Generator[sqlite3.Connection, None, None]:
         """Database connection context manager."""
         # Source: https://github.com/pre-commit/pre-commit/blob/354b900f15e88a06ce8493e0316c288c44777017/pre_commit/store.py#L91  # noqa: E501
-        with contextlib.closing(sqlite3.connect(self._filepath)) as db:
-            with db:
-                yield db
+        with contextlib.closing(sqlite3.connect(self._filepath)) as db, db:
+            yield db
 
     def validate_kwargs(self, kwargs: dict[str, Any]) -> None:
         """Validate that every key/value in kwargs.
@@ -147,16 +148,18 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
         """
         for field, value in kwargs.items():
             if field not in self._fields:
-                raise ValueError(
-                    f'Field {field} is not a member of {self._row_name}.',
-                )
+                msg = f'Field {field} is not a member of {self._row_name}.'
+                raise ValueError(msg)
             if not isinstance(value, self.fields[field].python_type):
-                raise ValueError(
+                msg = (
                     f'Type of {field} is {type(value)} but expected '
-                    f'{self.fields[field].python_type}.',
+                    f'{self.fields[field].python_type}.'
                 )
+                # ValueError (not TypeError) is this class's convention for
+                # any invalid kwarg, including wrong-typed values.
+                raise ValueError(msg)  # noqa: TRY004
 
-    def _all(self, **kwargs: Any) -> list[RowType]:
+    def _all(self, **kwargs: Any) -> list[RowType]:  # noqa: ANN401
         """Get all rows in the table match kwargs."""
         self.validate_kwargs(kwargs)
 
@@ -167,13 +170,15 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
         )
 
         with self.connect() as db:
+            # Table/column names come from the RowType definition, not user
+            # input, so this is not susceptible to SQL injection.
             rows = db.execute(
-                f'SELECT * FROM {self.name} {where}',
+                f'SELECT * FROM {self.name} {where}',  # noqa: S608
                 kwargs,
             ).fetchall()
             return [self._row_type(*row) for row in rows]
 
-    def _get(self, **kwargs: Any) -> RowType | None:
+    def _get(self, **kwargs: Any) -> RowType | None:  # noqa: ANN401
         """Get the row in the table matching kwargs.
 
         Raises:
@@ -182,36 +187,42 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
                 because the query did not contain all of the primary keys.
         """
         if len(kwargs) == 0:
-            raise ValueError('At least one argument must be provided.')
+            msg = 'At least one argument must be provided.'
+            raise ValueError(msg)
         self.validate_kwargs(kwargs)
 
         with self.connect() as db:
+            # Table/column names come from the RowType definition, not user
+            # input, so this is not susceptible to SQL injection.
             rows = db.execute(
-                f'SELECT * FROM {self.name} WHERE '
+                f'SELECT * FROM {self.name} WHERE '  # noqa: S608
                 f'{fields_to_search_str(kwargs.keys())}',
                 kwargs,
             ).fetchall()
             if len(rows) == 0:
                 return None
-            elif len(rows) >= 2:
-                raise ValueError('Found multiple matching rows.')
-            else:
-                return self._row_type(*rows[0])
+            if len(rows) >= 2:  # noqa: PLR2004 (checking for "more than one")
+                msg = 'Found multiple matching rows.'
+                raise ValueError(msg)
+            return self._row_type(*rows[0])
 
     def update(self, row: RowType) -> None:
         """Update a row in the table or insert it if it does not exist."""
         with self.connect() as db:
+            # Table/column names come from the RowType definition, not user
+            # input, so this is not susceptible to SQL injection.
             res = db.execute(
-                f'UPDATE {self.name} '
+                f'UPDATE {self.name} '  # noqa: S608
                 f'SET {fields_to_update_str(self.field_names)} '
                 f'WHERE {fields_to_search_str(self.primary_keys)}',
                 row._asdict(),
             )
             if res.rowcount > 1:
-                raise ValueError('Updated more than one row!')
-            elif res.rowcount == 0:
+                msg = 'Updated more than one row!'
+                raise ValueError(msg)
+            if res.rowcount == 0:
                 res = db.execute(
-                    f'INSERT INTO {self.name} VALUES '
+                    f'INSERT INTO {self.name} VALUES '  # noqa: S608
                     f'({fields_to_insert_str(self.field_names)})',
                     row._asdict(),
                 )
@@ -219,7 +230,7 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
         self.all.cache_clear()
         self.get.cache_clear()
 
-    def remove(self, **kwargs: Any) -> int:
+    def remove(self, **kwargs: Any) -> int:  # noqa: ANN401
         """Remove a row from the table.
 
         Raises:
@@ -227,12 +238,15 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
                 if not all of the primary keys are supplied as kwargs.
         """
         if set(kwargs.keys()) != set(self.primary_keys):
-            raise ValueError('Remove parameters must be the primary keys')
+            msg = 'Remove parameters must be the primary keys'
+            raise ValueError(msg)
         self.validate_kwargs(kwargs)
 
         with self.connect() as db:
+            # Table/column names come from the RowType definition, not user
+            # input, so this is not susceptible to SQL injection.
             res = db.execute(
-                f'DELETE FROM {self.name} WHERE '
+                f'DELETE FROM {self.name} WHERE '  # noqa: S608
                 f'{fields_to_search_str(kwargs.keys())}',
                 kwargs,
             )

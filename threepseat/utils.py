@@ -10,11 +10,12 @@ import warnings
 from collections.abc import Callable
 from collections.abc import Coroutine
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 from typing import cast
 
 import discord
-import discord.ext.tasks as tasks
+from discord.ext import tasks
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ def alphanumeric(s: str) -> bool:
 @functools.lru_cache(maxsize=16)
 def cached_load(filepath: str) -> io.BytesIO:
     """Load file as bytes (cached)."""
-    with open(filepath, 'rb') as f:
+    with Path(filepath).open('rb') as f:
         return io.BytesIO(f.read())
 
 
@@ -77,9 +78,9 @@ def readable_sequence(values: Sequence[str], conjunction: str = 'and') -> str:
     """
     if len(values) == 0:
         return ''
-    elif len(values) == 1:
+    if len(values) == 1:
         return values[0]
-    elif len(values) == 2:
+    if len(values) == 2:  # noqa: PLR2004
         return f'{values[0]} {conjunction} {values[1]}'
 
     before = ', '.join(values[:-1])
@@ -171,8 +172,8 @@ async def play_sound(
     """
     voice_client: discord.VoiceClient
     if channel.guild.voice_client is not None:
-        await channel.guild.voice_client.move_to(channel)  # type: ignore
-        voice_client = cast(discord.VoiceClient, channel.guild.voice_client)
+        await channel.guild.voice_client.move_to(channel)  # type: ignore[attr-defined]
+        voice_client = cast('discord.VoiceClient', channel.guild.voice_client)
     else:
         voice_client = await channel.connect()
 
@@ -186,7 +187,9 @@ async def play_sound(
         voice_client.play(source, after=None)
 
     if wait:
-        while voice_client.is_playing():
+        # discord.py's VoiceClient owns the playback state, so we have no
+        # event to wait on and must poll is_playing() instead.
+        while voice_client.is_playing():  # noqa: ASYNC110
             await asyncio.sleep(0.1)
 
 
@@ -219,8 +222,9 @@ def leave_on_empty(
                 and len(voice_client.channel.members) <= 1
             ):
                 logger.info(
-                    f'leaving voice channel {voice_client.channel.name} in '
-                    f'{voice_client.channel.guild.name} due to inactivity',
+                    'leaving voice channel %s in %s due to inactivity',
+                    voice_client.channel.name,
+                    voice_client.channel.guild.name,
                 )
                 await voice_client.disconnect()
 

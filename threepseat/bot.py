@@ -53,7 +53,11 @@ class Bot(commands.Bot):
         await self.wait_until_ready()
         # Should not be none as we have waited for the login to succeed
         assert self.user is not None
-        logger.info(f'{self.user.name} (Client ID: {self.user.id}) is ready!')
+        logger.info(
+            '%s (Client ID: %s) is ready!',
+            self.user.name,
+            self.user.id,
+        )
 
     async def setup(self) -> None:
         """Setup operations to perform once bot is ready."""
@@ -69,18 +73,18 @@ class Bot(commands.Bot):
         commands = registered_app_commands()
         for command in commands:
             self.tree.add_command(command)
-        logger.info(f'registered {len(commands)} app commands')
+        logger.info('registered %s app commands', len(commands))
 
         listeners = registered_listeners()
         for listener in listeners:
             self.add_listener(listener.func, listener.event)
-        logger.info(f'registered {len(listeners)} listeners')
+        logger.info('registered %s listeners', len(listeners))
 
         if self._cmd_group_exts is not None:
             for ext in self._cmd_group_exts:
                 self.tree.add_command(ext)
                 await ext.post_init(self)
-                logger.info(f'registered {ext.name} command group')
+                logger.info('registered %s command group', ext.name)
 
         await self.tree.sync()
         for guild in self.guilds:

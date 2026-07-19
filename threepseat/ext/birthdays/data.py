@@ -41,11 +41,11 @@ class BirthdayTable(SQLTableInterface[Birthday]):
             primary_keys=('guild_id', 'user_id'),
         )
 
-    def _all(self, guild_id: int) -> list[Birthday]:  # type: ignore
+    def _all(self, guild_id: int) -> list[Birthday]:  # type: ignore[override]
         """Get all birthdays in guild."""
         return super()._all(guild_id=guild_id)
 
-    def _get(  # type: ignore
+    def _get(  # type: ignore[override]
         self,
         guild_id: int,
         user_id: int,
@@ -53,6 +53,6 @@ class BirthdayTable(SQLTableInterface[Birthday]):
         """Get users birthday."""
         return super()._get(guild_id=guild_id, user_id=user_id)
 
-    def remove(self, guild_id: int, user_id: int) -> int:  # type: ignore
+    def remove(self, guild_id: int, user_id: int) -> int:  # type: ignore[override]
         """Remove a birthday from the table."""
         return super().remove(guild_id=guild_id, user_id=user_id)

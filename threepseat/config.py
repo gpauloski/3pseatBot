@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import typing
+from pathlib import Path
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -28,11 +29,12 @@ class Config:
         for field_name, field_type in typing.get_type_hints(Config).items():
             value = getattr(self, field_name)
             if not isinstance(value, field_type):
-                raise TypeError(
+                msg = (
                     f"Expected type '{field_type.__name__}' for "
                     f"{self.__class__.__name__} field '{field_name}' but "
-                    f"got type '{type(value).__name__}'.",
+                    f"got type '{type(value).__name__}'."
                 )
+                raise TypeError(msg)
 
     @staticmethod
     def template() -> str:
@@ -54,7 +56,8 @@ class Config:
                 # Note: if this line is ever reached, it is because a new field
                 # was added to Config with a default type not handled in this
                 # if/elif statement so a new elif needs to be added.
-                raise AssertionError('Unreachable.')
+                msg = 'Unreachable.'
+                raise AssertionError(msg)
             fields.append((field.name, value))
         field_strs = [f'    "{f}": {t}' for f, t in fields]
         field_str = ',\n'.join(field_strs)
@@ -63,7 +66,7 @@ class Config:
 
 def load(filepath: str) -> Config:
     """Load config from JSON file."""
-    with open(filepath) as f:
+    with Path(filepath).open() as f:
         data = json.load(f)
 
     return Config(**data)
@@ -71,5 +74,5 @@ def load(filepath: str) -> Config:
 
 def write_template(filepath: str) -> None:
     """Write config template to file."""
-    with open(filepath, 'w') as f:
+    with Path(filepath).open('w') as f:
         f.write(Config.template())

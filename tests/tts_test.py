@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os
+import pathlib
 from unittest import mock
 
 import pytest
@@ -22,6 +22,6 @@ def test_tts_as_mp3() -> None:
     with mock.patch('threepseat.tts.gTTS'):
         with tts_as_mp3('test message') as fp:
             filepath = fp
-            assert os.path.isfile(fp)
+            assert pathlib.Path(fp).is_file()
         # File gets cleaned up
-        assert not os.path.isfile(filepath)
+        assert not pathlib.Path(filepath).is_file()

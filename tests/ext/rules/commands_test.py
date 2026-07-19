@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import time
-from collections.abc import Generator
 from unittest import mock
 
 import pytest
@@ -34,10 +33,10 @@ GUILD_CONFIG = GuildConfig(
 
 
 @pytest.fixture
-def commands(tmp_file: str) -> Generator[RulesCommands, None, None]:
+def commands(tmp_file: str) -> RulesCommands:
     commands = RulesCommands(tmp_file)
     commands.database.update_config(GUILD_CONFIG)
-    yield commands
+    return commands
 
 
 @pytest.mark.asyncio
@@ -95,7 +94,7 @@ async def test_on_message(commands) -> None:
     message = MockMessage('3pseat test message')
     message.author = MockMember('member', 42, guild)
     message.channel = MockChannel('channel')
-    message.channel.guild = None  # type: ignore
+    message.channel.guild = None  # type: ignore[assignment]
 
     # Most of these calls will be ignored so we use the offending message
     # handler as indication that the message returned without doing anything
@@ -148,19 +147,23 @@ async def test_start_event(commands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     channel = MockChannel('channel')
 
-    with mock.patch.object(commands.database, 'get_config', return_value=None):
-        with pytest.raises(EventStartError, match='not been configured'):
-            await commands.start_event(guild)
-
-    with mock.patch(
-        'threepseat.ext.rules.commands.primary_channel',
-        return_value=None,
+    with (
+        mock.patch.object(commands.database, 'get_config', return_value=None),
+        pytest.raises(EventStartError, match='not been configured'),
     ):
-        with pytest.raises(
+        await commands.start_event(guild)
+
+    with (
+        mock.patch(
+            'threepseat.ext.rules.commands.primary_channel',
+            return_value=None,
+        ),
+        pytest.raises(
             EventStartError,
             match='not find valid text',
-        ):  # pragma: no branch
-            await commands.start_event(guild)
+        ),
+    ):  # pragma: no branch
+        await commands.start_event(guild)
 
     with (
         mock.patch(
@@ -271,10 +274,8 @@ async def test_configure(commands) -> None:
 
     await configure_(commands, interaction, prefixes='3pseat, 3pfeet')
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'Update' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'Update' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -289,10 +290,8 @@ async def test_configuration(commands) -> None:
 
     await configuration_(commands, interaction)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'Legacy 3pseat mode is' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'Legacy 3pseat mode is' in interaction.response_message
 
     interaction = MockInteraction(
         commands.configuration,
@@ -302,10 +301,8 @@ async def test_configuration(commands) -> None:
 
     await configuration_(commands, interaction)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'has not been configured' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'has not been configured' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -321,33 +318,25 @@ async def test_enable(commands) -> None:
     with mock.patch.object(commands, 'start_event') as mocked:
         await enable_(commands, interaction, immediate=True)
         assert interaction.responded
-        assert (
-            interaction.response_message is not None
-            and 'Started an event' in interaction.response_message
-        )
+        assert interaction.response_message is not None
+        assert 'Started an event' in interaction.response_message
 
         mocked.side_effect = EventStartError()
         await enable_(commands, interaction, immediate=True)
         assert interaction.responded
-        assert (
-            interaction.response_message is not None
-            and 'Failed to start event' in interaction.response_message
-        )
+        assert interaction.response_message is not None
+        assert 'Failed to start event' in interaction.response_message
 
     with mock.patch.object(commands.database, 'get_config', return_value=None):
         await enable_(commands, interaction, immediate=False)
         assert interaction.responded
-        assert (
-            interaction.response_message is not None
-            and 'not been configured' in interaction.response_message
-        )
+        assert interaction.response_message is not None
+        assert 'not been configured' in interaction.response_message
 
     await enable_(commands, interaction, immediate=False)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and '3pseat events are enabled' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert '3pseat events are enabled' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -366,25 +355,19 @@ async def test_disable(commands) -> None:
     ):
         await disable_(commands, interaction, current=True)
         assert interaction.responded
-        assert (
-            interaction.response_message is not None
-            and 'Stopping any current event' in interaction.response_message
-        )
+        assert interaction.response_message is not None
+        assert 'Stopping any current event' in interaction.response_message
 
     with mock.patch.object(commands.database, 'get_config', return_value=None):
         await disable_(commands, interaction)
         assert interaction.responded
-        assert (
-            interaction.response_message is not None
-            and 'not been configured' in interaction.response_message
-        )
+        assert interaction.response_message is not None
+        assert 'not been configured' in interaction.response_message
 
     await disable_(commands, interaction)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'events are disabled' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'events are disabled' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -401,17 +384,13 @@ async def test_offenses(commands) -> None:
     with mock.patch.object(commands.database, 'get_config', return_value=None):
         await offenses_(commands, interaction)
         assert interaction.responded
-        assert (
-            interaction.response_message is not None
-            and 'not been configured' in interaction.response_message
-        )
+        assert interaction.response_message is not None
+        assert 'not been configured' in interaction.response_message
 
     await offenses_(commands, interaction)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'no offenses yet in this guild' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'no offenses yet in this guild' in interaction.response_message
 
     commands.database.add_offense(GUILD_CONFIG.guild_id, 42)
     commands.database.add_offense(GUILD_CONFIG.guild_id, 43)
@@ -422,25 +401,19 @@ async def test_offenses(commands) -> None:
     ):
         await offenses_(commands, interaction)
         assert interaction.responded
-        assert (
-            interaction.response_message is not None
-            and 'Current offenses in this' in interaction.response_message
-        )
+        assert interaction.response_message is not None
+        assert 'Current offenses in this' in interaction.response_message
 
     await offenses_(commands, interaction, user=member)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'currently has' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'currently has' in interaction.response_message
 
     member = MockMember('user', 44, MockGuild('guild', GUILD_CONFIG.guild_id))
     await offenses_(commands, interaction, user=member)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'has not broken the rules' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'has not broken the rules' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -456,10 +429,8 @@ async def test_add_offense(commands) -> None:
 
     await add_offense_(commands, interaction, member, count=2)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'Added 2 offenses' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'Added 2 offenses' in interaction.response_message
 
     data = commands.database.get_user(GUILD_CONFIG.guild_id, 42)
     assert data.current_offenses == 2
@@ -472,10 +443,8 @@ async def test_add_offense(commands) -> None:
     ):
         await add_offense_(commands, interaction, member)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'test' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'test' in interaction.response_message
 
     interaction = MockInteraction(
         commands.add_offense,
@@ -485,11 +454,8 @@ async def test_add_offense(commands) -> None:
 
     await add_offense_(commands, interaction, member)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'not been configured for this guild'
-        in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'not been configured for this guild' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -505,10 +471,8 @@ async def test_remove_offenses(commands) -> None:
 
     await remove_offense_(commands, interaction, member)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'Removed 1 offense' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'Removed 1 offense' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -524,10 +488,8 @@ async def test_reset_offenses(commands) -> None:
 
     await reset_offenses_(commands, interaction, member)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'Reset offense count' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'Reset offense count' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -538,15 +500,13 @@ async def test_on_error(commands, caplog) -> None:
         app_commands.MissingPermissions(['test']),
     )
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'test' in interaction.response_message.lower()
-    )
+    assert interaction.response_message is not None
+    assert 'test' in interaction.response_message.lower()
 
     # Should not raise error, just log it
     caplog.set_level(logging.ERROR)
     await commands.on_error(interaction, app_commands.AppCommandError('test1'))
-    assert any(['test1' in record.message for record in caplog.records])
+    assert any('test1' in record.message for record in caplog.records)
 
 
 @pytest.mark.asyncio

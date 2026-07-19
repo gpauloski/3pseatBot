@@ -84,8 +84,8 @@ class BirthdayCommands(CommandGroupExtension):
 
     async def send_birthday_messages(self, guild: discord.Guild) -> None:
         """Checks birthdays in guild and sends messages if they are today."""
-        month = datetime.datetime.now().month
-        day = datetime.datetime.now().day
+        month = datetime.datetime.now(tz=datetime.UTC).month
+        day = datetime.datetime.now(tz=datetime.UTC).day
 
         channel = primary_channel(guild)
         if channel is None:
@@ -119,7 +119,12 @@ class BirthdayCommands(CommandGroupExtension):
 
         try:
             # Use leap year as year
-            datetime.datetime(year=2020, month=month.value, day=day)
+            datetime.datetime(
+                year=2020,
+                month=month.value,
+                day=day,
+                tzinfo=datetime.UTC,
+            )
         except ValueError as e:
             await interaction.response.send_message(
                 f'Invalid birthday: {e}.',
