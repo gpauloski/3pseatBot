@@ -20,6 +20,7 @@ from threepseat.ext.sounds.data import MemberSound
 from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
+from threepseat.ext.sounds.web import author_name
 from threepseat.ext.sounds.web import create_app
 from threepseat.ext.sounds.web import get_member
 from threepseat.ext.sounds.web import get_mutual_guilds
@@ -112,6 +113,7 @@ async def test_sound_grid(quart_app) -> None:
 
     bot = quart_app.app.config['bot']
     sounds = quart_app.app.config['sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
 
     guild = MockGuild('name', 1)
     sound = Sound(
@@ -126,13 +128,93 @@ async def test_sound_grid(quart_app) -> None:
     )
     sound_list = [sound, sound, sound]
 
+    # The user is authenticated but has no registered entrance sound.
+    user = mock.MagicMock()
+    user.id = 999
+
     with (
         mock.patch.object(sounds, 'all', return_value=sound_list),
         mock.patch.object(bot, 'get_guild', return_value=guild),
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=user),
+        ),
     ):
         response = await client.get('/sounds/1234')
 
     assert response.status_code == 200
+    assert b'entrance-btn active' not in await response.get_data()
+
+
+@pytest.mark.asyncio
+async def test_sound_grid_marks_entrance_sound(quart_app) -> None:
+    client = quart_app.test_client()
+
+    bot = quart_app.app.config['bot']
+    sounds = quart_app.app.config['sounds']
+    member_sounds = quart_app.app.config['member_sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+
+    guild = MockGuild('name', 1)
+    sound = Sound(
+        uuid='1',
+        name='sound1',
+        description='a sound',
+        link='',
+        author_id=1234,
+        guild_id=1234,
+        created_time=0,
+        filename='',
+    )
+
+    # The current user has registered 'sound1' as their entrance sound.
+    member_sounds.update(
+        MemberSound(
+            member_id=555,
+            guild_id=1234,
+            name='sound1',
+            updated_time=0,
+        ),
+    )
+    user = mock.MagicMock()
+    user.id = 555
+
+    with (
+        mock.patch.object(sounds, 'all', return_value=[sound]),
+        mock.patch.object(bot, 'get_guild', return_value=guild),
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=user),
+        ),
+    ):
+        response = await client.get('/sounds/1234')
+
+    assert response.status_code == 200
+    # The matching card's star badge is rendered active.
+    assert b'entrance-btn active' in await response.get_data()
+
+
+def test_author_name() -> None:
+    # Resolved directly as a guild member.
+    guild = mock.MagicMock()
+    member = mock.MagicMock()
+    member.display_name = 'Greg'
+    guild.get_member.return_value = member
+    assert author_name(mock.MagicMock(), guild, 1) == 'Greg'
+
+    # No guild member; fall back to a global user lookup.
+    client = mock.MagicMock()
+    user = mock.MagicMock()
+    user.display_name = 'Bob'
+    client.get_user.return_value = user
+    assert author_name(client, None, 1) == 'Bob'
+
+    # Unknown when neither the guild nor the client resolves the id.
+    client_none = mock.MagicMock()
+    client_none.get_user.return_value = None
+    assert author_name(client_none, None, 1) == 'unknown'
 
 
 @pytest.mark.asyncio
