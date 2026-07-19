@@ -12,6 +12,7 @@ class Config:
     bot_token: str = dataclasses.field(repr=False)
     client_id: int
     client_secret: str = dataclasses.field(repr=False)
+    secret_key: str | None = dataclasses.field(default=None, repr=False)
     redirect_uri: str
     sounds_path: str
     sqlite_database: str

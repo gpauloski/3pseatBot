@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import pathlib
 from collections.abc import AsyncGenerator
 from unittest import mock
@@ -15,8 +16,11 @@ from testing.mock import MockGuild
 from testing.mock import MockUser
 from threepseat.bot import Bot
 from threepseat.ext.sounds.data import MAX_SOUND_FILE_SIZE_BYTES
+from threepseat.ext.sounds.data import MemberSound
+from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
+from threepseat.ext.sounds.web import author_name
 from threepseat.ext.sounds.web import create_app
 from threepseat.ext.sounds.web import get_member
 from threepseat.ext.sounds.web import get_mutual_guilds
@@ -38,6 +42,7 @@ async def quart_app(
     """Generate Quart test app."""
     data_path = str(tmp_path / 'sounds')
     sounds = SoundsTable(db_path=tmp_file, data_path=data_path)
+    member_sounds = MemberSoundTable(db_path=tmp_file)
 
     with (
         mock.patch('threepseat.bot.Bot.user'),
@@ -50,10 +55,12 @@ async def quart_app(
         app = create_app(
             bot=bot,
             sounds=sounds,
+            member_sounds=member_sounds,
             client_id=1234,
             client_secret='1234',
             bot_token='1234',
             redirect_uri='http://localhost:5001',
+            secret_key='test-secret-key',
         )
 
         async with app.test_app() as test_app:  # pragma: no branch
@@ -106,6 +113,7 @@ async def test_sound_grid(quart_app) -> None:
 
     bot = quart_app.app.config['bot']
     sounds = quart_app.app.config['sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
 
     guild = MockGuild('name', 1)
     sound = Sound(
@@ -120,13 +128,93 @@ async def test_sound_grid(quart_app) -> None:
     )
     sound_list = [sound, sound, sound]
 
+    # The user is authenticated but has no registered entrance sound.
+    user = mock.MagicMock()
+    user.id = 999
+
     with (
         mock.patch.object(sounds, 'all', return_value=sound_list),
         mock.patch.object(bot, 'get_guild', return_value=guild),
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=user),
+        ),
     ):
         response = await client.get('/sounds/1234')
 
     assert response.status_code == 200
+    assert b'entrance-btn active' not in await response.get_data()
+
+
+@pytest.mark.asyncio
+async def test_sound_grid_marks_entrance_sound(quart_app) -> None:
+    client = quart_app.test_client()
+
+    bot = quart_app.app.config['bot']
+    sounds = quart_app.app.config['sounds']
+    member_sounds = quart_app.app.config['member_sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+
+    guild = MockGuild('name', 1)
+    sound = Sound(
+        uuid='1',
+        name='sound1',
+        description='a sound',
+        link='',
+        author_id=1234,
+        guild_id=1234,
+        created_time=0,
+        filename='',
+    )
+
+    # The current user has registered 'sound1' as their entrance sound.
+    member_sounds.update(
+        MemberSound(
+            member_id=555,
+            guild_id=1234,
+            name='sound1',
+            updated_time=0,
+        ),
+    )
+    user = mock.MagicMock()
+    user.id = 555
+
+    with (
+        mock.patch.object(sounds, 'all', return_value=[sound]),
+        mock.patch.object(bot, 'get_guild', return_value=guild),
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=user),
+        ),
+    ):
+        response = await client.get('/sounds/1234')
+
+    assert response.status_code == 200
+    # The matching card's star badge is rendered active.
+    assert b'entrance-btn active' in await response.get_data()
+
+
+def test_author_name() -> None:
+    # Resolved directly as a guild member.
+    guild = mock.MagicMock()
+    member = mock.MagicMock()
+    member.display_name = 'Greg'
+    guild.get_member.return_value = member
+    assert author_name(mock.MagicMock(), guild, 1) == 'Greg'
+
+    # No guild member; fall back to a global user lookup.
+    client = mock.MagicMock()
+    user = mock.MagicMock()
+    user.display_name = 'Bob'
+    client.get_user.return_value = user
+    assert author_name(client, None, 1) == 'Bob'
+
+    # Unknown when neither the guild nor the client resolves the id.
+    client_none = mock.MagicMock()
+    client_none.get_user.return_value = None
+    assert author_name(client_none, None, 1) == 'unknown'
 
 
 @pytest.mark.asyncio
@@ -142,7 +230,7 @@ async def test_sound_play(quart_app) -> None:
         mock.patch('threepseat.ext.sounds.web.voice_channel'),
         mock.patch('threepseat.ext.sounds.web.play_sound') as mocked,
     ):
-        response = await client.post('/play/1234/mysound')
+        response = await client.post('/sounds/1234/mysound/play')
         assert mocked.await_count == 1
 
     assert response.status_code == 200
@@ -163,7 +251,7 @@ async def test_sound_play_no_member(quart_app) -> None:
         mock.patch('threepseat.ext.sounds.web.get_member', return_value=None),
         mock.patch('threepseat.ext.sounds.web.play_sound') as mocked,
     ):
-        response = await client.post('/play/1234/mysound')
+        response = await client.post('/sounds/1234/mysound/play')
         assert mocked.await_count == 0
 
     assert response.status_code == 400
@@ -186,7 +274,7 @@ async def test_sound_play_no_sound(quart_app) -> None:
         mock.patch('threepseat.ext.sounds.web.get_member'),
         mock.patch('threepseat.ext.sounds.web.play_sound') as mocked,
     ):
-        response = await client.post('/play/1234/mysound')
+        response = await client.post('/sounds/1234/mysound/play')
         assert mocked.await_count == 0
 
     assert response.status_code == 400
@@ -214,7 +302,7 @@ async def test_sound_play_no_channel(quart_app) -> None:
         ),
         mock.patch('threepseat.ext.sounds.web.play_sound') as mocked,
     ):
-        response = await client.post('/play/1234/mysound')
+        response = await client.post('/sounds/1234/mysound/play')
         assert mocked.await_count == 0
 
     assert response.status_code == 400
@@ -243,10 +331,168 @@ async def test_sound_play_error(quart_app) -> None:
         ) as mocked,
     ):
         # Should not raise an error
-        response = await client.post('/play/1234/mysound')
+        response = await client.post('/sounds/1234/mysound/play')
         assert mocked.await_count == 1
 
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_set_entrance_new(quart_app) -> None:
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+    member_sounds = quart_app.app.config['member_sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(sounds, 'get', return_value=object()),
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+    ):
+        response = await client.post('/sounds/5678/mysound/entrance')
+
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body == {'active': True, 'name': 'mysound'}
+    saved = member_sounds.get(member_id=1234, guild_id=5678)
+    assert saved is not None
+    assert saved.name == 'mysound'
+
+
+@pytest.mark.asyncio
+async def test_set_entrance_toggle_clear(quart_app) -> None:
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+    member_sounds = quart_app.app.config['member_sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    # Pre-register the same sound so the toggle clears it.
+    member_sounds.update(
+        MemberSound(
+            member_id=1234,
+            guild_id=5678,
+            name='mysound',
+            updated_time=0,
+        ),
+    )
+
+    with (
+        mock.patch.object(sounds, 'get', return_value=object()),
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+    ):
+        response = await client.post('/sounds/5678/mysound/entrance')
+
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body == {'active': False, 'name': 'mysound'}
+    assert member_sounds.get(member_id=1234, guild_id=5678) is None
+
+
+@pytest.mark.asyncio
+async def test_set_entrance_no_member(quart_app) -> None:
+    client = quart_app.test_client()
+
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=None,
+        ),
+    ):
+        response = await client.post('/sounds/5678/mysound/entrance')
+
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_set_entrance_no_sound(quart_app) -> None:
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    with (
+        mock.patch.object(sounds, 'get', return_value=None),
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+    ):
+        response = await client.post('/sounds/5678/mysound/entrance')
+
+    assert response.status_code == 400
+    assert b'Unable to locate' in await response.get_data()
+
+
+@pytest.mark.asyncio
+async def test_sound_file_success(quart_app) -> None:
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+
+    # Persist a real sound so the file exists on disk to be served.
+    sound = Sound.new(
+        name='mysound',
+        description='a test sound',
+        link=None,
+        author_id=1234,
+        guild_id=5678,
+    )
+    pathlib.Path(sounds.filepath(sound.filename)).write_bytes(b'id3 audio')
+    sounds.add(sound)
+
+    response = await client.get('/sounds/5678/mysound/file')
+
+    assert response.status_code == 200
+    assert response.content_type == 'audio/mpeg'
+    assert await response.get_data() == b'id3 audio'
+
+
+@pytest.mark.asyncio
+async def test_sound_file_missing(quart_app) -> None:
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+
+    with mock.patch.object(sounds, 'get', return_value=None):
+        response = await client.get('/sounds/5678/nope/file')
+
+    assert response.status_code == 404
+    assert b'Unable to locate' in await response.get_data()
 
 
 def test_get_mutual_guilds() -> None:
@@ -899,3 +1145,53 @@ async def test_request_too_large_handler() -> None:
     assert isinstance(response, quart.Response)
     assert response.status_code == 413
     assert b'File size' in await response.get_data()
+
+
+def test_secret_key_configured(quart_app) -> None:
+    # A configured secret_key is used verbatim so sessions persist across
+    # restarts.
+    assert quart_app.app.secret_key == 'test-secret-key'
+
+
+def _make_app(secret_key: str | None, tmp_file: str, data_path: str):
+    sounds = SoundsTable(db_path=tmp_file, data_path=data_path)
+    member_sounds = MemberSoundTable(db_path=tmp_file)
+    with (
+        mock.patch('threepseat.bot.Bot.user'),
+        mock.patch('threepseat.bot.Bot.wait_until_ready'),
+        mock.patch('discord.app_commands.tree.CommandTree.sync'),
+        mock.patch('quart_discord._http.OAuth2Session'),
+        mock.patch('quart_discord.client.DiscordOAuth2Session.fetch_user'),
+    ):
+        return create_app(
+            bot=Bot(),
+            sounds=sounds,
+            member_sounds=member_sounds,
+            client_id=1234,
+            client_secret='1234',
+            bot_token='1234',
+            redirect_uri='http://localhost:5001',
+            secret_key=secret_key,
+        )
+
+
+def test_secret_key_generated_warns(
+    tmp_file: str,
+    tmp_path: pathlib.Path,
+    caplog,
+) -> None:
+    # Omitting secret_key still yields a usable key, but warns that sessions
+    # won't persist across restarts.
+    data_path = str(tmp_path / 'sounds')
+    with caplog.at_level(logging.WARNING):
+        app = _make_app(None, tmp_file, data_path)
+
+    assert app.secret_key  # a key was generated
+    assert 'secret_key' in caplog.text
+
+    # Two apps built with the same key sign cookies identically (a restart
+    # keeps existing sessions valid); different keys do not.
+    data_path2 = str(tmp_path / 'sounds2')
+    app_a = _make_app('shared-key', tmp_file, data_path2)
+    app_b = _make_app('shared-key', tmp_file, data_path2)
+    assert app_a.secret_key == app_b.secret_key

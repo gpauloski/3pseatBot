@@ -1,65 +1,51 @@
- <!DOCTYPE html>
-<html>
+{% extends 'base.html' %}
 
-<head>
-    <title>3pseatBot Soundboard</title>
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
-    <!-- Compiled and minified CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-    <!-- JS Stuff -->
-    <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-    <!-- Compiled and minified JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-    <!--Let browser know website is optimized for mobile-->
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script>
-      $(document).ready(function(){
-        $('.sidenav').sidenav();
-      });
-    </script>
+{% block title %}Select a Server · 3pseat Soundboard{% endblock %}
 
-    <style>
-      @media only screen and (max-width: 600px) {
-        .brand-logo {
-          font-size: 24px !important;
-          width: 300px;
-          text-align: center;
-        }
-      }
+{% block content %}
+<main class="wrap">
+  <h1 class="page-title">Select a <span class="accent">Discord Server</span></h1>
+  <p class="subtitle">Pick a server you share with the bot to open its soundboard.</p>
 
-      a.hover {
-
-      }
-    </style>
-</head>
-
-<body class="blue-grey darken-4">
-
-  {% include 'navbar.html' %}
-
-  <div class="container">
-    <div>
-      <h5 class="center-align blue-grey-text text-lighten-5">Select a Discord Server</h5>
-    </div>
-    <div style="max-width: 500px; margin: 0 auto;">
-    <ul class="collection blue-grey darken-4" style="border-color: transparent; margin-top: 32px; max-width: ">
-      {% for guild in guilds %}
-      <a href="{{ guild.url }}">
-      <li class="collection-item blue-grey darken-2 blue-grey-text text-lighten-4" style="height: 60px; margin-bottom: 10px">
-        <div class="blue-grey-text text-lighten-4" style="font-size: 24px; margin-top: 4px; line-height: 30px;">
-          {{ guild.name }}
-          <div class="secondary-content">
-            <i class="small material-icons light-green-text text-accent-1">send</i>
-          </div>
-        </div>
-      </li>
-      </a>
-      {% endfor %}
-    <ul>
-    </div>
+  {% if guilds %}
+  <div class="guild-grid">
+    {% for guild in guilds %}
+    <a class="guild-card" href="{{ guild.url }}">
+      {% if guild.icon %}
+      <img class="guild-avatar" src="{{ guild.icon }}" alt="{{ guild.name }} icon">
+      {% else %}
+      <span class="guild-avatar">{{ guild.name[0] if guild.name else '?' }}</span>
+      {% endif %}
+      <span class="guild-name">{{ guild.name }}</span>
+      <span class="chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 6l6 6-6 6"></path>
+        </svg>
+      </span>
+    </a>
+    {% endfor %}
   </div>
-
-</body>
-
-</html>
+  {% else %}
+  <div class="notice">
+    <h2>No servers here yet 👻</h2>
+    <p>
+      You don't share any servers with this bot. That usually means the bot
+      isn't in a server you're in yet — spin up your own 3pseatBot instance to
+      get started.
+    </p>
+    <a class="btn" href="https://github.com/gpauloski/3pseatBot"
+       target="_blank" rel="noopener">
+      Deploy your own on GitHub
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+           style="width: 18px; height: 18px;">
+        <path d="M14 4h6v6"></path>
+        <path d="M20 4l-9 9"></path>
+        <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path>
+      </svg>
+    </a>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

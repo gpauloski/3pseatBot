@@ -32,6 +32,7 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
     rules_commands = RulesCommands(cfg.sqlite_database)
     sound_commands = SoundCommands(cfg.sqlite_database, cfg.sounds_path)
     sounds = sound_commands.table
+    member_sounds = sound_commands.join_table
 
     bot = Bot(
         playing_title=cfg.playing_title,
@@ -48,10 +49,12 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
     webapp = create_app(
         bot=bot,
         sounds=sounds,
+        member_sounds=member_sounds,
         client_id=cfg.client_id,
         client_secret=cfg.client_secret,
         bot_token=cfg.bot_token,
         redirect_uri=cfg.redirect_uri,
+        secret_key=cfg.secret_key,
     )
 
     async with bot:
