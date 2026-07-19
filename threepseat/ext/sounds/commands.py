@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import logging
+import os
 import tempfile
 import time
 
@@ -17,12 +18,16 @@ from threepseat.ext.extension import CommandGroupExtension
 from threepseat.ext.sounds.data import MAX_SOUND_FILE_SIZE_BYTES
 from threepseat.ext.sounds.data import MAX_SOUND_LENGTH_SECONDS
 from threepseat.ext.sounds.data import MAX_SOUND_NAME_CHARS
+from threepseat.ext.sounds.data import MAX_VIDEO_FILE_SIZE_BYTES
+from threepseat.ext.sounds.data import SUPPORTED_VIDEO_EXTENSIONS
 from threepseat.ext.sounds.data import MemberSound
 from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
 from threepseat.ext.sounds.data import download
+from threepseat.ext.sounds.data import extract_audio
 from threepseat.ext.sounds.data import mp3_duration_seconds
+from threepseat.ext.sounds.data import supported_video_extensions_str
 from threepseat.utils import LoopType
 from threepseat.utils import leave_on_empty
 from threepseat.utils import play_sound
@@ -208,7 +213,7 @@ class SoundCommands(CommandGroupExtension):
             msg += (
                 f'{sound.link}'
                 if len(sound.link) > 0
-                else '*User uploaded mp3 file*'
+                else '*User uploaded file*'
             )
             await interaction.response.send_message(msg)
 
@@ -319,10 +324,13 @@ class SoundCommands(CommandGroupExtension):
 
     @app_commands.command(
         name='upload',
-        description='Upload an MP3 sound file directly',
+        description='Upload an MP3 or video sound file directly',
     )
     @app_commands.describe(
-        file=f'MP3 file to upload (max {MAX_SOUND_LENGTH_SECONDS} seconds)',
+        file=(
+            'MP3 or video file to upload '
+            f'(max {MAX_SOUND_LENGTH_SECONDS} seconds)'
+        ),
     )
     @app_commands.describe(
         name=f'Name of sound (max {MAX_SOUND_NAME_CHARS} characters)',
@@ -338,39 +346,28 @@ class SoundCommands(CommandGroupExtension):
         name: app_commands.Range[str, 1, MAX_SOUND_NAME_CHARS],
         description: app_commands.Range[str, 1, 100],
     ) -> None:
-        """Upload a new sound via MP3 attachment."""
+        """Upload a new sound via an MP3 or video attachment."""
         await interaction.response.defer(thinking=True)
         assert interaction.guild is not None
 
-        if not file.filename.lower().endswith('.mp3'):
+        ext = os.path.splitext(file.filename.lower())[1]
+        is_mp3 = ext == '.mp3'
+        is_video = ext in SUPPORTED_VIDEO_EXTENSIONS
+        if not is_mp3 and not is_video:
             await interaction.followup.send(
-                'Error: The file must be an MP3.',
+                'Error: The file must be an MP3 or a supported video '
+                f'({supported_video_extensions_str()}).',
                 ephemeral=True,
             )
             return
 
-        if file.size > MAX_SOUND_FILE_SIZE_BYTES:
-            mb = MAX_SOUND_FILE_SIZE_BYTES // (1024 * 1024)
+        max_size = (
+            MAX_SOUND_FILE_SIZE_BYTES if is_mp3 else MAX_VIDEO_FILE_SIZE_BYTES
+        )
+        if file.size > max_size:
+            mb = max_size // (1024 * 1024)
             await interaction.followup.send(
                 f'Error: File size must be under {mb} MB.',
-                ephemeral=True,
-            )
-            return
-
-        try:
-            duration = await _get_mp3_duration_s(file)
-        except Exception as e:
-            logger.exception(f'Failed to validate uploaded file: {e}')
-            await interaction.followup.send(
-                'Error: Could not process the audio file.',
-                ephemeral=True,
-            )
-            return
-
-        if duration > MAX_SOUND_LENGTH_SECONDS:
-            await interaction.followup.send(
-                f'Error: Sound is too long ({duration:.1f}s). '
-                f'Maximum length is {MAX_SOUND_LENGTH_SECONDS} seconds.',
                 ephemeral=True,
             )
             return
@@ -384,6 +381,56 @@ class SoundCommands(CommandGroupExtension):
         )
         filepath = self.table.filepath(sound.filename)
 
+        if is_mp3:
+            saved = await self._save_mp3_upload(interaction, file, filepath)
+        else:
+            saved = await self._save_video_upload(
+                interaction,
+                file,
+                ext,
+                filepath,
+            )
+        if not saved:
+            return
+
+        try:
+            self.table.add(sound)
+        except ValueError as e:  # pragma: no cover
+            await interaction.followup.send(str(e), ephemeral=True)
+        else:
+            await interaction.followup.send(
+                f'Uploaded and added *{name}* to the sounds.',
+            )
+
+    async def _save_mp3_upload(
+        self,
+        interaction: discord.Interaction[commands.Bot],
+        file: discord.Attachment,
+        filepath: str,
+    ) -> bool:
+        """Validate and save an uploaded MP3 to filepath.
+
+        Returns:
+            True if the file was saved, False if an error response was sent.
+        """
+        try:
+            duration = await _get_mp3_duration_s(file)
+        except Exception as e:
+            logger.exception(f'Failed to validate uploaded file: {e}')
+            await interaction.followup.send(
+                'Error: Could not process the audio file.',
+                ephemeral=True,
+            )
+            return False
+
+        if duration > MAX_SOUND_LENGTH_SECONDS:
+            await interaction.followup.send(
+                f'Error: Sound is too long ({duration:.1f}s). '
+                f'Maximum length is {MAX_SOUND_LENGTH_SECONDS} seconds.',
+                ephemeral=True,
+            )
+            return False
+
         try:
             with open(filepath, 'wb') as f:
                 f.write(await file.read())
@@ -395,16 +442,39 @@ class SoundCommands(CommandGroupExtension):
                 'Error: Failed to save the sound to the database.',
                 ephemeral=True,
             )
-            return
+            return False
 
+        return True
+
+    async def _save_video_upload(
+        self,
+        interaction: discord.Interaction[commands.Bot],
+        file: discord.Attachment,
+        ext: str,
+        filepath: str,
+    ) -> bool:
+        """Validate, strip audio from, and save an uploaded video to filepath.
+
+        Returns:
+            True if the audio was extracted and saved, False if an error
+            response was sent.
+        """
         try:
-            self.table.add(sound)
-        except ValueError as e:  # pragma: no cover
-            await interaction.followup.send(str(e), ephemeral=True)
-        else:
+            await _extract_video_audio(file, ext, filepath)
+        except ValueError as e:
+            _remove_if_exists(filepath)
+            await interaction.followup.send(f'Error: {e}', ephemeral=True)
+            return False
+        except Exception as e:
+            logger.exception(f'Failed to process uploaded video: {e}')
+            _remove_if_exists(filepath)
             await interaction.followup.send(
-                f'Uploaded and added *{name}* to the sounds.',
+                'Error: Could not process the video file.',
+                ephemeral=True,
             )
+            return False
+
+        return True
 
     async def on_error(
         self,
@@ -419,6 +489,14 @@ class SoundCommands(CommandGroupExtension):
             logger.exception(error)
 
 
+def _remove_if_exists(filepath: str) -> None:
+    """Remove a file if it exists, ignoring missing files."""
+    try:
+        os.remove(filepath)
+    except FileNotFoundError:
+        pass
+
+
 async def _get_mp3_duration_s(
     file: discord.Attachment,
 ) -> float:  # pragma: no cover
@@ -426,3 +504,27 @@ async def _get_mp3_duration_s(
         temp_file.write(await file.read())
         temp_file.flush()
         return await mp3_duration_seconds(temp_file.name)
+
+
+async def _extract_video_audio(
+    file: discord.Attachment,
+    ext: str,
+    filepath: str,
+) -> None:  # pragma: no cover
+    """Probe an uploaded video's duration and strip its audio to filepath.
+
+    Raises:
+        ValueError:
+            if the clip is longer than MAX_SOUND_LENGTH_SECONDS or the audio
+            cannot be extracted.
+    """
+    with tempfile.NamedTemporaryFile(suffix=ext) as temp_file:
+        temp_file.write(await file.read())
+        temp_file.flush()
+        duration = await mp3_duration_seconds(temp_file.name)
+        if duration > MAX_SOUND_LENGTH_SECONDS:
+            raise ValueError(
+                f'Sound is too long ({duration:.1f}s). '
+                f'Maximum length is {MAX_SOUND_LENGTH_SECONDS} seconds.',
+            )
+        await extract_audio(temp_file.name, filepath)

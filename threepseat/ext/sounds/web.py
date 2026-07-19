@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import tempfile
 from typing import NamedTuple
 
 import discord
@@ -17,10 +18,14 @@ from threepseat.bot import Bot
 from threepseat.ext.sounds.data import MAX_SOUND_DESCRIPTION_CHARS
 from threepseat.ext.sounds.data import MAX_SOUND_FILE_SIZE_BYTES
 from threepseat.ext.sounds.data import MAX_SOUND_LENGTH_SECONDS
+from threepseat.ext.sounds.data import MAX_VIDEO_FILE_SIZE_BYTES
+from threepseat.ext.sounds.data import SUPPORTED_VIDEO_EXTENSIONS
 from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
 from threepseat.ext.sounds.data import download
+from threepseat.ext.sounds.data import extract_audio
 from threepseat.ext.sounds.data import mp3_duration_seconds
+from threepseat.ext.sounds.data import supported_video_extensions_str
 from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 
@@ -81,10 +86,10 @@ def create_app(
     app.secret_key = os.urandom(128)
 
     # Cap request bodies so oversized uploads are rejected before we buffer
-    # them. Allow some headroom above the file limit for multipart overhead
-    # (form fields, boundaries); the exact file size is validated in the
-    # upload handler for a friendlier error message.
-    app.config['MAX_CONTENT_LENGTH'] = MAX_SOUND_FILE_SIZE_BYTES + (
+    # them. Size to the largest allowed upload (video) plus some headroom for
+    # multipart overhead (form fields, boundaries); the exact file size is
+    # validated in the upload handler for a friendlier error message.
+    app.config['MAX_CONTENT_LENGTH'] = MAX_VIDEO_FILE_SIZE_BYTES + (
         1 * 1024 * 1024
     )
 
@@ -279,21 +284,32 @@ async def sound_add(guild_id: int) -> Response:
             400,
         )
 
-    # Validate the MP3 upload before touching disk. The YouTube link is
+    # Validate the upload before touching disk. The YouTube link is
     # validated (including duration) by download() below.
     content: bytes | None = None
+    ext = ''
     if not link and has_file:
         assert file is not None
         filename = file.filename or ''
-        if not filename.lower().endswith('.mp3'):
-            return quart.Response('The file must be an MP3.', 400)
+        ext = os.path.splitext(filename.lower())[1]
+        is_mp3 = ext == '.mp3'
+        is_video = ext in SUPPORTED_VIDEO_EXTENSIONS
+        if not is_mp3 and not is_video:
+            return quart.Response(
+                'The file must be an MP3 or a supported video '
+                f'({supported_video_extensions_str()}).',
+                400,
+            )
         content = file.read()
-        if len(content) > MAX_SOUND_FILE_SIZE_BYTES:
-            mb = MAX_SOUND_FILE_SIZE_BYTES // (1024 * 1024)
+        max_size = (
+            MAX_SOUND_FILE_SIZE_BYTES if is_mp3 else MAX_VIDEO_FILE_SIZE_BYTES
+        )
+        if len(content) > max_size:
+            mb = max_size // (1024 * 1024)
             return quart.Response(f'File size must be under {mb} MB.', 400)
     elif not link:
         return quart.Response(
-            'Provide a YouTube link or an MP3 file.',
+            'Provide a YouTube link or an MP3 or video file.',
             400,
         )
 
@@ -312,7 +328,7 @@ async def sound_add(guild_id: int) -> Response:
             # on any download/extraction error. It is blocking, so run it in
             # a thread to avoid stalling the event loop.
             await asyncio.to_thread(download, link, filepath)
-        else:
+        elif ext == '.mp3':
             assert content is not None
             with open(filepath, 'wb') as f:
                 f.write(content)
@@ -322,6 +338,10 @@ async def sound_add(guild_id: int) -> Response:
                     f'Sound is too long ({duration:.1f}s). Maximum length '
                     f'is {MAX_SOUND_LENGTH_SECONDS} seconds.',
                 )
+        else:
+            # Video: probe the duration and strip the audio to an MP3.
+            assert content is not None
+            await _extract_video_audio(content, ext, filepath)
 
         # add() validates the name (alphanumeric, length, uniqueness) and
         # that the file exists on disk.
@@ -343,6 +363,30 @@ def _remove_if_exists(filepath: str) -> None:
         os.remove(filepath)
     except FileNotFoundError:  # pragma: no cover
         pass
+
+
+async def _extract_video_audio(
+    content: bytes,
+    ext: str,
+    filepath: str,
+) -> None:
+    """Probe an uploaded video's duration and strip its audio to filepath.
+
+    Raises:
+        ValueError:
+            if the clip is longer than MAX_SOUND_LENGTH_SECONDS or the audio
+            cannot be extracted.
+    """
+    with tempfile.NamedTemporaryFile(suffix=ext) as temp_file:
+        temp_file.write(content)
+        temp_file.flush()
+        duration = await mp3_duration_seconds(temp_file.name)
+        if duration > MAX_SOUND_LENGTH_SECONDS:
+            raise ValueError(
+                f'Sound is too long ({duration:.1f}s). Maximum length '
+                f'is {MAX_SOUND_LENGTH_SECONDS} seconds.',
+            )
+        await extract_audio(temp_file.name, filepath)
 
 
 @sounds_blueprint.route('/login/')
@@ -378,5 +422,5 @@ async def redirect_unauthorized(e: Exception) -> Response:  # pragma: no cover
 @sounds_blueprint.app_errorhandler(413)
 async def request_too_large(e: Exception) -> Response:
     """Return a friendly message when an upload exceeds the size limit."""
-    mb = MAX_SOUND_FILE_SIZE_BYTES // (1024 * 1024)
+    mb = MAX_VIDEO_FILE_SIZE_BYTES // (1024 * 1024)
     return quart.Response(f'File size must be under {mb} MB.', 413)

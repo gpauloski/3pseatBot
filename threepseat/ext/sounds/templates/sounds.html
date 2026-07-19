@@ -53,6 +53,13 @@
             return;
           }
           formData.append("file", fileInput.files[0]);
+        } else if (activeSource() === "#tab-video") {
+          var videoInput = document.getElementById("sound-file-video");
+          if (videoInput.files.length === 0) {
+            alert("Please choose a video file to upload.");
+            return;
+          }
+          formData.append("file", videoInput.files[0]);
         } else {
           var link = document.getElementById("sound-link").value.trim();
           if (link === "") {
@@ -161,7 +168,8 @@
     <div class="modal-content blue-grey-text text-lighten-4">
       <h5>Add a Sound to {{ guild.name }}</h5>
       <p class="blue-grey-text text-lighten-2" style="margin-bottom: 24px;">
-        Add from a YouTube link or upload an MP3 (max 1 MB, up to 30 seconds).
+        Add from a YouTube link, upload an MP3 (max 1 MB), or upload a video
+        (max 25 MB, audio is extracted). Clips must be up to 30 seconds.
       </p>
       <form
         id="add-sound-form"
@@ -185,6 +193,9 @@
           <li class="tab">
             <a class="light-green-text text-accent-1" href="#tab-mp3">Upload MP3</a>
           </li>
+          <li class="tab">
+            <a class="light-green-text text-accent-1" href="#tab-video">Upload Video</a>
+          </li>
         </ul>
 
         <div id="tab-youtube" style="padding-top: 8px;">
@@ -204,6 +215,20 @@
             <div class="file-path-wrapper">
               <input class="file-path validate" type="text"
                      placeholder="Choose an MP3 file">
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-video" style="padding-top: 8px;">
+          <div class="file-field input-field">
+            <div class="btn blue-grey-text text-darken-4">
+              <span>Video</span>
+              <input id="sound-file-video" type="file"
+                     accept=".mp4,.m4v,.mov,video/mp4,video/quicktime">
+            </div>
+            <div class="file-path-wrapper">
+              <input class="file-path validate" type="text"
+                     placeholder="Choose a video file (audio is extracted)">
             </div>
           </div>
         </div>

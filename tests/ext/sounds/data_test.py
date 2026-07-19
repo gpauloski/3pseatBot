@@ -12,7 +12,9 @@ from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
 from threepseat.ext.sounds.data import download
+from threepseat.ext.sounds.data import extract_audio
 from threepseat.ext.sounds.data import mp3_duration_seconds
+from threepseat.ext.sounds.data import supported_video_extensions_str
 
 TEST_SOUND = Sound.new(
     name='mysound',
@@ -260,6 +262,46 @@ async def test_mp3_duration_seconds_no_pipes(tmp_path: pathlib.Path) -> None:
     ):
         with pytest.raises(RuntimeError, match='ffmpeg failed'):
             await mp3_duration_seconds(filepath)
+
+
+@pytest.mark.asyncio
+async def test_extract_audio(tmp_path: pathlib.Path) -> None:
+    source = os.path.join(tmp_path, 'clip.mp4')
+    mp3_path = os.path.join(tmp_path, 'out.mp3')
+    proc = _mock_ffprobe_process(returncode=0, stdout=b'')
+
+    with mock.patch(
+        'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
+        mock.AsyncMock(return_value=proc),
+    ):
+        # Should not raise
+        await extract_audio(source, mp3_path)
+
+
+@pytest.mark.asyncio
+async def test_extract_audio_error(tmp_path: pathlib.Path) -> None:
+    source = os.path.join(tmp_path, 'clip.mp4')
+    mp3_path = os.path.join(tmp_path, 'out.mp3')
+    proc = _mock_ffprobe_process(
+        returncode=1,
+        stdout=b'',
+        stderr=b'Output file does not contain any stream',
+    )
+
+    with mock.patch(
+        'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
+        mock.AsyncMock(return_value=proc),
+    ):
+        with pytest.raises(ValueError, match='Could not extract audio'):
+            await extract_audio(source, mp3_path)
+
+
+def test_supported_video_extensions_str() -> None:
+    result = supported_video_extensions_str()
+    assert 'mp4' in result
+    assert 'mov' in result
+    # No leading dots in the human-readable string.
+    assert '.' not in result
 
 
 def test_member_sounds_table(tmp_path: pathlib.Path) -> None:
