@@ -9,14 +9,17 @@ import pathlib
 import secrets
 import tempfile
 import time
+from collections.abc import Awaitable
+from collections.abc import Callable
 from typing import NamedTuple
+from typing import cast
 
 import discord
 import quart
 from quart_discord import DiscordOAuth2Session
 from quart_discord import Unauthorized
 from quart_discord import models
-from quart_discord import requires_authorization
+from quart_discord import requires_authorization as _requires_authorization
 from werkzeug.wrappers.response import Response as werkseug_Response
 
 from threepseat.bot import Bot
@@ -37,6 +40,19 @@ from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 
 type Response = str | quart.Response | werkseug_Response
+
+
+def requires_authorization[F: Callable[..., Awaitable[Response]]](
+    view: F,
+) -> F:
+    """Typed wrapper for quart_discord's untyped `requires_authorization`.
+
+    quart_discord ships no type stubs, so mypy treats the decorator (and
+    anything it wraps) as `Any`. It preserves the wrapped view's signature
+    via functools.wraps, so it's safe to re-assert that signature here.
+    """
+    return cast('F', _requires_authorization(view))
+
 
 logger = logging.getLogger(__name__)
 
@@ -542,7 +558,7 @@ async def _extract_video_audio(
 async def login() -> Response:  # pragma: no cover
     """Login with discord OAuth."""
     discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    return await discord.create_session(prompt=True)
+    return cast('Response', await discord.create_session(prompt=True))
 
 
 @sounds_blueprint.route('/logout/')

@@ -68,12 +68,13 @@ async def log_interaction(
         >>> def mycommand(...): ...
     """
     channel = interaction.channel
-    channel_name = (
-        None if not hasattr(channel, 'name') else channel.name  # type: ignore[union-attr]
-    )
-    channel_name = (
-        channel_name if channel_name is not None else channel.id  # type: ignore[union-attr]
-    )
+    channel_name: str | int | None
+    if channel is None:
+        channel_name = None
+    else:
+        # Not every channel type has a name (e.g. DMChannel), so fall back
+        # to the channel's ID in that case.
+        channel_name = getattr(channel, 'name', None) or channel.id
 
     guild = None if interaction.guild is None else interaction.guild.name
     command = None if interaction.command is None else interaction.command.name

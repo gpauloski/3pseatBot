@@ -7,9 +7,11 @@ from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Generator
 from typing import Any
+from typing import cast
 from unittest import mock
 
 import pytest
+from discord import app_commands
 
 from testing.config import EXAMPLE_CONFIG
 
@@ -33,9 +35,11 @@ def config(tmp_path: pathlib.Path) -> Generator[str, None, None]:
     filepath.unlink()
 
 
-def extract(app_command) -> Callable[..., Awaitable[Any]]:
+def extract(
+    app_command: app_commands.Command[Any, ..., Any],
+) -> Callable[..., Awaitable[Any]]:
     """Extract the original function from the Command."""
-    return app_command._callback
+    return cast('Callable[..., Awaitable[Any]]', app_command._callback)
 
 
 @pytest.fixture

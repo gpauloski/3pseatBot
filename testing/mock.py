@@ -123,7 +123,7 @@ class Followup:
         return mock.AsyncMock()
 
 
-class MockInteraction(Interaction[Any]):
+class MockInteraction(Interaction[commands.Bot]):
     def __init__(  # noqa: PLR0913
         self,
         command: Command[Any, Any, Any],
@@ -132,7 +132,7 @@ class MockInteraction(Interaction[Any]):
         message: str | discord.Message | None = None,
         channel: str | discord.TextChannel | None = None,
         guild: str | discord.Guild | None = None,
-        client: discord.Client | None = None,
+        client: commands.Bot | None = None,
     ) -> None:
         self.command = command
         self.user = (
@@ -159,7 +159,7 @@ class MockInteraction(Interaction[Any]):
         self.followup = Followup()  # type: ignore[assignment]
 
     @property
-    def client(self) -> discord.Client:
+    def client(self) -> commands.Bot:
         return self._client
 
     @property
@@ -168,13 +168,13 @@ class MockInteraction(Interaction[Any]):
 
     @property
     def followed(self) -> bool:
-        return (
-            self.response.deferred and self.followup.followed  # type: ignore[attr-defined]
-        )
+        deferred = self.response.deferred  # type: ignore[attr-defined]
+        followed = self.followup.followed  # type: ignore[attr-defined]
+        return bool(deferred and followed)
 
     @property
     def followup_message(self) -> str | None:
-        return self.followup.message  # type: ignore[attr-defined]
+        return self.followup.message  # type: ignore[attr-defined,no-any-return]
 
     @property
     def responded(self) -> bool:

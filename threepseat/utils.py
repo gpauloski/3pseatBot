@@ -172,8 +172,8 @@ async def play_sound(
     """
     voice_client: discord.VoiceClient
     if channel.guild.voice_client is not None:
-        await channel.guild.voice_client.move_to(channel)  # type: ignore[attr-defined]
         voice_client = cast('discord.VoiceClient', channel.guild.voice_client)
+        await voice_client.move_to(channel)
     else:
         voice_client = await channel.connect()
 

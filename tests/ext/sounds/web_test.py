@@ -512,15 +512,16 @@ def test_get_mutual_guilds() -> None:
         get_mutual_guilds(client, user)
 
     mock_user = MockUser('name', 1234)
+    mutual_guilds = [MockGuild('guild', 1)]
 
     with (
         mock.patch.object(client, 'get_user', return_value=mock_user),
         mock.patch(
             'discord.User.mutual_guilds',
-            new_callable=mock.PropertyMock(return_value=1),
+            new_callable=mock.PropertyMock(return_value=mutual_guilds),
         ),
     ):
-        assert get_mutual_guilds(client, user) == 1
+        assert get_mutual_guilds(client, user) == mutual_guilds
 
 
 def test_get_member() -> None:
