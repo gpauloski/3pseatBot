@@ -156,8 +156,8 @@ def test_voice_channel() -> None:
 
 
 @pytest.mark.asyncio
-@mock.patch('discord.FFmpegPCMAudio')
-async def test_play_sound(mock_audio) -> None:  # noqa: ARG001
+@mock.patch('discord.FFmpegOpusAudio')
+async def test_play_sound(mock_audio) -> None:
     sound = 'filepath'
     channel = MockVoiceChannel()
 
@@ -201,6 +201,10 @@ async def test_play_sound(mock_audio) -> None:  # noqa: ARG001
         ),
     ):
         await play_sound(sound, channel)
+
+    # Guards against the mock silently targeting the wrong audio class, which
+    # would spawn a real ffmpeg process for each call.
+    assert mock_audio.call_count == 2
 
 
 @pytest.mark.asyncio

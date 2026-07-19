@@ -934,7 +934,7 @@ async def test_voice_state_update(
             author_id=2,
             guild_id=1,
         )
-        with mock.patch('os.path.isfile', return_value=True):
+        with mock.patch('pathlib.Path.is_file', return_value=True):
             sounds.table.add(sound)
         await sounds.on_voice_state_update(member, before, after)
         assert mock_play.await_count == 1
@@ -996,7 +996,7 @@ async def test_register_command(
         author_id=interaction.user.id,
         guild_id=interaction.guild.id,
     )
-    with mock.patch('os.path.isfile', return_value=True):
+    with mock.patch('pathlib.Path.is_file', return_value=True):
         sounds.table.add(sound)
     assert len(sounds.join_table.all(interaction.guild.id)) == 0
     await register_(sounds, interaction, name='mysound')

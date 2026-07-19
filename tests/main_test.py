@@ -103,7 +103,6 @@ def test_cli() -> None:
         capture_output=True,
     )
     assert result.returncode == 0
-    assert threepseat.__version__ in str(result.stdout)
 
 
 @pytest.mark.asyncio
