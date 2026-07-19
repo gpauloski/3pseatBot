@@ -32,7 +32,7 @@ class CustomCommandTable(SQLTableInterface[CustomCommand]):
             primary_keys=('guild_id', 'name'),
         )
 
-    def _all(  # type: ignore
+    def _all(  # type: ignore[override]
         self,
         guild_id: int | None = None,
     ) -> list[CustomCommand]:
@@ -41,7 +41,7 @@ class CustomCommandTable(SQLTableInterface[CustomCommand]):
             return super()._all()
         return super()._all(guild_id=guild_id)
 
-    def _get(  # type: ignore
+    def _get(  # type: ignore[override]
         self,
         guild_id: int,
         name: str,
@@ -49,6 +49,6 @@ class CustomCommandTable(SQLTableInterface[CustomCommand]):
         """Get custom command in guild."""
         return super()._get(guild_id=guild_id, name=name)
 
-    def remove(self, guild_id: int, name: str) -> int:  # type: ignore
+    def remove(self, guild_id: int, name: str) -> int:  # type: ignore[override]
         """Remove a custom command from the table."""
         return super().remove(guild_id=guild_id, name=name)

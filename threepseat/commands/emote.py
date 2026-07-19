@@ -44,7 +44,7 @@ async def emote(
 
     die = emojize(':game_die:')
     message = cast(
-        discord.webhook.WebhookMessage,
+        'discord.webhook.WebhookMessage',
         await interaction.followup.send(die),
     )
     for _ in range(4):

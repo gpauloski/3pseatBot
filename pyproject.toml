@@ -65,16 +65,16 @@ dist,
 [tool.coverage.run]
 plugins = ["covdefaults"]
 
+[tool.coverage.report]
+# covdefaults already excludes `raise AssertionError`, but ruff's EM101
+# requires the message be bound to a variable first, which splits each
+# unreachable guard across two lines and leaves the assignment counted.
+exclude_lines = ["^\\s*msg = 'Unreachable\\.'$"]
+
 [tool.mypy]
 python_version = "3.12"
-check_untyped_defs = true
-disallow_any_generics = true
-disallow_incomplete_defs = true
-disallow_untyped_defs = true
-no_implicit_optional = true
-warn_redundant_casts = true
+strict = true
 warn_unused_configs = true
-warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 module = "testing.*"
@@ -98,14 +98,31 @@ line-length = 79
 target-version = "py312"
 
 [tool.ruff.lint]
-# pycodestyle, pyflakes, flake8-builtins, flake8-bugbear, isort, pep8-naming,
-# pydocstyle, flake8-debugger, flake8-commas
-select = ["E", "F", "A", "B", "I", "N", "D", "T10", "COM", "UP"]
-extend-ignore = ["D100", "D104", "D105", "D401", "A002", "A003", "A005"]
+select = ["ALL"]
+extend-ignore = [
+    # flake8-builtins attribute shadowing
+    "A002", "A003", "A005",
+    # formatter-conflicting rules (ruff docs recommend disabling these)
+    "COM812", "ISC001",
+    # pydocstyles
+    "D100", "D104", "D105", "D401",
+    # boolean-trap rules: not worth the churn of making bool args kw-only
+    "FBT001", "FBT002", "FBT003",
+    # assert is used pervasively for mypy type-narrowing, not just in tests
+    "S101",
+    # random is only used for gameplay/sound selection, never security
+    "S311",
+    # typing-only-import rules: not worth moving imports into TYPE_CHECKING
+    "TC001", "TC002", "TC003",
+]
 
 [tool.ruff.format]
 indent-style = "space"
+line-ending = "lf"
 quote-style = "single"
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
 
 [tool.ruff.lint.isort]
 force-single-line = true
@@ -114,8 +131,8 @@ required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.per-file-ignores]
 "*/__init__.py" = ["F401"]
-"*/*_test.py" = ["D10"]
-"testing/*" = ["D10"]
+"*/*_test.py" = ["D10", "ANN", "SLF001", "S105", "S106", "S108", "ASYNC110", "ASYNC240", "PLR2004"]
+"testing/*" = ["D10", "ANN", "SLF001", "S105", "S106", "S108", "ARG001", "ARG002"]
 "tests/conftest.py" = ["F401"]
 
 [tool.ruff.lint.pydocstyle]

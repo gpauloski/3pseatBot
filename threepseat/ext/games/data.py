@@ -37,14 +37,14 @@ class GamesTable(SQLTableInterface[Game]):
             primary_keys=('guild_id', 'name'),
         )
 
-    def _all(self, guild_id: int) -> list[Game]:  # type: ignore
+    def _all(self, guild_id: int) -> list[Game]:  # type: ignore[override]
         """Get all games in guild."""
         return super()._all(guild_id=guild_id)
 
-    def _get(self, guild_id: int, name: str) -> Game | None:  # type: ignore
+    def _get(self, guild_id: int, name: str) -> Game | None:  # type: ignore[override]
         """Get game in table."""
         return super()._get(guild_id=guild_id, name=name)
 
-    def remove(self, guild_id: int, name: str) -> int:  # type: ignore
+    def remove(self, guild_id: int, name: str) -> int:  # type: ignore[override]
         """Remove a game from the table."""
         return super().remove(guild_id=guild_id, name=name)

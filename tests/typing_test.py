@@ -11,13 +11,13 @@ def test_base_type() -> None:
     assert base_type(int | None) is int
     assert base_type(str | None) is str
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='must contain two types'):
         assert base_type(int)
 
-    with pytest.raises(ValueError):
-        assert base_type(None)  # type: ignore
+    with pytest.raises(ValueError, match='must contain two types'):
+        assert base_type(None)  # type: ignore[arg-type]
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='must contain two types'):
         assert base_type(int | float)
 
 

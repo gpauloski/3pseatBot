@@ -68,21 +68,26 @@ async def log_interaction(
         >>> def mycommand(...): ...
     """
     channel = interaction.channel
-    channel_name = (
-        None if not hasattr(channel, 'name') else channel.name  # type: ignore
-    )
-    channel_name = (
-        channel_name if channel_name is not None else channel.id  # type: ignore
-    )
+    channel_name: str | int | None
+    if channel is None:
+        channel_name = None
+    else:
+        # Not every channel type has a name (e.g. DMChannel), so fall back
+        # to the channel's ID in that case.
+        channel_name = getattr(channel, 'name', None) or channel.id
 
     guild = None if interaction.guild is None else interaction.guild.name
     command = None if interaction.command is None else interaction.command.name
     options = extract_command_options(interaction)
 
     logger.info(
-        f'[Channel: {channel_name}, Guild: {guild}] '
-        f'{interaction.user.name} ({interaction.user.id}) called '
-        f'/{command}: {options}',
+        '[Channel: %s, Guild: %s] %s (%s) called /%s: %s',
+        channel_name,
+        guild,
+        interaction.user.name,
+        interaction.user.id,
+        command,
+        options,
     )
 
     return True
@@ -96,15 +101,15 @@ async def admin_or_owner(interaction: discord.Interaction[Any]) -> bool:
         >>> @app_commands.check(admin_or_owner)
         >>> def mycommand(...): ...
     """
-    if isinstance(
-        interaction.client,
-        commands.Bot,
-    ) and await interaction.client.is_owner(interaction.user):
-        return True
-    elif (
+    if (
+        isinstance(
+            interaction.client,
+            commands.Bot,
+        )
+        and await interaction.client.is_owner(interaction.user)
+    ) or (
         isinstance(interaction.user, discord.Member)
         and interaction.user.guild_permissions.administrator
     ):
         return True
-    else:
-        raise app_commands.MissingPermissions(['admin'])
+    raise app_commands.MissingPermissions(['admin'])

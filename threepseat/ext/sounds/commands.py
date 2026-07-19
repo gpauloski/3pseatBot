@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import datetime
 import logging
-import os
+import pathlib
 import tempfile
 import time
 
@@ -48,6 +49,7 @@ class SoundCommands(CommandGroupExtension):
         """
         self.table = SoundsTable(db_path, data_path)
         self.join_table = MemberSoundTable(db_path)
+        self._vc_leaver_task: LoopType | None = None
 
         super().__init__(
             name='sounds',
@@ -57,10 +59,18 @@ class SoundCommands(CommandGroupExtension):
 
     async def post_init(self, bot: discord.ext.commands.Bot) -> None:
         """Spawn task that leaves channels when they are empty."""
-        self._vc_leaver_task: LoopType = leave_on_empty(bot, 60)
+        self._vc_leaver_task = leave_on_empty(bot, 60)
         self._vc_leaver_task.start()
 
         bot.add_listener(self.on_voice_state_update, 'on_voice_state_update')
+
+    async def post_shutdown(self) -> None:
+        """Cancel the voice channel leaver task and close the databases."""
+        if self._vc_leaver_task is not None:
+            self._vc_leaver_task.cancel()
+            self._vc_leaver_task = None
+        self.table.close()
+        self.join_table.close()
 
     async def on_voice_state_update(
         self,
@@ -95,9 +105,9 @@ class SoundCommands(CommandGroupExtension):
                 self.table.filepath(sound.filename),
                 after.channel,
             )
-        except Exception as e:
+        except Exception:
             logger.exception(
-                f'caught exception when playing sound on member join: {e}',
+                'caught exception when playing sound on member join',
             )
 
     @app_commands.command(
@@ -207,6 +217,7 @@ class SoundCommands(CommandGroupExtension):
             user_str = user.mention if user is not None else 'unknown'
             date = datetime.datetime.fromtimestamp(
                 sound.created_time,
+                tz=datetime.UTC,
             ).strftime('%B %d, %Y')
             msg = f'**{sound.name}**: *{sound.description}*\n\n'
             msg += f'Added by {user_str} on {date}\n\n'
@@ -251,11 +262,11 @@ class SoundCommands(CommandGroupExtension):
 
         try:
             await play_sound(self.table.filepath(sound.filename), channel)
-        except Exception as e:
+        except Exception:
             await interaction.followup.send(
                 'Failed to play the sound. Sorry.',
             )
-            logger.exception(f'caught exception when playing sound: {e}')
+            logger.exception('caught exception when playing sound')
         else:
             await interaction.followup.send('Played!')
 
@@ -350,7 +361,7 @@ class SoundCommands(CommandGroupExtension):
         await interaction.response.defer(thinking=True)
         assert interaction.guild is not None
 
-        ext = os.path.splitext(file.filename.lower())[1]
+        ext = pathlib.Path(file.filename.lower()).suffix
         is_mp3 = ext == '.mp3'
         is_video = ext in SUPPORTED_VIDEO_EXTENSIONS
         if not is_mp3 and not is_video:
@@ -415,8 +426,8 @@ class SoundCommands(CommandGroupExtension):
         """
         try:
             duration = await _get_mp3_duration_s(file)
-        except Exception as e:
-            logger.exception(f'Failed to validate uploaded file: {e}')
+        except Exception:
+            logger.exception('failed to validate uploaded file')
             await interaction.followup.send(
                 'Error: Could not process the audio file.',
                 ephemeral=True,
@@ -432,11 +443,11 @@ class SoundCommands(CommandGroupExtension):
             return False
 
         try:
-            with open(filepath, 'wb') as f:
-                f.write(await file.read())
+            data = await file.read()
+            await asyncio.to_thread(pathlib.Path(filepath).write_bytes, data)
         except OSError:
             logger.exception(
-                f'Failed to save user-uploaded sound to {filepath}',
+                'failed to save user-uploaded sound to %s', filepath
             )
             await interaction.followup.send(
                 'Error: Failed to save the sound to the database.',
@@ -465,8 +476,8 @@ class SoundCommands(CommandGroupExtension):
             _remove_if_exists(filepath)
             await interaction.followup.send(f'Error: {e}', ephemeral=True)
             return False
-        except Exception as e:
-            logger.exception(f'Failed to process uploaded video: {e}')
+        except Exception:
+            logger.exception('failed to process uploaded video')
             _remove_if_exists(filepath)
             await interaction.followup.send(
                 'Error: Could not process the video file.',
@@ -484,17 +495,15 @@ class SoundCommands(CommandGroupExtension):
         """Callback for errors in child functions."""
         if isinstance(error, app_commands.CheckFailure):
             await interaction.response.send_message(str(error), ephemeral=True)
-            logger.info(f'app command check failed: {error}')
+            logger.info('app command check failed: %s', error)
         else:
             logger.exception(error)
 
 
 def _remove_if_exists(filepath: str) -> None:
     """Remove a file if it exists, ignoring missing files."""
-    try:
-        os.remove(filepath)
-    except FileNotFoundError:
-        pass
+    with contextlib.suppress(FileNotFoundError):
+        pathlib.Path(filepath).unlink()
 
 
 async def _get_mp3_duration_s(
@@ -523,8 +532,9 @@ async def _extract_video_audio(
         temp_file.flush()
         duration = await mp3_duration_seconds(temp_file.name)
         if duration > MAX_SOUND_LENGTH_SECONDS:
-            raise ValueError(
+            msg = (
                 f'Sound is too long ({duration:.1f}s). '
-                f'Maximum length is {MAX_SOUND_LENGTH_SECONDS} seconds.',
+                f'Maximum length is {MAX_SOUND_LENGTH_SECONDS} seconds.'
             )
+            raise ValueError(msg)
         await extract_audio(temp_file.name, filepath)

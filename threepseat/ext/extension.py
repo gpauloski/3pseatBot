@@ -18,4 +18,11 @@ class CommandGroupExtension(app_commands.Group):
         Subclasses can use this method to launch background tasks that need
         the client, register commands, etc.
         """
-        pass
+
+    async def post_shutdown(self) -> None:
+        """Release resources held by the extension.
+
+        Mirror of post_init(), called once while the bot is shutting down.
+        Subclasses can use this method to cancel background tasks, close
+        database connections, etc.
+        """

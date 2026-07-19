@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import pathlib
 import time
 from unittest import mock
@@ -27,8 +26,8 @@ TEST_SOUND = Sound.new(
 
 @pytest.fixture
 def sounds(tmp_path: pathlib.Path) -> SoundsTable:
-    db_path = os.path.join(tmp_path, 'sounds.db')
-    data_path = os.path.join(tmp_path, 'data')
+    db_path = str(tmp_path / 'sounds.db')
+    data_path = str(tmp_path / 'data')
 
     sounds = SoundsTable(db_path=db_path, data_path=data_path)
     test_sound_path = pathlib.Path(sounds.filepath(TEST_SOUND.filename))
@@ -38,14 +37,14 @@ def sounds(tmp_path: pathlib.Path) -> SoundsTable:
 
 
 def test_filepath(tmp_path: pathlib.Path) -> None:
-    db_path = os.path.join(tmp_path, 'sounds.db')
-    data_path = os.path.join(tmp_path, 'data')
+    db_path = str(tmp_path / 'sounds.db')
+    data_path = str(tmp_path / 'data')
     filename = 'testfile.mp3'
 
     sounds = SoundsTable(db_path=db_path, data_path=data_path)
-    assert not os.path.isdir(data_path)
-    assert sounds.filepath(filename) == os.path.join(data_path, filename)
-    assert os.path.isdir(data_path)
+    assert not pathlib.Path(data_path).is_dir()
+    assert sounds.filepath(filename) == str(pathlib.Path(data_path) / filename)
+    assert pathlib.Path(data_path).is_dir()
 
 
 def test_add_get_sound(sounds: SoundsTable) -> None:
@@ -90,27 +89,27 @@ def test_add_sound_exists(sounds: SoundsTable) -> None:
 
 def test_all_sounds(sounds: SoundsTable) -> None:
     sounds_list = [
-        dict(
-            name='mysound1',
-            description='test sound1',
-            link='https://youtube.com/abcd1',
-            author_id=1234,
-            guild_id=5678,
-        ),
-        dict(
-            name='mysound2',
-            description='test sound2',
-            link='https://youtube.com/abcd2',
-            author_id=1234,
-            guild_id=5678,
-        ),
-        dict(
-            name='mysound3',
-            description='test sound3',
-            link='https://youtube.com/abcd3',
-            author_id=1234,
-            guild_id=0,
-        ),
+        {
+            'name': 'mysound1',
+            'description': 'test sound1',
+            'link': 'https://youtube.com/abcd1',
+            'author_id': 1234,
+            'guild_id': 5678,
+        },
+        {
+            'name': 'mysound2',
+            'description': 'test sound2',
+            'link': 'https://youtube.com/abcd2',
+            'author_id': 1234,
+            'guild_id': 5678,
+        },
+        {
+            'name': 'mysound3',
+            'description': 'test sound3',
+            'link': 'https://youtube.com/abcd3',
+            'author_id': 1234,
+            'guild_id': 0,
+        },
     ]
 
     for sound_data in sounds_list:
@@ -138,19 +137,19 @@ def test_remove_sound(sounds: SoundsTable) -> None:
 
     found1 = sounds.get(name=TEST_SOUND.name, guild_id=TEST_SOUND.guild_id)
     assert found1 is not None
-    assert os.path.exists(os.path.join(sounds.filepath(found1.filename)))
+    assert pathlib.Path(sounds.filepath(found1.filename)).exists()
 
     sounds.remove(name=TEST_SOUND.name, guild_id=TEST_SOUND.guild_id)
     found2 = sounds.get(name=TEST_SOUND.name, guild_id=TEST_SOUND.guild_id)
     assert found2 is None
-    assert not os.path.exists(os.path.join(sounds.filepath(found1.filename)))
+    assert not pathlib.Path(sounds.filepath(found1.filename)).exists()
 
     # Should not error if sound does not exist
     sounds.remove(name='notasound', guild_id=123456789)
 
 
 def test_youtube_download(tmp_path: pathlib.Path) -> None:
-    filepath = os.path.join(tmp_path, 'test_video.mp3')
+    filepath = str(tmp_path / 'test_video.mp3')
     link = 'https://www.youtube.com/watch?v=jhFDyDgMVUI'
 
     with (
@@ -164,7 +163,7 @@ def test_youtube_download(tmp_path: pathlib.Path) -> None:
 
 
 def test_youtube_download_errors(tmp_path: pathlib.Path) -> None:
-    filepath = os.path.join(tmp_path, 'test_video.mp3')
+    filepath = str(tmp_path / 'test_video.mp3')
     link = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
 
     with mock.patch(
@@ -175,23 +174,27 @@ def test_youtube_download_errors(tmp_path: pathlib.Path) -> None:
             download(link, filepath)
 
         mock_extract.return_value = {'duration': 0}
-        with mock.patch(
-            'threepseat.ext.sounds.data.YoutubeDL.extract_info',
-            side_effect=Exception('test'),
+        with (
+            mock.patch(
+                'threepseat.ext.sounds.data.YoutubeDL.extract_info',
+                side_effect=Exception('test'),
+            ),
+            pytest.raises(ValueError, match='extracting'),
         ):
-            with pytest.raises(ValueError, match='extracting'):
-                download(link, filepath)
+            download(link, filepath)
 
         link = 'https://www.youtube.com/watch?v=jhFDyDgMVUI'
-        with mock.patch(
-            'threepseat.ext.sounds.data.YoutubeDL.download',
-            side_effect=Exception('test'),
-        ):
-            with pytest.raises(
+        with (
+            mock.patch(
+                'threepseat.ext.sounds.data.YoutubeDL.download',
+                side_effect=Exception('test'),
+            ),
+            pytest.raises(
                 ValueError,
                 match='downloading',
-            ):  # pragma: no branch
-                download(link, filepath)
+            ),
+        ):  # pragma: no branch
+            download(link, filepath)
 
 
 def _mock_ffprobe_process(
@@ -212,7 +215,7 @@ def _mock_ffprobe_process(
 
 @pytest.mark.asyncio
 async def test_mp3_duration_seconds(tmp_path: pathlib.Path) -> None:
-    filepath = os.path.join(tmp_path, 'test.mp3')
+    filepath = str(tmp_path / 'test.mp3')
     proc = _mock_ffprobe_process(
         returncode=0,
         stdout=b'{"format": {"duration": "12.5"}}',
@@ -231,43 +234,47 @@ async def test_mp3_duration_seconds(tmp_path: pathlib.Path) -> None:
 async def test_mp3_duration_seconds_ffprobe_error(
     tmp_path: pathlib.Path,
 ) -> None:
-    filepath = os.path.join(tmp_path, 'test.mp3')
+    filepath = str(tmp_path / 'test.mp3')
     proc = _mock_ffprobe_process(
         returncode=1,
         stdout=b'',
         stderr=b'invalid data',
     )
 
-    with mock.patch(
-        'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
-        mock.AsyncMock(return_value=proc),
+    with (
+        mock.patch(
+            'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
+            mock.AsyncMock(return_value=proc),
+        ),
+        pytest.raises(RuntimeError, match='ffmpeg failed'),
     ):
-        with pytest.raises(RuntimeError, match='ffmpeg failed'):
-            await mp3_duration_seconds(filepath)
+        await mp3_duration_seconds(filepath)
 
 
 @pytest.mark.asyncio
 async def test_mp3_duration_seconds_no_pipes(tmp_path: pathlib.Path) -> None:
     # ffprobe fails and the subprocess has no stdout/stderr pipes attached.
-    filepath = os.path.join(tmp_path, 'test.mp3')
+    filepath = str(tmp_path / 'test.mp3')
     proc = mock.MagicMock()
     proc.returncode = 1
     proc.wait = mock.AsyncMock()
     proc.stdout = None
     proc.stderr = None
 
-    with mock.patch(
-        'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
-        mock.AsyncMock(return_value=proc),
+    with (
+        mock.patch(
+            'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
+            mock.AsyncMock(return_value=proc),
+        ),
+        pytest.raises(RuntimeError, match='ffmpeg failed'),
     ):
-        with pytest.raises(RuntimeError, match='ffmpeg failed'):
-            await mp3_duration_seconds(filepath)
+        await mp3_duration_seconds(filepath)
 
 
 @pytest.mark.asyncio
 async def test_extract_audio(tmp_path: pathlib.Path) -> None:
-    source = os.path.join(tmp_path, 'clip.mp4')
-    mp3_path = os.path.join(tmp_path, 'out.mp3')
+    source = str(tmp_path / 'clip.mp4')
+    mp3_path = str(tmp_path / 'out.mp3')
     proc = _mock_ffprobe_process(returncode=0, stdout=b'')
 
     with mock.patch(
@@ -280,20 +287,22 @@ async def test_extract_audio(tmp_path: pathlib.Path) -> None:
 
 @pytest.mark.asyncio
 async def test_extract_audio_error(tmp_path: pathlib.Path) -> None:
-    source = os.path.join(tmp_path, 'clip.mp4')
-    mp3_path = os.path.join(tmp_path, 'out.mp3')
+    source = str(tmp_path / 'clip.mp4')
+    mp3_path = str(tmp_path / 'out.mp3')
     proc = _mock_ffprobe_process(
         returncode=1,
         stdout=b'',
         stderr=b'Output file does not contain any stream',
     )
 
-    with mock.patch(
-        'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
-        mock.AsyncMock(return_value=proc),
+    with (
+        mock.patch(
+            'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
+            mock.AsyncMock(return_value=proc),
+        ),
+        pytest.raises(ValueError, match='Could not extract audio'),
     ):
-        with pytest.raises(ValueError, match='Could not extract audio'):
-            await extract_audio(source, mp3_path)
+        await extract_audio(source, mp3_path)
 
 
 def test_supported_video_extensions_str() -> None:
@@ -305,7 +314,7 @@ def test_supported_video_extensions_str() -> None:
 
 
 def test_member_sounds_table(tmp_path: pathlib.Path) -> None:
-    db_path = os.path.join(tmp_path, 'member-sounds.db')
+    db_path = str(tmp_path / 'member-sounds.db')
 
     member_sounds = MemberSoundTable(db_path)
     sound = MemberSound(member_id=1, guild_id=2, name='test', updated_time=0)

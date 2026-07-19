@@ -44,8 +44,14 @@ class CustomCommands(CommandGroupExtension):
 
     async def post_init(self, bot: discord.ext.commands.Bot) -> None:
         """Register all saved custom commands to the client."""
-        for command in self.table.all():
+        commands = self.table.all()
+        for command in commands:
             await self.register(command, bot, sync=False)
+        logger.info('registered %s saved custom command(s)', len(commands))
+
+    async def post_shutdown(self) -> None:
+        """Close the database."""
+        self.table.close()
 
     async def register(
         self,
@@ -83,8 +89,11 @@ class CustomCommands(CommandGroupExtension):
         if sync:
             await bot.tree.sync(guild=guild)
         logger.info(
-            f'registered custom command /{command.name} in {guild.name} '
-            f'({command.guild_id}) (sync={sync})',
+            'registered custom command /%s in %s (%s) (sync=%s)',
+            command.name,
+            guild.name,
+            command.guild_id,
+            sync,
         )
 
     async def unregister(
@@ -97,8 +106,10 @@ class CustomCommands(CommandGroupExtension):
         bot.tree.remove_command(name, guild=guild)
         await bot.tree.sync(guild=guild)
         logger.info(
-            f'unregistered custom command /{name} from '
-            f'{guild.name} ({guild.id})',
+            'unregistered custom command /%s from %s (%s)',
+            name,
+            guild.name,
+            guild.id,
         )
 
     async def autocomplete(
@@ -224,6 +235,6 @@ class CustomCommands(CommandGroupExtension):
         """Callback for errors in child functions."""
         if isinstance(error, app_commands.CheckFailure):
             await interaction.response.send_message(str(error), ephemeral=True)
-            logger.info(f'app command check failed: {error}')
+            logger.info('app command check failed: %s', error)
         else:
             logger.exception(error)

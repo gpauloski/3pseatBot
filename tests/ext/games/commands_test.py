@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Generator
-
 import pytest
 
 from testing.mock import MockGuild
@@ -19,15 +17,15 @@ GAME = Game(
 
 
 @pytest.fixture
-def games(tmp_file: str) -> Generator[GamesCommands, None, None]:
-    yield GamesCommands(tmp_file)
+def games(tmp_file: str) -> GamesCommands:
+    return GamesCommands(tmp_file)
 
 
 @pytest.mark.asyncio
 async def test_autocomplete(games) -> None:
     guild = MockGuild('guild', GAME.guild_id)
     interaction = MockInteraction(
-        None,  # type: ignore
+        None,  # type: ignore[arg-type]
         user='user',
         guild=guild,
     )

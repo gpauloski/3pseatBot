@@ -32,6 +32,7 @@ NOT_CONFIGURED_MESSAGE = (
     'Legacy 3pseat mode has not been configured for this guild. '
     'Use `/rules configure` to get started.'
 )
+RESTART_BUFFER_SECONDS = 60
 
 
 class RulesCommands(CommandGroupExtension):
@@ -47,6 +48,7 @@ class RulesCommands(CommandGroupExtension):
 
         # Mapping of guild IDs to the current task handling the event
         self.event_handlers: dict[int, asyncio.Task[None]] = {}
+        self._event_starter_task: LoopType | None = None
 
         super().__init__(
             name='rules',
@@ -69,7 +71,9 @@ class RulesCommands(CommandGroupExtension):
             # the bot gets into a thrashing state of restarting it may be good
             in_event = (
                 config.event_duration * 60
-            ) > time_since_last_event and event_time_remain > 60
+            ) > time_since_last_event and (
+                event_time_remain > RESTART_BUFFER_SECONDS
+            )
             if config.enabled and in_event and config.last_event > 0:
                 guild = bot.get_guild(config.guild_id)
                 if guild is None:
@@ -79,6 +83,16 @@ class RulesCommands(CommandGroupExtension):
 
         self._event_starter_task = self.event_starter(bot)
         self._event_starter_task.start()
+
+    async def post_shutdown(self) -> None:
+        """Cancel the event tasks and close the database."""
+        if self._event_starter_task is not None:
+            self._event_starter_task.cancel()
+            self._event_starter_task = None
+        for handler in self.event_handlers.values():
+            handler.cancel()
+        self.event_handlers.clear()
+        self.database.close()
 
     async def handle_offending_message(self, message: discord.Message) -> None:
         """Handle side effects for message that breaks rules.
@@ -90,7 +104,8 @@ class RulesCommands(CommandGroupExtension):
         assert message.channel.guild is not None
         config = self.database.get_config(guild_id=message.channel.guild.id)
         if config is None:
-            raise AssertionError('Unreachable.')
+            msg = 'Unreachable.'
+            raise AssertionError(msg)
 
         try:
             current = self.database.add_offense(
@@ -121,8 +136,10 @@ class RulesCommands(CommandGroupExtension):
         and returns a message that the caller can send with the results.
         """
         logger.info(
-            f'timing out {member.name} in {member.guild.name} '
-            f'({member.guild.id})',
+            'timing out %s in %s (%s)',
+            member.name,
+            member.guild.name,
+            member.guild.id,
         )
         self.database.reset_current_offenses(
             guild_id=member.guild.id,
@@ -133,10 +150,12 @@ class RulesCommands(CommandGroupExtension):
                 datetime.timedelta(minutes=duration),
                 reason='Breaking the rules too many times.',
             )
-        except Exception as e:
+        except Exception:
             logger.exception(
-                f'failed to timeout {member.name} in {member.guild.name} '
-                f'({member.guild.id}): {e}',
+                'failed to timeout %s in %s (%s)',
+                member.name,
+                member.guild.name,
+                member.guild.id,
             )
             return (
                 f"3pseat {member.mention}! You've disturbed the "
@@ -171,9 +190,10 @@ class RulesCommands(CommandGroupExtension):
         config = self.database.get_config(message.channel.guild.id)
         if config is None:
             logger.error(
-                f'rules enabled for guild {message.channel.guild.name} '
-                f'({message.channel.guild.id}) but the guild has not been '
-                'configured',
+                'rules enabled for guild %s (%s) but the guild has not '
+                'been configured',
+                message.channel.guild.name,
+                message.channel.guild.id,
             )
             return
 
@@ -193,16 +213,16 @@ class RulesCommands(CommandGroupExtension):
         """Start a rules enforcement event for the guild."""
         config = self.database.get_config(guild.id)
         if config is None:
-            raise EventStartError(
-                f'Guild {guild.name} ({guild.id}) has not been configured.',
-            )
+            msg = f'Guild {guild.name} ({guild.id}) has not been configured.'
+            raise EventStartError(msg)
 
         channel = primary_channel(guild)
         if channel is None:
-            raise EventStartError(
+            msg = (
                 'Could not find valid text channel for guild '
-                f'{guild.name} ({guild.id})',
+                f'{guild.name} ({guild.id})'
             )
+            raise EventStartError(msg)
 
         duration = config.event_duration if duration is None else duration
         duration_readable = readable_timedelta(minutes=duration)
@@ -216,8 +236,11 @@ class RulesCommands(CommandGroupExtension):
 
         action = 'resuming' if resume else 'starting'
         logger.info(
-            f'{action} rules event for {guild.name} ({guild.id}) for '
-            f'{duration_readable}',
+            '%s rules event for %s (%s) for %s',
+            action,
+            guild.name,
+            guild.id,
+            duration_readable,
         )
         self.event_handlers[guild.id] = asyncio.create_task(
             self.stop_event(
@@ -243,7 +266,9 @@ class RulesCommands(CommandGroupExtension):
 
         handler = self.event_handlers.pop(guild.id, None)
         if handler is not None and channel is not None:
-            logger.info(f'stopping rules event for {guild.name} ({guild.id})')
+            logger.info(
+                'stopping rules event for %s (%s)', guild.name, guild.id
+            )
             await channel.send('3pseat mode has ended.')
 
     def event_starter(
@@ -315,7 +340,7 @@ class RulesCommands(CommandGroupExtension):
     )
     @app_commands.check(admin_or_owner)
     @app_commands.check(log_interaction)
-    async def configure(
+    async def configure(  # noqa: PLR0913
         self,
         interaction: discord.Interaction[commands.Bot],
         prefixes: str,
@@ -323,7 +348,7 @@ class RulesCommands(CommandGroupExtension):
         cooldown: app_commands.Range[float, 0.0, None] = 720.0,
         duration: app_commands.Range[float, 1.0, None] = 60.0,
         max_offenses: app_commands.Range[int, 1, None] = 3,
-        timeout: app_commands.Range[float, 0.0, None] = 3.0,
+        timeout: app_commands.Range[float, 0.0, None] = 3.0,  # noqa: ASYNC109
     ) -> None:
         """Configure events for a guild."""
         assert interaction.guild is not None
@@ -375,9 +400,10 @@ class RulesCommands(CommandGroupExtension):
         last_event = (
             'never'
             if config.last_event == 0
-            else datetime.datetime.fromtimestamp(config.last_event).strftime(
-                '%-d %B %Y at %-I:%M:%S %p',
-            )
+            else datetime.datetime.fromtimestamp(
+                config.last_event,
+                tz=datetime.UTC,
+            ).strftime('%-d %B %Y at %-I:%M:%S %p')
         )
         event_cooldown = readable_timedelta(minutes=config.event_cooldown)
         event_duration = readable_timedelta(minutes=config.event_duration)
@@ -537,6 +563,7 @@ class RulesCommands(CommandGroupExtension):
                 return
             last_offense = datetime.datetime.fromtimestamp(
                 user_data.last_offense,
+                tz=datetime.UTC,
             ).strftime('%-d %B %Y at %-I:%M:%S %p')
             await interaction.response.send_message(
                 f'{user.mention} currently has {user_data.current_offenses}/'
@@ -634,6 +661,6 @@ class RulesCommands(CommandGroupExtension):
         """Callback for errors in child functions."""
         if isinstance(error, app_commands.CheckFailure):
             await interaction.response.send_message(str(error), ephemeral=True)
-            logger.info(f'app command check failed: {error}')
+            logger.info('app command check failed: %s', error)
         else:
             logger.exception(error)

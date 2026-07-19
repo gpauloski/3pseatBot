@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import pathlib
 import time
 import uuid
@@ -12,6 +11,7 @@ from typing import Self
 
 from yt_dlp import YoutubeDL
 
+from threepseat.logging import log_timing
 from threepseat.table import SQLTableInterface
 from threepseat.utils import alphanumeric
 
@@ -88,8 +88,8 @@ class SoundsTable(SQLTableInterface[Sound]):
 
     def filepath(self, filename: str) -> str:
         """Get filepath for filename."""
-        os.makedirs(self.data_path, exist_ok=True)
-        return os.path.join(self.data_path, filename)
+        pathlib.Path(self.data_path).mkdir(parents=True, exist_ok=True)
+        return str(pathlib.Path(self.data_path) / filename)
 
     def add(self, sound: Sound) -> None:
         """Add sound to database.
@@ -107,38 +107,43 @@ class SoundsTable(SQLTableInterface[Sound]):
                 any additional errors raises by download().
         """
         if self.get(name=sound.name, guild_id=sound.guild_id) is not None:
-            raise ValueError('Sound with that name already exists.')
+            msg = 'Sound with that name already exists.'
+            raise ValueError(msg)
         if not alphanumeric(sound.name):
-            raise ValueError('Name must contain only alphanumeric characters.')
+            msg = 'Name must contain only alphanumeric characters.'
+            raise ValueError(msg)
         if len(sound.name) == 0 or len(sound.name) > MAX_SOUND_NAME_CHARS:
-            raise ValueError('Name must be between 1 and 15 characters long.')
+            msg = 'Name must be between 1 and 15 characters long.'
+            raise ValueError(msg)
         filepath = self.filepath(sound.filename)
-        if not os.path.isfile(filepath):
-            raise ValueError(f'{filepath} does not exist.')
+        if not pathlib.Path(filepath).is_file():
+            msg = f'{filepath} does not exist.'
+            raise ValueError(msg)
 
         self.update(sound)
-        logger.info(f'added sound to database: {sound}')
+        logger.info('added sound to database: %s', sound)
 
-    def _all(self, guild_id: int) -> list[Sound]:  # type: ignore
+    def _all(self, guild_id: int) -> list[Sound]:  # type: ignore[override]
         """List sounds in database."""
         return super()._all(guild_id=guild_id)
 
-    def _get(self, name: str, guild_id: int) -> Sound | None:  # type: ignore
+    def _get(self, name: str, guild_id: int) -> Sound | None:  # type: ignore[override]
         """Get sound in database."""
         return super()._get(name=name, guild_id=guild_id)
 
-    def remove(self, name: str, guild_id: int) -> None:  # type: ignore
+    def remove(self, name: str, guild_id: int) -> None:  # type: ignore[override]
         """Remove sound from database."""
         sound = self.get(name=name, guild_id=guild_id)
 
         if sound is not None:
             super().remove(name=name, guild_id=guild_id)
             filepath = self.filepath(sound.filename)
-            os.remove(filepath)
+            pathlib.Path(filepath).unlink()
 
             logger.info(
-                'removed sound from database: '
-                f'(name={name}, guild_id={guild_id})',
+                'removed sound from database: (name=%s, guild_id=%s)',
+                name,
+                guild_id,
             )
 
 
@@ -167,11 +172,11 @@ class MemberSoundTable(SQLTableInterface[MemberSound]):
             primary_keys=('member_id', 'guild_id'),
         )
 
-    def _all(self, guild_id: int) -> list[MemberSound]:  # type: ignore
+    def _all(self, guild_id: int) -> list[MemberSound]:  # type: ignore[override]
         """Get all member sounds in guild."""
         return super()._all(guild_id=guild_id)
 
-    def _get(  # type: ignore
+    def _get(  # type: ignore[override]
         self,
         member_id: int,
         guild_id: int,
@@ -179,7 +184,7 @@ class MemberSoundTable(SQLTableInterface[MemberSound]):
         """Get MemberSound for member."""
         return super()._get(member_id=member_id, guild_id=guild_id)
 
-    def remove(self, member_id: int, guild_id: int) -> int:  # type: ignore
+    def remove(self, member_id: int, guild_id: int) -> int:  # type: ignore[override]
         """Remove a MemberSound from the table."""
         return super().remove(member_id=member_id, guild_id=guild_id)
 
@@ -220,21 +225,23 @@ def download(link: str, filepath: str) -> None:
                 process=False,
             )
         except Exception as e:
-            logger.exception(
-                f'caught error extracting sound metadata: {e}',
-            )
-            raise ValueError('Error extracting sound metadata.') from e
+            logger.exception('caught error extracting sound metadata')
+            msg = 'Error extracting sound metadata.'
+            raise ValueError(msg) from e
 
         if int(metadata['duration']) > MAX_SOUND_LENGTH_SECONDS:
-            raise ValueError(
-                f'Clip is longer than {MAX_SOUND_LENGTH_SECONDS} seconds.',
-            )
+            msg = f'Clip is longer than {MAX_SOUND_LENGTH_SECONDS} seconds.'
+            raise ValueError(msg)
 
         try:
-            ydl.download([link])
+            # Network download plus an ffmpeg transcode; the slowest operation
+            # the bot performs, so time it.
+            with log_timing(logger, 'downloaded sound from %s', link):
+                ydl.download([link])
         except Exception as e:
-            logger.exception(f'caught error downloading sound: {e}')
-            raise ValueError('Error downloading sound.') from e
+            logger.exception('caught error downloading sound')
+            msg = 'Error downloading sound.'
+            raise ValueError(msg) from e
 
 
 async def mp3_duration_seconds(filepath: str) -> float:
@@ -311,19 +318,22 @@ async def extract_audio(source_path: str, mp3_path: str) -> None:
         'mp3',
         mp3_path,
     )
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    await proc.wait()
+    with log_timing(logger, 'extracted audio from %s', source_path):
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await proc.wait()
 
     if proc.returncode != 0:
         stderr = ''
         if proc.stderr is not None:  # pragma: no branch
             stderr = (await proc.stderr.read()).decode().strip()
         logger.error(
-            f'Extract audio with ffmpeg failed (exit code '
-            f'{proc.returncode}):\nstderr:\n{stderr}',
+            'extract audio with ffmpeg failed (exit code %s):\nstderr:\n%s',
+            proc.returncode,
+            stderr,
         )
-        raise ValueError('Could not extract audio from the video.')
+        msg = 'Could not extract audio from the video.'
+        raise ValueError(msg)

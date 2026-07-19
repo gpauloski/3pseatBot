@@ -58,14 +58,14 @@ def test_is_url() -> None:
 
 
 @mock.patch('discord.Message')
-def test_ignore_message_successes(mock_message) -> None:
+def test_ignore_message_successes(mock_message) -> None:  # noqa: ARG001
     # Ignore non-default type messages
-    message = discord.Message()  # type: ignore
+    message = discord.Message()  # type: ignore[call-arg]
     message.type = discord.MessageType.pins_add
     assert ignore_message(message)
 
     # Ignore bots
-    message = discord.Message()  # type: ignore
+    message = discord.Message()  # type: ignore[call-arg]
     message.type = discord.MessageType.default
     message.author = MockUser('user', 1234)
     message.author.bot = True
@@ -89,7 +89,7 @@ def test_ignore_message_successes(mock_message) -> None:
 
     # Ignore just attachments
     message.content = '  '
-    message.attachments = ['attachment']  # type: ignore
+    message.attachments = ['attachment']  # type: ignore[list-item]
     assert ignore_message(message)
 
     # Ignore starts with quote
@@ -102,14 +102,14 @@ def test_ignore_message_successes(mock_message) -> None:
 
 
 @mock.patch('discord.Message')
-def test_ignore_message_failures(mock_message) -> None:
+def test_ignore_message_failures(mock_message) -> None:  # noqa: ARG001
     with (
         mock.patch(
             'threepseat.ext.rules.utils.is_booster',
             return_value=False,
         ),
     ):
-        message = discord.Message()  # type: ignore
+        message = discord.Message()  # type: ignore[call-arg]
         message.type = discord.MessageType.default
         message.author = MockUser('user', 1234)
         message.author.bot = False

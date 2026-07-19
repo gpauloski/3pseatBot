@@ -37,7 +37,7 @@ async def tts(
     assert interaction.guild is not None
     assert isinstance(interaction.user, discord.Member)
 
-    if len(text) > 200:
+    if len(text) > MAX_TTS_CHARACTERS:
         await interaction.response.send_message(
             'Text length is limited to 200 characters.',
             ephemeral=True,
@@ -55,8 +55,8 @@ async def tts(
     try:
         with tts_as_mp3(text, accent=accent, slow=slow) as fp:
             await play_sound(fp, channel, wait=True)
-    except Exception as e:
+    except Exception:
         await interaction.followup.send('Failed to play TTS.')
-        logger.exception(f'caught exception playing TTS: {e}')
+        logger.exception('caught exception playing TTS')
     else:
         await interaction.followup.send('Played TTS!')

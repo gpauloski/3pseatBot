@@ -19,7 +19,7 @@ class _MockEmoji(discord.Emoji):
         return self.name
 
     @property
-    def name(self) -> str:  # type: ignore
+    def name(self) -> str:  # type: ignore[override]
         return self._name
 
 
@@ -39,7 +39,8 @@ async def test_emote() -> None:
         await emote_(interaction)
 
     assert interaction.followed
-    assert interaction.followup_message is not None and (
+    assert interaction.followup_message is not None
+    assert (
         'emote' in interaction.followup_message
         or emojize(':game_die:') in interaction.followup_message
     )
@@ -59,10 +60,8 @@ async def test_emote_no_emotes() -> None:
         await emote_(interaction)
 
     assert interaction.followed
-    assert (
-        interaction.followup_message is not None
-        and 'no custom emotes' in interaction.followup_message
-    )
+    assert interaction.followup_message is not None
+    assert 'no custom emotes' in interaction.followup_message
 
 
 @pytest.mark.asyncio
@@ -81,7 +80,5 @@ async def test_emote_no_matches() -> None:
         await emote_(interaction, match='missing')
 
     assert interaction.followed
-    assert (
-        interaction.followup_message is not None
-        and 'No guild emotes match' in interaction.followup_message
-    )
+    assert interaction.followup_message is not None
+    assert 'No guild emotes match' in interaction.followup_message

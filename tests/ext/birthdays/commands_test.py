@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime
 from asyncio import sleep as asleep
-from collections.abc import Generator
 from unittest import mock
 
 import discord
@@ -28,15 +27,15 @@ BIRTHDAY = Birthday(
 
 
 @pytest.fixture
-def birthdays(tmp_file: str) -> Generator[BirthdayCommands, None, None]:
-    yield BirthdayCommands(tmp_file)
+def birthdays(tmp_file: str) -> BirthdayCommands:
+    return BirthdayCommands(tmp_file)
 
 
 @pytest.mark.asyncio
 async def test_birthday_task(birthdays) -> None:
     with mock.patch('discord.Client'):
-        client = discord.Client()  # type: ignore
-        client.guilds = [MockGuild('guild', 42)]  # type: ignore
+        client = discord.Client()  # type: ignore[call-arg]
+        client.guilds = [MockGuild('guild', 42)]  # type: ignore[misc]
 
     with (
         mock.patch('asyncio.sleep'),
@@ -53,6 +52,19 @@ async def test_birthday_task(birthdays) -> None:
 
 
 @pytest.mark.asyncio
+async def test_post_init_shutdown(birthdays) -> None:
+    with mock.patch('discord.Client'):
+        client = discord.Client()  # type: ignore[call-arg]
+
+    await birthdays.post_init(client)
+    assert birthdays._birthday_task is not None
+
+    await birthdays.post_shutdown()
+    assert birthdays._birthday_task is None
+    assert birthdays.table._db is None
+
+
+@pytest.mark.asyncio
 async def test_send_birthday_messages(birthdays) -> None:
     guild = MockGuild('guild', BIRTHDAY.guild_id)
     channel = MockChannel('channel', 42)
@@ -61,15 +73,15 @@ async def test_send_birthday_messages(birthdays) -> None:
     birthdays.table.update(
         BIRTHDAY._replace(
             user_id=2,
-            birth_month=datetime.datetime.now().month,
-            birth_day=datetime.datetime.now().day,
+            birth_month=datetime.datetime.now(tz=datetime.UTC).month,
+            birth_day=datetime.datetime.now(tz=datetime.UTC).day,
         ),
     )
     birthdays.table.update(
         BIRTHDAY._replace(
             user_id=3,
-            birth_month=datetime.datetime.now().month,
-            birth_day=datetime.datetime.now().day,
+            birth_month=datetime.datetime.now(tz=datetime.UTC).month,
+            birth_day=datetime.datetime.now(tz=datetime.UTC).day,
         ),
     )
     member = MockMember('user', 2, guild)
@@ -118,10 +130,8 @@ async def test_add_birthday(birthdays) -> None:
     assert birthday.birth_day == BIRTHDAY.birth_day
 
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'Added birthday' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'Added birthday' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -140,10 +150,8 @@ async def test_add_birthday_invalid_date(birthdays) -> None:
     )
 
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'Invalid birthday' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'Invalid birthday' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -180,10 +188,8 @@ async def test_list_birthdays_empty(birthdays) -> None:
     await list_(birthdays, interaction)
 
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'no birthdays' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'no birthdays' in interaction.response_message
 
 
 @pytest.mark.asyncio

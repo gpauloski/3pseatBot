@@ -1,48 +1,51 @@
 from __future__ import annotations
 
 import json
-import os
 import pathlib
 import uuid
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Generator
 from typing import Any
+from typing import cast
 from unittest import mock
 
 import pytest
+from discord import app_commands
 
 from testing.config import EXAMPLE_CONFIG
 
 
-@pytest.fixture()
+@pytest.fixture
 def tmp_file(tmp_path: pathlib.Path) -> Generator[str, None, None]:
     """Fixture that random file path."""
-    filepath = os.path.join(tmp_path, str(uuid.uuid4()))
-    yield filepath
-    if os.path.exists(filepath):  # pragma: no branch
-        os.remove(filepath)
+    filepath = tmp_path / str(uuid.uuid4())
+    yield str(filepath)
+    if filepath.exists():  # pragma: no branch
+        filepath.unlink()
 
 
-@pytest.fixture()
+@pytest.fixture
 def config(tmp_path: pathlib.Path) -> Generator[str, None, None]:
     """Fixture that generates path to valid bot config file."""
-    filepath = os.path.join(tmp_path, 'config.json')
-    with open(filepath, 'w') as f:
+    filepath = tmp_path / 'config.json'
+    with filepath.open('w') as f:
         json.dump(EXAMPLE_CONFIG, f)
-    yield filepath
-    os.remove(filepath)
+    yield str(filepath)
+    filepath.unlink()
 
 
-def extract(app_command) -> Callable[..., Awaitable[Any]]:
+def extract(
+    app_command: app_commands.Command[Any, ..., Any],
+) -> Callable[..., Awaitable[Any]]:
     """Extract the original function from the Command."""
-    return app_command._callback
+    return cast('Callable[..., Awaitable[Any]]', app_command._callback)
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_download() -> Generator[None, None, None]:
     def _download(link: str, filepath: str) -> None:
-        with open(filepath, 'w') as f:
+        with pathlib.Path(filepath).open('w') as f:
             f.write('data')
 
     with mock.patch(

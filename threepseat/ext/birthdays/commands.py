@@ -52,6 +52,7 @@ class BirthdayCommands(CommandGroupExtension):
             db_path (str): path to database to use.
         """
         self.table = BirthdayTable(db_path)
+        self._birthday_task: LoopType | None = None
 
         super().__init__(
             name='birthdays',
@@ -64,6 +65,13 @@ class BirthdayCommands(CommandGroupExtension):
         self._birthday_task = self.birthday_task(bot)
         self._birthday_task.start()
         logger.info('spawning birthday checker background task')
+
+    async def post_shutdown(self) -> None:
+        """Cancel the birthday checker task and close the database."""
+        if self._birthday_task is not None:
+            self._birthday_task.cancel()
+            self._birthday_task = None
+        self.table.close()
 
     def birthday_task(self, client: discord.Client) -> LoopType:
         """Return async task that will check for birthdays once per day."""
@@ -84,8 +92,8 @@ class BirthdayCommands(CommandGroupExtension):
 
     async def send_birthday_messages(self, guild: discord.Guild) -> None:
         """Checks birthdays in guild and sends messages if they are today."""
-        month = datetime.datetime.now().month
-        day = datetime.datetime.now().day
+        month = datetime.datetime.now(tz=datetime.UTC).month
+        day = datetime.datetime.now(tz=datetime.UTC).day
 
         channel = primary_channel(guild)
         if channel is None:
@@ -96,6 +104,13 @@ class BirthdayCommands(CommandGroupExtension):
                 member = guild.get_member(birthday.user_id)
                 if member is not None:
                     await channel.send(f'Happy Birthday, {member.mention}!')
+                    logger.info(
+                        'sent birthday message to %s (%s) in %s (%s)',
+                        member.name,
+                        member.id,
+                        guild.name,
+                        guild.id,
+                    )
 
     @app_commands.command(
         name='add',
@@ -119,7 +134,12 @@ class BirthdayCommands(CommandGroupExtension):
 
         try:
             # Use leap year as year
-            datetime.datetime(year=2020, month=month.value, day=day)
+            datetime.datetime(
+                year=2020,
+                month=month.value,
+                day=day,
+                tzinfo=datetime.UTC,
+            )
         except ValueError as e:
             await interaction.response.send_message(
                 f'Invalid birthday: {e}.',

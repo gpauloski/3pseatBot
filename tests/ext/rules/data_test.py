@@ -143,14 +143,14 @@ def test_reset_current_offenses(tmp_file: str) -> None:
 def test_add_remove_below_one(tmp_file: str) -> None:
     rules = RulesDatabase(db_path=tmp_file)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='greater than zero'):
         rules.add_offense(1, 1, 0)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='greater than zero'):
         rules.add_offense(1, 1, -1)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='greater than zero'):
         rules.remove_offense(1, 1, 0)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='greater than zero'):
         rules.remove_offense(1, 1, -1)

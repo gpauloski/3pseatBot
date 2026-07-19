@@ -17,6 +17,8 @@ from threepseat.utils import play_sound
 
 logger = logging.getLogger(__name__)
 
+SLOW_VOICE_PROBABILITY = 0.1
+
 
 def reminder_task(
     client: discord.Client,
@@ -58,8 +60,9 @@ def reminder_task(
         guild = client.get_guild(reminder.guild_id)
         if guild is None:
             logger.error(
-                f'Failed to find guild {reminder.guild_id} for '
-                f'reminder named {reminder.name}',
+                'failed to find guild %s for reminder named %s',
+                reminder.guild_id,
+                reminder.name,
             )
             return
 
@@ -70,15 +73,22 @@ def reminder_task(
             await send_voice_reminder(client, channel, reminder.text)
         else:
             logger.error(
-                f'Failed to find text/voice channel with ID '
-                f'{reminder.channel_id} in {guild.name} ({guild.id}) for '
-                f'reminder named {reminder.name}',
+                'failed to find text/voice channel with ID %s in %s (%s) '
+                'for reminder named %s',
+                reminder.channel_id,
+                guild.name,
+                guild.id,
+                reminder.name,
             )
             return
 
         logger.info(
-            f'reminder {reminder.name} run for guild {guild.name} '
-            f'({guild.id}) in channel {channel.name} ({channel.id})',
+            'reminder %s run for guild %s (%s) in channel %s (%s)',
+            reminder.name,
+            guild.name,
+            guild.id,
+            channel.name,
+            channel.id,
         )
 
         if (
@@ -120,7 +130,7 @@ async def send_voice_reminder(
 
     # Randomize voice
     accent = Accent.from_str('', random_if_unknown=True)
-    slow = random.random() < 0.1
+    slow = random.random() < SLOW_VOICE_PROBABILITY
 
     with tts_as_mp3(message, accent=accent, slow=slow) as fp:
         await play_sound(fp, channel, wait=True)

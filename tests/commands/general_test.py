@@ -26,20 +26,16 @@ async def test_flip() -> None:
     res = await flip_(interaction, user)
     assert res in ('heads', 'tails')
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'reply-user' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'reply-user' in interaction.response_message
 
     interaction = MockInteraction(flip, user='calling-user')
 
     res = await flip_(interaction)
     assert res in ('heads', 'tails')
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'calling-user' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'calling-user' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -53,10 +49,8 @@ async def test_roll() -> None:
     res = await roll_(interaction, start, end, user)
     assert start <= res <= end
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'reply-user' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'reply-user' in interaction.response_message
 
     interaction = MockInteraction(roll, user='calling-user')
 
@@ -64,10 +58,8 @@ async def test_roll() -> None:
     res = await roll_(interaction, end, start)
     assert start <= res <= end
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'calling-user' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'calling-user' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -78,7 +70,5 @@ async def test_source() -> None:
 
     await source_(interaction)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'github' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'github' in interaction.response_message

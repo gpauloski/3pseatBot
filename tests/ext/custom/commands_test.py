@@ -77,10 +77,8 @@ async def test_create_invalid_name(
         'this command has a bad name',
     )
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'alphanumeric' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'alphanumeric' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -98,10 +96,8 @@ async def test_list(command_fixtures: tuple[Bot, CustomCommands]) -> None:
 
     await list_(custom, interaction)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'no custom commands' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'no custom commands' in interaction.response_message
 
     command = CustomCommand(
         name='mycommand',
@@ -128,10 +124,8 @@ async def test_list(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     )
     await list_(custom, interaction)
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'mycommand' in interaction.response_message
-    )
+    assert interaction.response_message is not None
+    assert 'mycommand' in interaction.response_message
 
 
 @pytest.mark.asyncio
@@ -159,10 +153,8 @@ async def test_remove(command_fixtures: tuple[Bot, CustomCommands]) -> None:
 
     await remove_(custom, interaction, 'mycommand')
     assert interaction.followed
-    assert (
-        interaction.followup_message is not None
-        and 'Removed' in interaction.followup_message
-    )
+    assert interaction.followup_message is not None
+    assert 'Removed' in interaction.followup_message
 
     interaction = MockInteraction(
         custom.remove,
@@ -174,10 +166,8 @@ async def test_remove(command_fixtures: tuple[Bot, CustomCommands]) -> None:
 
     await remove_(custom, interaction, 'mycommand')
     assert interaction.followed
-    assert (
-        interaction.followup_message is not None
-        and 'does not exist' in interaction.followup_message
-    )
+    assert interaction.followup_message is not None
+    assert 'does not exist' in interaction.followup_message
 
 
 @pytest.mark.asyncio
@@ -199,15 +189,13 @@ async def test_on_error(
         app_commands.MissingPermissions(['test']),
     )
     assert interaction.responded
-    assert (
-        interaction.response_message is not None
-        and 'test' in interaction.response_message.lower()
-    )
+    assert interaction.response_message is not None
+    assert 'test' in interaction.response_message.lower()
 
     # Should not raise error, just log it
     caplog.set_level(logging.ERROR)
     await custom.on_error(interaction, app_commands.AppCommandError('test1'))
-    assert any(['test1' in record.message for record in caplog.records])
+    assert any('test1' in record.message for record in caplog.records)
 
 
 @pytest.mark.asyncio
@@ -224,7 +212,7 @@ async def test_autocomplete(tmp_file: str) -> None:
     custom.table.update(command)
 
     interaction = MockInteraction(
-        None,  # type: ignore
+        None,  # type: ignore[arg-type]
         user='calling-user',
         guild=MockGuild('guild', 5678),
     )
@@ -236,7 +224,7 @@ async def test_autocomplete(tmp_file: str) -> None:
     assert len(options) == 0
 
     interaction = MockInteraction(
-        None,  # type: ignore
+        None,  # type: ignore[arg-type]
         user='calling-user',
         guild=MockGuild('guild', 42),
     )

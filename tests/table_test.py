@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import os
 import pathlib
-from collections.abc import Generator
 from collections.abc import Iterable
 from collections.abc import Sequence
 from typing import NamedTuple
@@ -29,8 +27,8 @@ class ExampleRow(NamedTuple):
 @pytest.fixture
 def table(
     tmp_file: str,
-) -> Generator[SQLTableInterface[ExampleRow], None, None]:
-    yield SQLTableInterface(
+) -> SQLTableInterface[ExampleRow]:
+    return SQLTableInterface(
         ExampleRow,
         'mytable',
         tmp_file,
@@ -67,10 +65,10 @@ def test_table_init_primary_keys_valid() -> None:
 
 
 def test_makes_parent_dirs(tmp_path: pathlib.Path) -> None:
-    db_parent_path = str(tmp_path / 'dir1' / 'dir2')
-    db_path = os.path.join(db_parent_path, 'test.db')
+    db_parent_path = tmp_path / 'dir1' / 'dir2'
+    db_path = str(db_parent_path / 'test.db')
     SQLTableInterface(ExampleRow, 'mytable', db_path)
-    assert os.path.isdir(db_parent_path)
+    assert db_parent_path.is_dir()
 
 
 def test_validate_kwargs() -> None:
@@ -106,7 +104,7 @@ def test_get_multiple_values(table) -> None:
 
     # Manually add second row with same values
     with table.connect() as db:
-        db.execute(f'INSERT INTO {table.name} VALUES (0, 0, 0.0, NULL, 0)')
+        db.execute(f'INSERT INTO {table.name} VALUES (0, 0, 0.0, NULL, 0)')  # noqa: S608
 
     with pytest.raises(ValueError, match='Found multiple matching rows'):
         table.get(user_id=0)
@@ -117,11 +115,13 @@ def test_update(table) -> None:
 
     table.update(row._replace(timestamp=1.0))
     result = table.get(guild_id=row.guild_id, user_id=row.user_id)
-    assert result is not None and result.timestamp == 1.0
+    assert result is not None
+    assert result.timestamp == 1.0
 
     table.update(row._replace(timestamp=2.0))
     result = table.get(guild_id=row.guild_id, user_id=row.user_id)
-    assert result is not None and result.timestamp == 2.0
+    assert result is not None
+    assert result.timestamp == 2.0
 
 
 def test_update_multiple_rows(table) -> None:
@@ -130,7 +130,7 @@ def test_update_multiple_rows(table) -> None:
     table.update(row)
     # Manually add second row with same values
     with table.connect() as db:
-        db.execute(f'INSERT INTO {table.name} VALUES (0, 0, 0.0, NULL, 1)')
+        db.execute(f'INSERT INTO {table.name} VALUES (0, 0, 0.0, NULL, 1)')  # noqa: S608
 
     with pytest.raises(ValueError, match='Updated more than one row!'):
         table.update(row._replace(admin=False))
@@ -167,7 +167,7 @@ def test_remove(table) -> None:
     table.update(row)
     # Manually add second row
     with table.connect() as db:
-        db.execute(f'INSERT INTO {table.name} VALUES (0, 0, 0.0, NULL, 0)')
+        db.execute(f'INSERT INTO {table.name} VALUES (0, 0, 0.0, NULL, 0)')  # noqa: S608
 
     assert table.remove(guild_id=row.guild_id, user_id=row.user_id) == 2
 
@@ -247,8 +247,8 @@ def test_remove_resets_cache(table) -> None:
 
 
 @pytest.mark.parametrize(
-    'fields,result',
-    (
+    ('fields', 'result'),
+    [
         ([], ''),
         (['name'], 'name = :name'),
         (['name', 'date'], 'name = :name, date = :date'),
@@ -256,28 +256,28 @@ def test_remove_resets_cache(table) -> None:
             ['name', 'date', 'phone'],
             'name = :name, date = :date, phone = :phone',
         ),
-    ),
+    ],
 )
 def test_fields_to_update_str(fields: Iterable[str], result: str) -> None:
     assert fields_to_update_str(fields) == result
 
 
 @pytest.mark.parametrize(
-    'fields,result',
-    (
+    ('fields', 'result'),
+    [
         ([], ''),
         (['name'], ':name'),
         (['name', 'date'], ':name, :date'),
         (['name', 'date', 'phone'], ':name, :date, :phone'),
-    ),
+    ],
 )
 def test_fields_to_insert_str(fields: Sequence[str], result: str) -> None:
     assert fields_to_insert_str(fields) == result
 
 
 @pytest.mark.parametrize(
-    'fields,result',
-    (
+    ('fields', 'result'),
+    [
         ([], ''),
         (['name'], 'name = :name'),
         (['name', 'date'], 'name = :name AND date = :date'),
@@ -285,7 +285,7 @@ def test_fields_to_insert_str(fields: Sequence[str], result: str) -> None:
             ['name', 'date', 'phone'],
             'name = :name AND date = :date AND phone = :phone',
         ),
-    ),
+    ],
 )
 def test_fields_to_search_str(fields: Iterable[str], result: str) -> None:
     assert fields_to_search_str(fields) == result
@@ -328,5 +328,42 @@ def test_field_types() -> None:
         _AllTypesRow(True, b'', 0.0, 0, '', None, None, None, None, None),
     )
     assert len(expected) == len(found_type) == len(found_instance)
-    for field in expected:
-        assert expected[field] == found_type[field] == found_instance[field]
+    for field, expected_value in expected.items():
+        assert expected_value == found_type[field] == found_instance[field]
+
+
+def test_connection_is_reused(table) -> None:
+    with table.connect() as db1:
+        pass
+    with table.connect() as db2:
+        pass
+    assert db1 is db2
+
+
+def test_in_memory_database_persists() -> None:
+    # A reopened connection would give each operation a fresh, empty
+    # ':memory:' database, dropping both the table and the row.
+    table = SQLTableInterface(
+        ExampleRow,
+        'mytable',
+        ':memory:',
+        primary_keys=('guild_id', 'user_id'),
+    )
+    row = ExampleRow(0, 0, 0.0, None, True)
+    table.update(row)
+    assert table.get(guild_id=0, user_id=0) == row
+
+
+def test_close_reopens_on_demand(table) -> None:
+    row = ExampleRow(0, 0, 0.0, None, True)
+    table.update(row)
+    table.close()
+
+    # Closing releases the handle rather than disabling the table, so the
+    # committed row is still readable afterwards.
+    assert table.get(guild_id=0, user_id=0) == row
+
+
+def test_close_is_idempotent(table) -> None:
+    table.close()
+    table.close()

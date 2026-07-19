@@ -6,7 +6,7 @@ import logging
 import signal
 import sys
 from collections.abc import Sequence
-from typing import Any
+from types import FrameType
 
 import threepseat
 from threepseat import config
@@ -57,20 +57,41 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
         secret_key=cfg.secret_key,
     )
 
+    async def wait_for_shutdown() -> None:
+        # hypercorn's shutdown_trigger expects Awaitable[None], but
+        # asyncio.Event.wait() resolves to True, hence this wrapper.
+        await shutdown_event.wait()
+
+    services = ('bot', 'webapp')
     async with bot:
-        await asyncio.gather(
+        results = await asyncio.gather(
             bot.start(cfg.bot_token, reconnect=True),
             webapp.run_task(
-                host='0.0.0.0',
+                # Bind to all interfaces since this runs in a container and
+                # needs to be reachable via the host's port mapping.
+                host='0.0.0.0',  # noqa: S104
                 port=cfg.sounds_port,
                 certfile=cfg.sounds_certfile,
                 keyfile=cfg.sounds_keyfile,
-                # mypy disagrees but this is what the docs say to do
-                # https://pgjones.gitlab.io/hypercorn/how_to_guides/api_usage.html?highlight=shutdown_trigger#graceful-shutdown  # noqa: E501
-                shutdown_trigger=shutdown_event.wait,  # type: ignore
+                shutdown_trigger=wait_for_shutdown,
             ),
             return_exceptions=True,
         )
+
+    # gather(return_exceptions=True) prevents one service crashing from tearing
+    # down the other, but it also swallows the exceptions. Surface any real
+    # failures (a CancelledError is the expected result of a clean shutdown) so
+    # they are logged and main() exits non-zero rather than silently.
+    first_error: BaseException | None = None
+    for service, result in zip(services, results, strict=True):
+        if isinstance(result, asyncio.CancelledError):
+            continue
+        if isinstance(result, BaseException):
+            logger.error('%s exited with an error', service, exc_info=result)
+            if first_error is None:
+                first_error = result
+    if first_error is not None:
+        raise first_error
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -129,7 +150,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     shutdown_event = asyncio.Event()
 
-    def _handler(_signo: int, _stack_frame: Any) -> None:  # pragma: no cover
+    def _handler(  # pragma: no cover
+        _signo: int,
+        _stack_frame: FrameType | None,
+    ) -> None:
         logger.warning('shutting down tasks...')
         shutdown_event.set()
         for task in asyncio.all_tasks():
@@ -142,8 +166,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         asyncio.run(amain(cfg, shutdown_event))
     except (asyncio.CancelledError, KeyboardInterrupt):
         logger.info('done')
-    except Exception as e:
-        logger.exception(e)
+    except Exception:
+        logger.exception('unhandled exception')
         return 1
 
     return 0

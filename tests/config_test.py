@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 
 import pytest
 
@@ -13,7 +14,7 @@ from threepseat.config import write_template
 
 
 def test_config_parse_correct() -> None:
-    cfg = Config(**EXAMPLE_CONFIG)  # type: ignore
+    cfg = Config(**EXAMPLE_CONFIG)  # type: ignore[arg-type]
     for field, value in EXAMPLE_CONFIG.items():
         assert getattr(cfg, field) == value
         assert isinstance(getattr(cfg, field), type(value))
@@ -31,16 +32,16 @@ def test_config_parse_bad_types() -> None:
     }
     with pytest.raises(
         TypeError,
-        match=(
+        match=re.escape(
             "Expected type 'str' for Config field 'client_secret' "
-            "but got type 'int'."
+            "but got type 'int'.",
         ),
     ):
-        Config(**cfg_dict)  # type: ignore
+        Config(**cfg_dict)  # type: ignore[arg-type]
 
 
 def test_secret_not_in_repr() -> None:
-    cfg = Config(**EXAMPLE_CONFIG)  # type: ignore
+    cfg = Config(**EXAMPLE_CONFIG)  # type: ignore[arg-type]
     r = repr(cfg)
     for field in EXAMPLE_CONFIG:
         if field not in ('client_secret', 'bot_token'):
@@ -55,16 +56,16 @@ def test_config_template() -> None:
 
 def test_load_config(tmp_path: pathlib.Path) -> None:
     filepath = tmp_path / 'config.json'
-    with open(filepath, 'w') as f:
+    with filepath.open('w') as f:
         json.dump(EXAMPLE_CONFIG, f)
 
     cfg = load(str(filepath))
-    assert cfg == Config(**EXAMPLE_CONFIG)  # type: ignore
+    assert cfg == Config(**EXAMPLE_CONFIG)  # type: ignore[arg-type]
 
 
 def test_write_template(tmp_path: pathlib.Path) -> None:
     filepath = tmp_path / 'template.json'
     write_template(str(filepath))
 
-    with open(filepath) as f:
+    with filepath.open() as f:
         assert f.read() == TEMPLATE_CONFIG

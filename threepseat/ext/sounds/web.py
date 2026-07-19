@@ -1,20 +1,25 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import datetime
 import logging
 import os
+import pathlib
 import secrets
 import tempfile
 import time
+from collections.abc import Awaitable
+from collections.abc import Callable
 from typing import NamedTuple
+from typing import cast
 
 import discord
 import quart
 from quart_discord import DiscordOAuth2Session
 from quart_discord import Unauthorized
 from quart_discord import models
-from quart_discord import requires_authorization
+from quart_discord import requires_authorization as _requires_authorization
 from werkzeug.wrappers.response import Response as werkseug_Response
 
 from threepseat.bot import Bot
@@ -35,6 +40,19 @@ from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 
 type Response = str | quart.Response | werkseug_Response
+
+
+def requires_authorization[F: Callable[..., Awaitable[Response]]](
+    view: F,
+) -> F:
+    """Typed wrapper for quart_discord's untyped `requires_authorization`.
+
+    quart_discord ships no type stubs, so mypy treats the decorator (and
+    anything it wraps) as `Any`. It preserves the wrapped view's signature
+    via functools.wraps, so it's safe to re-assert that signature here.
+    """
+    return cast('F', _requires_authorization(view))
+
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +79,7 @@ class SoundData(NamedTuple):
     created_ts: float
 
 
-def create_app(
+def create_app(  # noqa: PLR0913
     *,
     bot: Bot,
     sounds: SoundsTable,
@@ -146,7 +164,8 @@ def get_mutual_guilds(
     """
     user_ = client.get_user(user.id)
     if user_ is None:
-        raise ValueError(f'Cannot find user {user.username}')
+        msg = f'Cannot find user {user.username}'
+        raise ValueError(msg)
     return user_.mutual_guilds
 
 
@@ -180,7 +199,7 @@ def author_name(
         if resolved is not None:
             return resolved.display_name
     except Exception:  # pragma: no cover
-        pass
+        logger.exception('failed to resolve author name for %s', author_id)
     return 'unknown'
 
 
@@ -212,8 +231,7 @@ async def index() -> Response:
     if not await discord.authorized:
         login_url = quart.url_for('sounds.login')
         return await quart.render_template('index.html', login_url=login_url)
-    else:
-        return quart.redirect(quart.url_for('sounds.guilds'))
+    return quart.redirect(quart.url_for('sounds.guilds'))
 
 
 @sounds_blueprint.route('/guilds/')
@@ -290,7 +308,7 @@ async def sound_grid(guild_id: int) -> Response:
         if current is not None:
             entrance_sound = current.name
     except Exception:  # pragma: no cover
-        logger.exception('Failed to resolve entrance sound.')
+        logger.exception('failed to resolve entrance sound')
 
     return await quart.render_template(
         'sounds.html',
@@ -331,7 +349,7 @@ async def sound_play(guild_id: int, sound_name: str) -> Response:
     try:
         await play_sound(sound_file, channel)
     except Exception as e:
-        logger.exception(f'Error playing sound: {e}.')
+        logger.exception('error playing sound')
         return quart.Response(str(e), 400)
     else:
         return quart.Response('', 200)
@@ -400,7 +418,7 @@ async def sound_file(guild_id: int, sound_name: str) -> Response:
 
 @sounds_blueprint.route('/sounds/<int:guild_id>/add', methods=['POST'])
 @requires_authorization
-async def sound_add(guild_id: int) -> Response:
+async def sound_add(guild_id: int) -> Response:  # noqa: C901, PLR0911, PLR0912, PLR0915
     """Add a sound to a guild from a YouTube link or an uploaded MP3 file."""
     sounds = quart.current_app.config['sounds']
 
@@ -436,7 +454,7 @@ async def sound_add(guild_id: int) -> Response:
     if not link and has_file:
         assert file is not None
         filename = file.filename or ''
-        ext = os.path.splitext(filename.lower())[1]
+        ext = pathlib.Path(filename.lower()).suffix
         is_mp3 = ext == '.mp3'
         is_video = ext in SUPPORTED_VIDEO_EXTENSIONS
         if not is_mp3 and not is_video:
@@ -461,11 +479,20 @@ async def sound_add(guild_id: int) -> Response:
     sound = Sound.new(
         name=name,
         description=description,
-        link=link if link else None,
+        link=link or None,
         author_id=member.id,
         guild_id=guild_id,
     )
     filepath = sounds.filepath(sound.filename)
+
+    logger.info(
+        'processing sound upload %r from %s (%s) for guild %s (source: %s)',
+        name,
+        member.display_name,
+        member.id,
+        guild_id,
+        'link' if link else ext.lstrip('.'),
+    )
 
     try:
         if link:
@@ -475,14 +502,17 @@ async def sound_add(guild_id: int) -> Response:
             await asyncio.to_thread(download, link, filepath)
         elif ext == '.mp3':
             assert content is not None
-            with open(filepath, 'wb') as f:
-                f.write(content)
+            await asyncio.to_thread(
+                pathlib.Path(filepath).write_bytes,
+                content,
+            )
             duration = await mp3_duration_seconds(filepath)
             if duration > MAX_SOUND_LENGTH_SECONDS:
-                raise ValueError(
+                msg = (
                     f'Sound is too long ({duration:.1f}s). Maximum length '
-                    f'is {MAX_SOUND_LENGTH_SECONDS} seconds.',
+                    f'is {MAX_SOUND_LENGTH_SECONDS} seconds.'
                 )
+                raise ValueError(msg)  # noqa: TRY301
         else:
             # Video: probe the duration and strip the audio to an MP3.
             assert content is not None
@@ -494,8 +524,8 @@ async def sound_add(guild_id: int) -> Response:
     except ValueError as e:
         _remove_if_exists(filepath)
         return quart.Response(str(e), 400)
-    except Exception as e:
-        logger.exception(f'Error saving uploaded sound: {e}')
+    except Exception:
+        logger.exception('error saving uploaded sound')
         _remove_if_exists(filepath)
         return quart.Response('Failed to save the sound.', 400)
 
@@ -504,10 +534,8 @@ async def sound_add(guild_id: int) -> Response:
 
 def _remove_if_exists(filepath: str) -> None:
     """Remove a file if it exists, ignoring missing files."""
-    try:
-        os.remove(filepath)
-    except FileNotFoundError:  # pragma: no cover
-        pass
+    with contextlib.suppress(FileNotFoundError):  # pragma: no cover
+        pathlib.Path(filepath).unlink()
 
 
 async def _extract_video_audio(
@@ -527,10 +555,11 @@ async def _extract_video_audio(
         temp_file.flush()
         duration = await mp3_duration_seconds(temp_file.name)
         if duration > MAX_SOUND_LENGTH_SECONDS:
-            raise ValueError(
+            msg = (
                 f'Sound is too long ({duration:.1f}s). Maximum length '
-                f'is {MAX_SOUND_LENGTH_SECONDS} seconds.',
+                f'is {MAX_SOUND_LENGTH_SECONDS} seconds.'
             )
+            raise ValueError(msg)
         await extract_audio(temp_file.name, filepath)
 
 
@@ -538,7 +567,7 @@ async def _extract_video_audio(
 async def login() -> Response:  # pragma: no cover
     """Login with discord OAuth."""
     discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    return await discord.create_session(prompt=True)
+    return cast('Response', await discord.create_session(prompt=True))
 
 
 @sounds_blueprint.route('/logout/')
@@ -559,13 +588,14 @@ async def callback() -> Response:  # pragma: no cover
 
 
 @sounds_blueprint.errorhandler(Unauthorized)
-async def redirect_unauthorized(e: Exception) -> Response:  # pragma: no cover
+async def redirect_unauthorized(_e: Exception) -> Response:  # pragma: no cover
     """Redirect to home if unauthorized."""
     return quart.redirect(quart.url_for('sounds.index'))
 
 
 @sounds_blueprint.app_errorhandler(413)
-async def request_too_large(e: Exception) -> Response:
+async def request_too_large(_e: Exception) -> Response:
     """Return a friendly message when an upload exceeds the size limit."""
     mb = MAX_VIDEO_FILE_SIZE_BYTES // (1024 * 1024)
+    logger.warning('rejected upload exceeding the %s MB limit', mb)
     return quart.Response(f'File size must be under {mb} MB.', 413)

@@ -6,7 +6,9 @@ import functools
 import logging
 import time
 from collections.abc import Callable
+from datetime import UTC
 from datetime import datetime
+from http import HTTPStatus
 from typing import NamedTuple
 from typing import cast
 
@@ -16,6 +18,7 @@ from discord import app_commands
 
 from threepseat.commands.commands import log_interaction
 from threepseat.commands.commands import register_app_command
+from threepseat.logging import log_timing
 from threepseat.utils import split_strings
 
 logger = logging.getLogger(__name__)
@@ -24,10 +27,11 @@ DequeMaker = Callable[[], collections.deque[str]]
 
 # Mapping[{Guild, Channel, User} ID, Deque[str]]
 caches: dict[int, collections.deque[str]] = collections.defaultdict(
-    cast(DequeMaker, functools.partial(collections.deque, maxlen=10)),
+    cast('DequeMaker', functools.partial(collections.deque, maxlen=10)),
 )
 
 API_URL = 'https://na.whatismymmr.com/api/v1/summoner'
+SUMMONER_NOT_FOUND_CODE = 101
 
 
 class GameMode(enum.Enum):
@@ -71,9 +75,10 @@ def days_since(target: int, current: int | None = None) -> int:
     Returns:
         integer days between `target` and `current`.
     """
-    target_dt = datetime.fromtimestamp(target)
+    target_dt = datetime.fromtimestamp(target, tz=UTC)
     current_dt = datetime.fromtimestamp(
         current if current is not None else time.time(),
+        tz=UTC,
     )
     diff = current_dt - target_dt
     return diff.days
@@ -89,11 +94,37 @@ def get_stats(summoner: str, gamemode: GameMode) -> Stats:
     Returns:
         `Stats` object where the status attribute indicates if the
         query was successful or not.
-    """
-    result = requests.get(API_URL, params={'name': summoner})
 
-    if result.status_code == 404:
-        if 'error' in result.json() and result.json()['error']['code'] == 101:
+    Raises:
+        requests.RequestException:
+            if the request to the external API fails (e.g. timeout or
+            connection error).
+    """
+    try:
+        with log_timing(
+            logger,
+            'queried MMR API for summoner %s (%s)',
+            summoner,
+            gamemode.value,
+        ):
+            result = requests.get(
+                API_URL,
+                params={'name': summoner},
+                timeout=10,
+            )
+    except requests.RequestException:
+        logger.exception(
+            'request to %s failed for summoner %s',
+            API_URL,
+            summoner,
+        )
+        raise
+
+    if result.status_code == HTTPStatus.NOT_FOUND:
+        if (
+            'error' in result.json()
+            and result.json()['error']['code'] == SUMMONER_NOT_FOUND_CODE
+        ):
             return Stats(
                 summoner=summoner,
                 status=Status.UNAVAILABLE,
@@ -104,30 +135,31 @@ def get_stats(summoner: str, gamemode: GameMode) -> Stats:
             status=Status.UNKNOWN,
             gamemode=gamemode,
         )
-    elif result.status_code != 200:
+    if result.status_code != HTTPStatus.OK:
         logger.warning(
-            f'{API_URL} returned {result.status_code} for '
-            f'summoner {summoner}.',
+            '%s returned %s for summoner %s.',
+            API_URL,
+            result.status_code,
+            summoner,
         )
         return Stats(summoner=summoner, status=Status.ERROR, gamemode=gamemode)
-    elif result.json()[gamemode.value]['avg'] is None:
+    if result.json()[gamemode.value]['avg'] is None:
         return Stats(
             summoner=summoner,
             status=Status.UNAVAILABLE,
             gamemode=gamemode,
         )
-    else:
-        data = result.json()[gamemode.value]
-        return Stats(
-            summoner=summoner,
-            status=Status.AVAILABLE,
-            gamemode=gamemode,
-            mmr=data['avg'],
-            err=data['err'],
-            percentile=data['percentile'],
-            rank=data['closestRank'],
-            time=data['timestamp'],
-        )
+    data = result.json()[gamemode.value]
+    return Stats(
+        summoner=summoner,
+        status=Status.AVAILABLE,
+        gamemode=gamemode,
+        mmr=data['avg'],
+        err=data['err'],
+        percentile=data['percentile'],
+        rank=data['closestRank'],
+        time=data['timestamp'],
+    )
 
 
 def cache_add(
@@ -219,26 +251,26 @@ async def mmr(
         'Summoner      | MMR        | Rank                  | Updated',
         '--------------|----------- | --------------------- | -----------',
     ]
-    for stats in available_sums:
-        s.append(
-            f.format(
-                name=stats.summoner[:13],
-                mmr=stats.mmr,
-                err=f'\u00b1 {stats.err}',
-                rank=f'{stats.percentile}% / {stats.rank}',
-                days=f'{days_since(stats.time)} days ago',
-            ),
+    s.extend(
+        f.format(
+            name=stats.summoner[:13],
+            mmr=stats.mmr,
+            err=f'\u00b1 {stats.err}',
+            rank=f'{stats.percentile}% / {stats.rank}',
+            days=f'{days_since(stats.time)} days ago',
         )
-    for stats in unavailable_sums:
-        s.append(
-            f.format(
-                name=stats.summoner[:13],
-                mmr='N/A',
-                err='',
-                rank='N/A',
-                days='',
-            ),
+        for stats in available_sums
+    )
+    s.extend(
+        f.format(
+            name=stats.summoner[:13],
+            mmr='N/A',
+            err='',
+            rank='N/A',
+            days='',
         )
+        for stats in unavailable_sums
+    )
     output = '\n'.join(s)
 
     await interaction.followup.send(

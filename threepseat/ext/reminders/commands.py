@@ -66,9 +66,26 @@ class ReminderCommands(CommandGroupExtension):
 
     async def post_init(self, bot: discord.ext.commands.Bot) -> None:
         """Spawn all saved repeating reminder tasks."""
+        restored = 0
+        guilds = 0
         for guild in bot.guilds:
-            for reminder in self.table.all(guild.id):
+            reminders = self.table.all(guild.id)
+            if reminders:
+                guilds += 1
+            for reminder in reminders:
                 self.start_reminder(bot, reminder, ReminderType.REPEATING)
+                restored += 1
+        logger.info(
+            'restored %s repeating reminder(s) across %s guild(s)',
+            restored,
+            guilds,
+        )
+
+    async def post_shutdown(self) -> None:
+        """Cancel all running reminder tasks and close the database."""
+        for key in list(self._tasks):
+            self.stop_reminder(key.guild_id, key.name)
+        self.table.close()
 
     def start_reminder(
         self,
@@ -93,8 +110,11 @@ class ReminderCommands(CommandGroupExtension):
         task.start()
         self._tasks[key] = ReminderTask(kind, reminder, task)
         logger.info(
-            f'started {kind.value} reminder task {reminder.name} in guild '
-            f'{reminder.guild_id} and channel {reminder.channel_id} ',
+            'started %s reminder task %s in guild %s and channel %s',
+            kind.value,
+            reminder.name,
+            reminder.guild_id,
+            reminder.channel_id,
         )
 
     def stop_reminder(self, guild_id: int, name: str) -> None:
@@ -104,8 +124,10 @@ class ReminderCommands(CommandGroupExtension):
         if value is not None:
             value.task.cancel()
             logger.info(
-                f'cancelled reminder task {name} in guild {guild_id} '
-                f'and channel {value.reminder.channel_id}',
+                'cancelled reminder task %s in guild %s and channel %s',
+                name,
+                guild_id,
+                value.reminder.channel_id,
             )
 
     async def autocomplete(
@@ -141,7 +163,7 @@ class ReminderCommands(CommandGroupExtension):
     )
     @app_commands.check(admin_or_owner)
     @app_commands.check(log_interaction)
-    async def create(
+    async def create(  # noqa: PLR0913
         self,
         interaction: discord.Interaction[commands.Bot],
         kind: ReminderType,
@@ -197,7 +219,7 @@ class ReminderCommands(CommandGroupExtension):
             )
 
         await interaction.response.send_message(msg, ephemeral=True)
-        logger.info(f'created new reminder: {reminder}')
+        logger.info('created new reminder: %s', reminder)
 
     @app_commands.command(
         name='info',
@@ -230,6 +252,7 @@ class ReminderCommands(CommandGroupExtension):
         channel_str = channel.mention if channel is not None else 'unknown'
         date = datetime.datetime.fromtimestamp(
             reminder.creation_time,
+            tz=datetime.UTC,
         ).strftime('%B %d, %Y')
         delay = readable_timedelta(minutes=reminder.delay_minutes)
         msg = (

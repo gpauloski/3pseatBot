@@ -29,7 +29,7 @@ async def flip(
     await interaction.response.send_message(
         f'{user.mention} got ***{result}***!',
     )
-    return cast(Literal['heads', 'tails'], result)
+    return cast('Literal["heads", "tails"]', result)
 
 
 @register_app_command
