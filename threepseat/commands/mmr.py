@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import collections
 import enum
 import functools
@@ -221,7 +222,9 @@ async def mmr(
     sum_names = sorted(split_strings(summoners, delimiter=','))
     sum_stats: list[Stats] = []
     for summoner in sum_names:
-        stats = get_stats(summoner, gamemode)
+        # get_stats() makes a blocking HTTP request with a 10 second timeout,
+        # so keep it off the event loop.
+        stats = await asyncio.to_thread(get_stats, summoner, gamemode)
         if stats.status == Status.ERROR:
             await interaction.followup.send('Unknown API error.')
             return

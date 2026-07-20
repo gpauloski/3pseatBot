@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import enum
 import logging
 import random
 import tempfile
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 
 from gtts import gTTS
 
@@ -50,12 +51,12 @@ class Accent(enum.Enum):
             raise
 
 
-@contextlib.contextmanager
-def tts_as_mp3(
+@contextlib.asynccontextmanager
+async def tts_as_mp3(
     text: str,
     accent: Accent = Accent.UNITED_STATES,
     slow: bool = False,
-) -> Generator[str, None, None]:
+) -> AsyncGenerator[str, None]:
     """Yield temporary TTS MP3 file.
 
     Args:
@@ -69,8 +70,9 @@ def tts_as_mp3(
     """
     tts = gTTS(text, lang='en', tld=accent.value, slow=slow)
     with tempfile.NamedTemporaryFile() as fp:
-        # write_to_fp makes a network call to Google's TTS endpoint.
+        # write_to_fp makes a blocking network call to Google's TTS endpoint,
+        # so run it in a thread rather than stalling the event loop.
         with log_timing(logger, 'synthesized TTS for %s accent', accent.name):
-            tts.write_to_fp(fp)
+            await asyncio.to_thread(tts.write_to_fp, fp)
         fp.flush()
         yield fp.name

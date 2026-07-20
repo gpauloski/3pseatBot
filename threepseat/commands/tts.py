@@ -53,7 +53,7 @@ async def tts(
         return
 
     try:
-        with tts_as_mp3(text, accent=accent, slow=slow) as fp:
+        async with tts_as_mp3(text, accent=accent, slow=slow) as fp:
             await play_sound(fp, channel, wait=True)
     except Exception:
         await interaction.followup.send('Failed to play TTS.')
