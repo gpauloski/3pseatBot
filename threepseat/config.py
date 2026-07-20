@@ -38,29 +38,24 @@ class Config:
 
     @staticmethod
     def template() -> str:
-        """Returns JSON-like template for a config file."""
-        fields: list[tuple[str, str]] = []
+        """Returns JSON-like template for a config file.
+
+        Required fields are rendered as unquoted `<type>` placeholders, so
+        the result is deliberately not valid JSON until they are filled in.
+        """
+        fields: list[str] = []
         for field in dataclasses.fields(Config):
-            if field.default == dataclasses.MISSING:
-                # types should always be strings because our type evaluation
-                # is postponed due to "from __future__ import annotations"
+            if field.default is dataclasses.MISSING:
+                # Types are strings because annotation evaluation is
+                # postponed by "from __future__ import annotations".
                 assert isinstance(field.type, str)
                 value = f'<{field.type}>'
-            elif isinstance(field.default, str):
-                value = f'"{field.default}"'
-            elif isinstance(field.default, int):
-                value = f'{field.default}'
-            elif field.default is None:
-                value = 'null'
             else:
-                # Note: if this line is ever reached, it is because a new field
-                # was added to Config with a default type not handled in this
-                # if/elif statement so a new elif needs to be added.
-                msg = 'Unreachable.'
-                raise AssertionError(msg)
-            fields.append((field.name, value))
-        field_strs = [f'    "{f}": {t}' for f, t in fields]
-        field_str = ',\n'.join(field_strs)
+                # json.dumps renders any default in its JSON form, so new
+                # fields need no changes here.
+                value = json.dumps(field.default)
+            fields.append(f'    "{field.name}": {value}')
+        field_str = ',\n'.join(fields)
         return f'{{\n{field_str}\n}}\n'
 
 
