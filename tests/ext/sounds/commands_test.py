@@ -75,6 +75,40 @@ async def test_add_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
 
 
 @pytest.mark.asyncio
+async def test_add_command_invalid_name(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    # A '../' name would escape the sounds directory, so it must be rejected
+    # before download() writes anything.
+    mockbot, sounds = sound_fixtures
+    add_ = extract(sounds.add)
+
+    interaction = MockInteraction(
+        sounds.add,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    with mock.patch(
+        'threepseat.ext.sounds.commands.download',
+    ) as mock_download:
+        await add_(
+            sounds,
+            interaction,
+            name='../../evil',
+            link='localhost',
+            description='a sound',
+        )
+
+    assert interaction.followed
+    assert interaction.followup_message is not None
+    assert 'Name must' in interaction.followup_message
+    assert mock_download.call_count == 0
+
+
+@pytest.mark.asyncio
 async def test_add_command_exists(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -118,18 +152,21 @@ async def test_add_command_failure(
         client=mockbot,
     )
 
-    with mock.patch('os.path.isfile', return_value=True):
+    with mock.patch(
+        'threepseat.ext.sounds.commands.download',
+        side_effect=ValueError('Error downloading sound.'),
+    ):
         await add_(
             sounds,
             interaction,
-            name='invalid sound name (too long)',
+            name='mysound',
             link='localhost',
             description='a sound',
         )
 
     assert interaction.followed
     assert interaction.followup_message is not None
-    assert 'alphanumeric' in interaction.followup_message
+    assert 'Error downloading sound.' in interaction.followup_message
 
 
 @pytest.mark.asyncio
@@ -546,6 +583,36 @@ async def test_upload_command_invalid_extension(
     assert interaction.followed
     assert interaction.followup_message is not None
     assert 'must be an MP3' in interaction.followup_message
+
+
+@pytest.mark.asyncio
+async def test_upload_command_invalid_name(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    # The name becomes part of the filename, so it is validated before the
+    # upload is written anywhere.
+    mockbot, sounds = sound_fixtures
+    upload_ = extract(sounds.upload)
+
+    interaction = MockInteraction(
+        sounds.upload,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    await upload_(
+        sounds,
+        interaction,
+        file=create_mock_attachment(filename='test.mp3'),
+        name='../../evil',
+        description='should fail name check',
+    )
+
+    assert interaction.followed
+    assert interaction.followup_message is not None
+    assert 'Name must' in interaction.followup_message
 
 
 @pytest.mark.asyncio

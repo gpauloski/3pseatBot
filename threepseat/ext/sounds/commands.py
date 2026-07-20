@@ -139,13 +139,17 @@ class SoundCommands(CommandGroupExtension):
             await interaction.followup.send(message, ephemeral=True)
             return
 
-        sound = Sound.new(
-            name=name,
-            description=description,
-            link=link,
-            author_id=interaction.user.id,
-            guild_id=interaction.guild.id,
-        )
+        try:
+            sound = Sound.new(
+                name=name,
+                description=description,
+                link=link,
+                author_id=interaction.user.id,
+                guild_id=interaction.guild.id,
+            )
+        except ValueError as e:
+            await interaction.followup.send(str(e), ephemeral=True)
+            return
         assert sound.link is not None
         filepath = self.table.filepath(sound.filename)
 
@@ -383,13 +387,17 @@ class SoundCommands(CommandGroupExtension):
             )
             return
 
-        sound = Sound.new(
-            name=name,
-            description=description,
-            link=None,
-            author_id=interaction.user.id,
-            guild_id=interaction.guild.id,
-        )
+        try:
+            sound = Sound.new(
+                name=name,
+                description=description,
+                link=None,
+                author_id=interaction.user.id,
+                guild_id=interaction.guild.id,
+            )
+        except ValueError as e:
+            await interaction.followup.send(f'Error: {e}', ephemeral=True)
+            return
         filepath = self.table.filepath(sound.filename)
 
         if is_mp3:

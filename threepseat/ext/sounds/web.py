@@ -476,13 +476,18 @@ async def sound_add(guild_id: int) -> Response:  # noqa: C901, PLR0911, PLR0912,
             400,
         )
 
-    sound = Sound.new(
-        name=name,
-        description=description,
-        link=link or None,
-        author_id=member.id,
-        guild_id=guild_id,
-    )
+    try:
+        # Validates the name, which is part of the filename, before any of
+        # the paths below touch disk.
+        sound = Sound.new(
+            name=name,
+            description=description,
+            link=link or None,
+            author_id=member.id,
+            guild_id=guild_id,
+        )
+    except ValueError as e:
+        return quart.Response(str(e), 400)
     filepath = sounds.filepath(sound.filename)
 
     logger.info(

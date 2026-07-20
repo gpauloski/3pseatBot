@@ -653,6 +653,47 @@ async def test_sound_add_unsupported_type(quart_app) -> None:
     assert b'supported video' in await response.get_data()
 
 
+@pytest.mark.parametrize(
+    'name',
+    ['../../evil', 'has space', '', 'a' * 100],
+)
+@pytest.mark.asyncio
+async def test_sound_add_invalid_name(quart_app, name: str) -> None:
+    # The name is interpolated into the sound's filename, so an invalid one
+    # must be rejected before anything is written to disk.
+    client = quart_app.test_client()
+
+    sounds = quart_app.app.config['sounds']
+    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = 1234
+
+    # Look above the sounds directory too: a '../' name would land there.
+    search_root = pathlib.Path(sounds.data_path).parent
+    before = set(search_root.rglob('*.mp3'))
+
+    with (
+        mock.patch.object(
+            discord,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+    ):
+        response = await client.post(
+            '/sounds/5678/add',
+            form={'name': name, 'description': 'a test sound'},
+            files={'file': _upload_file()},
+        )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert b'Name must' in await response.get_data()
+    assert set(search_root.rglob('*.mp3')) == before
+
+
 @pytest.mark.asyncio
 async def test_sound_add_video_extract_error(quart_app) -> None:
     client = quart_app.test_client()

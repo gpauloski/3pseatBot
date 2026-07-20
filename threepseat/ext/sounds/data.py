@@ -32,6 +32,29 @@ def supported_video_extensions_str() -> str:
     )
 
 
+def validate_sound_name(name: str) -> None:
+    """Check a user-supplied sound name.
+
+    The name is interpolated into the sound's filename, so this must be
+    called before anything is written to disk. Otherwise a name like
+    '../../evil' would escape the sounds directory.
+
+    Raises:
+        ValueError:
+            if the name contains non-alphanumeric characters or is not
+            between 1 and MAX_SOUND_NAME_CHARS characters long.
+    """
+    if not alphanumeric(name):
+        msg = 'Name must contain only alphanumeric characters.'
+        raise ValueError(msg)
+    if len(name) == 0 or len(name) > MAX_SOUND_NAME_CHARS:
+        msg = (
+            f'Name must be between 1 and {MAX_SOUND_NAME_CHARS} '
+            'characters long.'
+        )
+        raise ValueError(msg)
+
+
 class Sound(NamedTuple):
     """Representation of entry in sounds database."""
 
@@ -53,7 +76,14 @@ class Sound(NamedTuple):
         author_id: int,
         guild_id: int,
     ) -> Self:
-        """Create a new sound."""
+        """Create a new sound.
+
+        Raises:
+            ValueError:
+                if the name is not a valid sound name. Validating here means
+                no caller can build a filename from an unchecked name.
+        """
+        validate_sound_name(name)
         uuid_ = uuid.uuid4()
         return cls(
             uuid=str(uuid_),
@@ -109,15 +139,7 @@ class SoundsTable(SQLTableInterface[Sound]):
         if self.get(name=sound.name, guild_id=sound.guild_id) is not None:
             msg = 'Sound with that name already exists.'
             raise ValueError(msg)
-        if not alphanumeric(sound.name):
-            msg = 'Name must contain only alphanumeric characters.'
-            raise ValueError(msg)
-        if len(sound.name) == 0 or len(sound.name) > MAX_SOUND_NAME_CHARS:
-            msg = (
-                'Name must be between 1 and '
-                f'{MAX_SOUND_NAME_CHARS} characters long.'
-            )
-            raise ValueError(msg)
+        validate_sound_name(sound.name)
         filepath = self.filepath(sound.filename)
         if not pathlib.Path(filepath).is_file():
             msg = f'{filepath} does not exist.'

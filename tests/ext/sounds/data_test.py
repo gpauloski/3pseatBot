@@ -6,6 +6,7 @@ from unittest import mock
 
 import pytest
 
+from threepseat.ext.sounds.data import MAX_SOUND_NAME_CHARS
 from threepseat.ext.sounds.data import MemberSound
 from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import Sound
@@ -78,6 +79,28 @@ def test_add_sound_validation(sounds: SoundsTable) -> None:
 
     with pytest.raises(ValueError, match='does not exist'):
         sounds.add(TEST_SOUND._replace(filename='foo.mp3'))
+
+
+@pytest.mark.parametrize(
+    ('name', 'match'),
+    [
+        ('../../evil', 'alphanumeric'),
+        ('my sound', 'alphanumeric'),
+        ('', 'between'),
+        ('x' * (MAX_SOUND_NAME_CHARS + 1), 'between'),
+    ],
+)
+def test_new_sound_validates_name(name: str, match: str) -> None:
+    # The name ends up in the filename, so Sound.new must reject bad names
+    # before any caller can use the path.
+    with pytest.raises(ValueError, match=match):
+        Sound.new(
+            name=name,
+            description='test sound',
+            link=None,
+            author_id=1234,
+            guild_id=5678,
+        )
 
 
 def test_add_sound_exists(sounds: SoundsTable) -> None:
@@ -239,6 +262,24 @@ async def test_mp3_duration_seconds_ffprobe_error(
         stdout=b'',
         stderr=b'invalid data',
     )
+
+    with (
+        mock.patch(
+            'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
+            mock.AsyncMock(return_value=proc),
+        ),
+        pytest.raises(RuntimeError, match='ffprobe failed'),
+    ):
+        await mp3_duration_seconds(filepath)
+
+
+@pytest.mark.asyncio
+async def test_mp3_duration_seconds_ffprobe_error_no_output(
+    tmp_path: pathlib.Path,
+) -> None:
+    # ffprobe failed without writing anything to stderr.
+    filepath = str(tmp_path / 'test.mp3')
+    proc = _mock_ffprobe_process(returncode=1, stdout=b'', stderr=b'')
 
     with (
         mock.patch(
