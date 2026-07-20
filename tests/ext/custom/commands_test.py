@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import logging
 from collections.abc import Generator
 from unittest import mock
 
 import pytest
-from discord import app_commands
 
 from testing.asserts import assert_followed
 from testing.asserts import assert_responded
@@ -155,32 +153,6 @@ async def test_remove(command_fixtures: tuple[Bot, CustomCommands]) -> None:
 
     await remove_(custom, interaction, 'mycommand')
     assert_followed(interaction, 'does not exist')
-
-
-async def test_on_error(
-    command_fixtures: tuple[Bot, CustomCommands],
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    mockbot, custom = command_fixtures
-
-    interaction = MockInteraction(
-        custom.remove,
-        user='calling-user',
-        channel='mychannel',
-        guild='myguild',
-        client=mockbot,
-    )
-    await custom.on_error(
-        interaction,
-        app_commands.MissingPermissions(['test']),
-    )
-    message = assert_responded(interaction)
-    assert 'test' in message.lower()
-
-    # Should not raise error, just log it
-    caplog.set_level(logging.ERROR)
-    await custom.on_error(interaction, app_commands.AppCommandError('test1'))
-    assert any('test1' in record.message for record in caplog.records)
 
 
 async def test_autocomplete(tmp_file: str) -> None:

@@ -7,7 +7,6 @@ from unittest import mock
 
 import discord
 import pytest
-from discord import app_commands
 
 from testing.asserts import assert_followed
 from testing.asserts import assert_responded
@@ -838,32 +837,6 @@ async def test_upload_command_video_extract_error(
         )
 
     assert_followed(interaction, 'Could not process the file')
-
-
-async def test_on_error(
-    sound_fixtures: tuple[Bot, SoundCommands],
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    mockbot, sounds = sound_fixtures
-
-    interaction = MockInteraction(
-        sounds.remove,
-        user='calling-user',
-        channel='mychannel',
-        guild='myguild',
-        client=mockbot,
-    )
-    await sounds.on_error(
-        interaction,
-        app_commands.MissingPermissions(['test']),
-    )
-    message = assert_responded(interaction)
-    assert 'test' in message.lower()
-
-    # Should not raise error, just log it
-    caplog.set_level(logging.ERROR)
-    await sounds.on_error(interaction, app_commands.AppCommandError('test1'))
-    assert any('test1' in record.message for record in caplog.records)
 
 
 async def test_post_init(

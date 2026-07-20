@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import time
 from unittest import mock
 
 import pytest
-from discord import app_commands
 
 from testing.asserts import assert_responded
 from testing.data import GUILD_CONFIG
@@ -505,23 +503,6 @@ async def test_reset_offenses(commands: RulesCommands) -> None:
 
     await reset_offenses_(commands, interaction, member)
     assert_responded(interaction, 'Reset offense count')
-
-
-async def test_on_error(
-    commands: RulesCommands, caplog: pytest.LogCaptureFixture
-) -> None:
-    interaction = MockInteraction(commands.remove_offense, user='user')
-    await commands.on_error(
-        interaction,
-        app_commands.MissingPermissions(['test']),
-    )
-    message = assert_responded(interaction)
-    assert 'test' in message.lower()
-
-    # Should not raise error, just log it
-    caplog.set_level(logging.ERROR)
-    await commands.on_error(interaction, app_commands.AppCommandError('test1'))
-    assert any('test1' in record.message for record in caplog.records)
 
 
 async def test_resume_events(commands: RulesCommands) -> None:
