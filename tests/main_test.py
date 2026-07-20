@@ -17,6 +17,7 @@ from testing.config import TEMPLATE_CONFIG
 from threepseat.logging import configure_logging
 from threepseat.main import amain
 from threepseat.main import main
+from threepseat.main import quiet_ssl_shutdown_errors
 from threepseat.main import webapp_config
 
 
@@ -90,6 +91,55 @@ def test_webapp_logging_is_left_to_configure_logging(config: str) -> None:
     assert access.handlers == handlers
     assert access.level == logging.WARNING
     assert access.propagate
+
+
+async def test_ssl_shutdown_timeout_is_not_an_error(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # A client that drops a TLS connection is routine and should not be
+    # reported as an unhandled exception.
+    caplog.set_level(logging.DEBUG)
+    loop = asyncio.get_running_loop()
+    original = loop.get_exception_handler()
+    try:
+        quiet_ssl_shutdown_errors(loop)
+        handler = loop.get_exception_handler()
+        assert handler is not None
+        handler(
+            loop,
+            {
+                'message': 'Unhandled exception in client_connected_cb',
+                'exception': TimeoutError('SSL shutdown timed out'),
+            },
+        )
+    finally:
+        loop.set_exception_handler(original)
+
+    assert not any(r.levelno >= logging.ERROR for r in caplog.records)
+    assert any('TLS shutdown' in record.message for record in caplog.records)
+
+
+async def test_other_loop_exceptions_still_reported(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.ERROR)
+    loop = asyncio.get_running_loop()
+    original = loop.get_exception_handler()
+    try:
+        # An existing handler is chained to rather than replaced.
+        quiet_ssl_shutdown_errors(loop)
+        quiet_ssl_shutdown_errors(loop)
+        handler = loop.get_exception_handler()
+        assert handler is not None
+        handler(
+            loop, {'message': 'something broke', 'exception': ValueError()}
+        )
+    finally:
+        loop.set_exception_handler(original)
+
+    assert any(
+        'something broke' in record.message for record in caplog.records
+    )
 
 
 def test_main_errors(config: str, caplog: pytest.LogCaptureFixture) -> None:

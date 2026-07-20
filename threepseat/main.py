@@ -47,8 +47,39 @@ def webapp_config(cfg: config.Config) -> HypercornConfig:
     return hypercorn_config
 
 
+def quiet_ssl_shutdown_errors(loop: asyncio.AbstractEventLoop) -> None:
+    """Stop logging aborted TLS connections as unhandled exceptions.
+
+    A client that goes away without completing the TLS close handshake leaves
+    hypercorn awaiting `wait_closed()`, which eventually raises `TimeoutError:
+    SSL shutdown timed out`. Hypercorn does not catch that, so it escapes the
+    connection callback and asyncio's default handler logs it at ERROR with a
+    traceback. Nothing is wrong: the connection is already gone.
+    """
+    default = loop.get_exception_handler()
+
+    def handler(
+        loop: asyncio.AbstractEventLoop,
+        context: dict[str, object],
+    ) -> None:
+        exception = context.get('exception')
+        if isinstance(exception, TimeoutError) and (
+            context.get('message') == 'Unhandled exception in '
+            'client_connected_cb'
+        ):
+            logger.debug('client connection closed without a TLS shutdown')
+        elif default is None:
+            loop.default_exception_handler(context)
+        else:
+            default(loop, context)
+
+    loop.set_exception_handler(handler)
+
+
 async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
     """Run asyncio services."""
+    quiet_ssl_shutdown_errors(asyncio.get_running_loop())
+
     birthday_commands = BirthdayCommands(cfg.sqlite_database)
     custom_commands = CustomCommands(cfg.sqlite_database)
     games_commands = GamesCommands(cfg.sqlite_database)
