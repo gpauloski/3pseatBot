@@ -205,11 +205,10 @@ def _mock_ffprobe_process(
 ) -> mock.MagicMock:
     proc = mock.MagicMock()
     proc.returncode = returncode
+    proc.communicate = mock.AsyncMock(return_value=(stdout, stderr))
+    # Real AsyncMock (not an auto-created child) so assert_not_awaited() in
+    # test_mp3_duration_seconds_drains_pipes actually checks something.
     proc.wait = mock.AsyncMock()
-    proc.stdout = mock.MagicMock()
-    proc.stdout.read = mock.AsyncMock(return_value=stdout)
-    proc.stderr = mock.MagicMock()
-    proc.stderr.read = mock.AsyncMock(return_value=stderr)
     return proc
 
 
@@ -252,23 +251,25 @@ async def test_mp3_duration_seconds_ffprobe_error(
 
 
 @pytest.mark.asyncio
-async def test_mp3_duration_seconds_no_pipes(tmp_path: pathlib.Path) -> None:
-    # ffprobe fails and the subprocess has no stdout/stderr pipes attached.
+async def test_mp3_duration_seconds_drains_pipes(
+    tmp_path: pathlib.Path,
+) -> None:
+    # The pipes must be drained while waiting; reading them only after wait()
+    # deadlocks when the child fills the OS pipe buffer.
     filepath = str(tmp_path / 'test.mp3')
-    proc = mock.MagicMock()
-    proc.returncode = 1
-    proc.wait = mock.AsyncMock()
-    proc.stdout = None
-    proc.stderr = None
+    proc = _mock_ffprobe_process(
+        returncode=0,
+        stdout=b'{"format": {"duration": "1.0"}}',
+    )
 
-    with (
-        mock.patch(
-            'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
-            mock.AsyncMock(return_value=proc),
-        ),
-        pytest.raises(RuntimeError, match='ffprobe failed'),
+    with mock.patch(
+        'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
+        mock.AsyncMock(return_value=proc),
     ):
         await mp3_duration_seconds(filepath)
+
+    proc.communicate.assert_awaited_once()
+    proc.wait.assert_not_awaited()
 
 
 @pytest.mark.asyncio

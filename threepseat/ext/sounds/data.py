@@ -274,13 +274,11 @@ async def mp3_duration_seconds(filepath: str) -> float:
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    await proc.wait()
-
-    stdout, stderr = ('', '')
-    if proc.stdout is not None:
-        stdout = (await proc.stdout.read()).decode().strip()
-    if proc.stderr is not None:
-        stderr = (await proc.stderr.read()).decode().strip()
+    # communicate() drains both pipes while waiting; wait() alone deadlocks if
+    # the child fills the OS pipe buffer before exiting.
+    stdout_b, stderr_b = await proc.communicate()
+    stdout = stdout_b.decode().strip()
+    stderr = stderr_b.decode().strip()
 
     if proc.returncode != 0:
         message = (
@@ -327,12 +325,11 @@ async def extract_audio(source_path: str, mp3_path: str) -> None:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        await proc.wait()
+        # See mp3_duration_seconds: communicate() avoids a pipe deadlock.
+        _, stderr_b = await proc.communicate()
 
     if proc.returncode != 0:
-        stderr = ''
-        if proc.stderr is not None:  # pragma: no branch
-            stderr = (await proc.stderr.read()).decode().strip()
+        stderr = stderr_b.decode().strip()
         logger.error(
             'extract audio with ffmpeg failed (exit code %s):\nstderr:\n%s',
             proc.returncode,
