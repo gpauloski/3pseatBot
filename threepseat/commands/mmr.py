@@ -18,7 +18,6 @@ import requests
 from discord import app_commands
 
 from threepseat.commands.commands import log_interaction
-from threepseat.commands.commands import register_app_command
 from threepseat.logging import log_timing
 from threepseat.utils import split_strings
 
@@ -203,7 +202,6 @@ async def autocomplete_summoners(
     ]
 
 
-@register_app_command
 @app_commands.command(description='Check League of Legends MMR')
 @app_commands.describe(
     summoners='Comma separated list of summoner names',

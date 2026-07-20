@@ -5,12 +5,9 @@ import re
 
 import discord
 
-from threepseat.listeners.listeners import register_listener
-
 logger = logging.getLogger(__name__)
 
 
-@register_listener('on_message')
 async def buh_reply(message: discord.Message) -> None:
     """Replies to messages with buh."""
     if message.author.bot:
@@ -21,7 +18,6 @@ async def buh_reply(message: discord.Message) -> None:
         await message.reply(content='3pseat buh')
 
 
-@register_listener('on_message')
 async def pog_reply(message: discord.Message) -> None:
     """Replies to messages with pog (or variations of pog)."""
     if message.author.bot:

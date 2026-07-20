@@ -6,7 +6,6 @@ import discord
 from discord import app_commands
 
 from threepseat.commands.commands import log_interaction
-from threepseat.commands.commands import register_app_command
 from threepseat.tts import Accent
 from threepseat.tts import tts_as_mp3
 from threepseat.utils import play_sound
@@ -17,7 +16,6 @@ MAX_TTS_CHARACTERS = 200
 logger = logging.getLogger(__name__)
 
 
-@register_app_command
 @app_commands.command(
     name='speak',
     description='Read message as TTS in voice channel',

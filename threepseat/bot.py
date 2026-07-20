@@ -5,9 +5,9 @@ import logging
 import discord
 from discord.ext import commands
 
-from threepseat.commands.commands import registered_app_commands
+from threepseat.commands import APP_COMMANDS
 from threepseat.ext.extension import CommandGroupExtension
-from threepseat.listeners.listeners import registered_listeners
+from threepseat.listeners import LISTENERS
 from threepseat.logging import log_timing
 
 logger = logging.getLogger(__name__)
@@ -102,15 +102,13 @@ class Bot(commands.Bot):
         for guild in self.guilds:
             self.tree.clear_commands(guild=guild)
 
-        commands = registered_app_commands()
-        for command in commands:
+        for command in APP_COMMANDS:
             self.tree.add_command(command)
-        logger.info('registered %s app commands', len(commands))
+        logger.info('registered %s app commands', len(APP_COMMANDS))
 
-        listeners = registered_listeners()
-        for listener in listeners:
+        for listener in LISTENERS:
             self.add_listener(listener.func, listener.event)
-        logger.info('registered %s listeners', len(listeners))
+        logger.info('registered %s listeners', len(LISTENERS))
 
         if self._cmd_group_exts is not None:
             for ext in self._cmd_group_exts:

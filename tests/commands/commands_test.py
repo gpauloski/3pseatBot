@@ -11,14 +11,17 @@ from testing.mock import MockChannel
 from testing.mock import MockClient
 from testing.mock import MockInteraction
 from testing.mock import MockUser
+from threepseat.commands import APP_COMMANDS
 from threepseat.commands.commands import admin_or_owner
 from threepseat.commands.commands import extract_command_options
 from threepseat.commands.commands import log_interaction
-from threepseat.commands.commands import registered_app_commands
 
 
-def test_app_commands_registered() -> None:
-    assert len(registered_app_commands()) > 0
+def test_app_commands_declared() -> None:
+    assert len(APP_COMMANDS) > 0
+    # Names must be unique or add_command() would raise at startup.
+    names = [command.name for command in APP_COMMANDS]
+    assert len(set(names)) == len(names)
 
 
 @pytest.mark.asyncio

@@ -1,9 +1,21 @@
 from __future__ import annotations
 
-import threepseat.commands.emote
-import threepseat.commands.general
-import threepseat.commands.mmr
-import threepseat.commands.tts
+from threepseat.commands.commands import Command
+from threepseat.commands.emote import emote
+from threepseat.commands.general import flip
+from threepseat.commands.general import roll
+from threepseat.commands.general import source
+from threepseat.commands.mmr import mmr
+from threepseat.commands.tts import tts
 
-# We need to import these modules so the register decorators
-# actually run
+# Every app command the bot registers. Listed explicitly rather than
+# collected by an import-time decorator so the set is greppable and does not
+# depend on which modules happen to have been imported.
+APP_COMMANDS: tuple[Command, ...] = (
+    emote,
+    flip,
+    mmr,
+    roll,
+    source,
+    tts,
+)
