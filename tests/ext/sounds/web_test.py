@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import contextlib
 import io
 import logging
 import pathlib
 from collections.abc import AsyncGenerator
+from collections.abc import Generator
 from http import HTTPStatus
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -34,16 +37,9 @@ def _upload_file(
     return FileStorage(stream=io.BytesIO(content), filename=filename)
 
 
-@pytest.fixture
-async def quart_app(
-    tmp_file: str,
-    tmp_path: pathlib.Path,
-) -> AsyncGenerator[quart.typing.TestAppProtocol, None]:
-    """Generate Quart test app."""
-    data_path = str(tmp_path / 'sounds')
-    sounds = SoundsTable(db_path=tmp_file, data_path=data_path)
-    member_sounds = MemberSoundTable(db_path=tmp_file)
-
+@contextlib.contextmanager
+def _mocked_discord() -> Generator[None, None, None]:
+    """Stub out everything that would talk to Discord."""
     with (
         mock.patch('threepseat.bot.Bot.user'),
         mock.patch('threepseat.bot.Bot.wait_until_ready'),
@@ -51,20 +47,63 @@ async def quart_app(
         mock.patch('quart_discord._http.OAuth2Session'),
         mock.patch('quart_discord.client.DiscordOAuth2Session.fetch_user'),
     ):
-        bot = Bot()
-        app = create_app(
-            bot=bot,
-            sounds=sounds,
-            member_sounds=member_sounds,
+        yield
+
+
+def _make_app(
+    secret_key: str | None,
+    tmp_file: str,
+    data_path: str,
+) -> quart.Quart:
+    with _mocked_discord():
+        return create_app(
+            bot=Bot(),
+            sounds=SoundsTable(db_path=tmp_file, data_path=data_path),
+            member_sounds=MemberSoundTable(db_path=tmp_file),
             client_id=1234,
             client_secret='1234',
             bot_token='1234',
             redirect_uri='http://localhost:5001',
-            secret_key='test-secret-key',
+            secret_key=secret_key,
         )
 
+
+@pytest.fixture
+async def quart_app(
+    tmp_file: str,
+    tmp_path: pathlib.Path,
+) -> AsyncGenerator[quart.typing.TestAppProtocol, None]:
+    """Generate Quart test app."""
+    # The mocks must stay in place while requests are served, not just while
+    # the app is built, otherwise requests hit the real OAuth2 session.
+    with _mocked_discord():
+        app = _make_app('test-secret-key', tmp_file, str(tmp_path / 'sounds'))
         async with app.test_app() as test_app:  # pragma: no branch
             yield test_app
+
+
+@contextlib.contextmanager
+def authed_member(
+    quart_app: Any,
+    member_id: int = 1234,
+) -> Generator[mock.MagicMock, None, None]:
+    """Resolve the session's user to a member of the requested guild."""
+    session = quart_app.app.config['DISCORD_OAUTH2_SESSION']
+    member = mock.MagicMock()
+    member.id = member_id
+
+    with (
+        mock.patch.object(
+            session,
+            'fetch_user',
+            mock.AsyncMock(return_value=object()),
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.web.get_member',
+            return_value=member,
+        ),
+    ):
+        yield member
 
 
 async def test_index_authorized(quart_app) -> None:
@@ -332,21 +371,10 @@ async def test_set_entrance_new(quart_app) -> None:
 
     sounds = quart_app.app.config['sounds']
     member_sounds = quart_app.app.config['member_sounds']
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
 
     with (
         mock.patch.object(sounds, 'get', return_value=object()),
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
+        authed_member(quart_app),
     ):
         response = await client.post('/sounds/5678/mysound/entrance')
 
@@ -363,9 +391,6 @@ async def test_set_entrance_toggle_clear(quart_app) -> None:
 
     sounds = quart_app.app.config['sounds']
     member_sounds = quart_app.app.config['member_sounds']
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
 
     # Pre-register the same sound so the toggle clears it.
     member_sounds.update(
@@ -379,15 +404,7 @@ async def test_set_entrance_toggle_clear(quart_app) -> None:
 
     with (
         mock.patch.object(sounds, 'get', return_value=object()),
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
+        authed_member(quart_app),
     ):
         response = await client.post('/sounds/5678/mysound/entrance')
 
@@ -422,21 +439,10 @@ async def test_set_entrance_no_sound(quart_app) -> None:
     client = quart_app.test_client()
 
     sounds = quart_app.app.config['sounds']
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
 
     with (
         mock.patch.object(sounds, 'get', return_value=None),
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
+        authed_member(quart_app),
     ):
         response = await client.post('/sounds/5678/mysound/entrance')
 
@@ -532,20 +538,9 @@ async def test_sound_add_success(quart_app) -> None:
     client = quart_app.test_client()
 
     sounds = quart_app.app.config['sounds']
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
 
     with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
+        authed_member(quart_app),
         mock.patch(
             'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(return_value=1.0),
@@ -566,9 +561,6 @@ async def test_sound_add_video_success(quart_app) -> None:
     client = quart_app.test_client()
 
     sounds = quart_app.app.config['sounds']
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
 
     # extract_audio would write the MP3; emulate it so table.add finds the
     # file on disk.
@@ -576,15 +568,7 @@ async def test_sound_add_video_success(quart_app) -> None:
         pathlib.Path(mp3_path).touch()
 
     with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
+        authed_member(quart_app),
         mock.patch(
             'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(return_value=1.0),
@@ -608,21 +592,7 @@ async def test_sound_add_video_success(quart_app) -> None:
 async def test_sound_add_unsupported_type(quart_app) -> None:
     client = quart_app.test_client()
 
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
-
-    with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
-    ):
+    with authed_member(quart_app):
         response = await client.post(
             '/sounds/5678/add',
             form={'name': 'badtype', 'description': 'a test sound'},
@@ -643,25 +613,12 @@ async def test_sound_add_invalid_name(quart_app, name: str) -> None:
     client = quart_app.test_client()
 
     sounds = quart_app.app.config['sounds']
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
 
     # Look above the sounds directory too: a '../' name would land there.
     search_root = pathlib.Path(sounds.data_path).parent
     before = set(search_root.rglob('*.mp3'))
 
-    with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
-    ):
+    with authed_member(quart_app):
         response = await client.post(
             '/sounds/5678/add',
             form={'name': name, 'description': 'a test sound'},
@@ -677,20 +634,9 @@ async def test_sound_add_video_extract_error(quart_app) -> None:
     client = quart_app.test_client()
 
     sounds = quart_app.app.config['sounds']
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
 
     with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
+        authed_member(quart_app),
         mock.patch(
             'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(return_value=1.0),
@@ -719,20 +665,9 @@ async def test_sound_add_video_too_long(quart_app) -> None:
     client = quart_app.test_client()
 
     sounds = quart_app.app.config['sounds']
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
 
     with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
+        authed_member(quart_app),
         mock.patch(
             'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(return_value=999.0),
@@ -783,21 +718,7 @@ async def test_sound_add_no_member(quart_app) -> None:
 async def test_sound_add_no_file(quart_app) -> None:
     client = quart_app.test_client()
 
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
-
-    with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
-    ):
+    with authed_member(quart_app):
         response = await client.post(
             '/sounds/5678/add',
             form={'name': 'mysound', 'description': 'a test sound'},
@@ -809,21 +730,7 @@ async def test_sound_add_no_file(quart_app) -> None:
 async def test_sound_add_empty_filename(quart_app) -> None:
     client = quart_app.test_client()
 
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
-
-    with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
-    ):
+    with authed_member(quart_app):
         response = await client.post(
             '/sounds/5678/add',
             form={'name': 'mysound', 'description': 'a test sound'},
@@ -836,21 +743,7 @@ async def test_sound_add_empty_filename(quart_app) -> None:
 async def test_sound_add_bad_extension(quart_app) -> None:
     client = quart_app.test_client()
 
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
-
-    with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
-    ):
+    with authed_member(quart_app):
         response = await client.post(
             '/sounds/5678/add',
             form={'name': 'mysound', 'description': 'a test sound'},
@@ -864,21 +757,7 @@ async def test_sound_add_bad_extension(quart_app) -> None:
 async def test_sound_add_bad_description(quart_app) -> None:
     client = quart_app.test_client()
 
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
-
-    with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
-    ):
+    with authed_member(quart_app):
         response = await client.post(
             '/sounds/5678/add',
             form={'name': 'mysound', 'description': ''},
@@ -892,25 +771,11 @@ async def test_sound_add_bad_description(quart_app) -> None:
 async def test_sound_add_file_too_large(quart_app) -> None:
     client = quart_app.test_client()
 
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
-
     # Over the file limit but under MAX_CONTENT_LENGTH so it reaches the
     # handler's explicit size check.
     content = b'x' * (MAX_SOUND_FILE_SIZE_BYTES + 1)
 
-    with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
-    ):
+    with authed_member(quart_app):
         response = await client.post(
             '/sounds/5678/add',
             form={'name': 'mysound', 'description': 'a test sound'},
@@ -925,20 +790,9 @@ async def test_sound_add_too_long(quart_app) -> None:
     client = quart_app.test_client()
 
     sounds = quart_app.app.config['sounds']
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
 
     with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
+        authed_member(quart_app),
         mock.patch(
             'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(return_value=999.0),
@@ -960,9 +814,6 @@ async def test_sound_add_duplicate_name(quart_app) -> None:
     client = quart_app.test_client()
 
     sounds = quart_app.app.config['sounds']
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
 
     # Pre-existing sound with the same name.
     existing = Sound.new(
@@ -976,15 +827,7 @@ async def test_sound_add_duplicate_name(quart_app) -> None:
     sounds.add(existing)
 
     with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
+        authed_member(quart_app),
         mock.patch(
             'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(return_value=1.0),
@@ -1003,20 +846,8 @@ async def test_sound_add_duplicate_name(quart_app) -> None:
 async def test_sound_add_save_error(quart_app) -> None:
     client = quart_app.test_client()
 
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
-
     with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
+        authed_member(quart_app),
         mock.patch(
             'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(side_effect=RuntimeError('probe failed')),
@@ -1036,9 +867,6 @@ async def test_sound_add_youtube_success(quart_app) -> None:
     client = quart_app.test_client()
 
     sounds = quart_app.app.config['sounds']
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
 
     # download() would fetch and write the mp3; emulate it creating the file
     # so that SoundsTable.add finds it on disk.
@@ -1046,15 +874,7 @@ async def test_sound_add_youtube_success(quart_app) -> None:
         pathlib.Path(filepath).touch()
 
     with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
+        authed_member(quart_app),
         mock.patch(
             'threepseat.ext.sounds.web.download',
             side_effect=fake_download,
@@ -1080,20 +900,9 @@ async def test_sound_add_youtube_error(quart_app) -> None:
     client = quart_app.test_client()
 
     sounds = quart_app.app.config['sounds']
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
 
     with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
+        authed_member(quart_app),
         mock.patch(
             'threepseat.ext.sounds.web.download',
             side_effect=ValueError('Clip is longer than 30 seconds.'),
@@ -1116,21 +925,7 @@ async def test_sound_add_youtube_error(quart_app) -> None:
 async def test_sound_add_link_and_file(quart_app) -> None:
     client = quart_app.test_client()
 
-    discord = quart_app.app.config['DISCORD_OAUTH2_SESSION']
-    member = mock.MagicMock()
-    member.id = 1234
-
-    with (
-        mock.patch.object(
-            discord,
-            'fetch_user',
-            mock.AsyncMock(return_value=object()),
-        ),
-        mock.patch(
-            'threepseat.ext.sounds.web.get_member',
-            return_value=member,
-        ),
-    ):
+    with authed_member(quart_app):
         response = await client.post(
             '/sounds/5678/add',
             form={
@@ -1158,28 +953,6 @@ def test_secret_key_configured(quart_app) -> None:
     # A configured secret_key is used verbatim so sessions persist across
     # restarts.
     assert quart_app.app.secret_key == 'test-secret-key'
-
-
-def _make_app(secret_key: str | None, tmp_file: str, data_path: str):
-    sounds = SoundsTable(db_path=tmp_file, data_path=data_path)
-    member_sounds = MemberSoundTable(db_path=tmp_file)
-    with (
-        mock.patch('threepseat.bot.Bot.user'),
-        mock.patch('threepseat.bot.Bot.wait_until_ready'),
-        mock.patch('discord.app_commands.tree.CommandTree.sync'),
-        mock.patch('quart_discord._http.OAuth2Session'),
-        mock.patch('quart_discord.client.DiscordOAuth2Session.fetch_user'),
-    ):
-        return create_app(
-            bot=Bot(),
-            sounds=sounds,
-            member_sounds=member_sounds,
-            client_id=1234,
-            client_secret='1234',
-            bot_token='1234',
-            redirect_uri='http://localhost:5001',
-            secret_key=secret_key,
-        )
 
 
 def test_secret_key_generated_warns(
