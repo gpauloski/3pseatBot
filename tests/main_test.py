@@ -69,7 +69,7 @@ def test_main_start(config: str) -> None:
         assert mocked_app.called
 
 
-def test_main_errors(config: str, caplog) -> None:
+def test_main_errors(config: str, caplog: pytest.LogCaptureFixture) -> None:
     caplog.set_level(logging.ERROR)
     with mock.patch(
         'threepseat.main.amain',
@@ -125,7 +125,9 @@ async def test_amain_shutdown_trigger(config: str) -> None:
     assert await trigger() is None
 
 
-async def test_amain_surfaces_service_error(config: str, caplog) -> None:
+async def test_amain_surfaces_service_error(
+    config: str, caplog: pytest.LogCaptureFixture
+) -> None:
     caplog.set_level(logging.ERROR)
     with (
         mock.patch(
@@ -147,7 +149,7 @@ async def test_amain_surfaces_service_error(config: str, caplog) -> None:
 
 async def test_amain_surfaces_first_of_many_errors(
     config: str,
-    caplog,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     caplog.set_level(logging.ERROR)
     with (

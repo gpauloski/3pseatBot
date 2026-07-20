@@ -958,7 +958,7 @@ def test_secret_key_configured(quart_app) -> None:
 def test_secret_key_generated_warns(
     tmp_file: str,
     tmp_path: pathlib.Path,
-    caplog,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     # Omitting secret_key still yields a usable key, but warns that sessions
     # won't persist across restarts.

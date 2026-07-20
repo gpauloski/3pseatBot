@@ -842,7 +842,7 @@ async def test_upload_command_video_extract_error(
 
 async def test_on_error(
     sound_fixtures: tuple[Bot, SoundCommands],
-    caplog,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     mockbot, sounds = sound_fixtures
 
@@ -883,7 +883,7 @@ async def test_post_init(
 
 async def test_voice_state_update(
     sound_fixtures: tuple[Bot, SoundCommands],
-    caplog,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     _, sounds = sound_fixtures
 

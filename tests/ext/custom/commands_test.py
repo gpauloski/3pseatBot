@@ -159,7 +159,7 @@ async def test_remove(command_fixtures: tuple[Bot, CustomCommands]) -> None:
 
 async def test_on_error(
     command_fixtures: tuple[Bot, CustomCommands],
-    caplog,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     mockbot, custom = command_fixtures
 

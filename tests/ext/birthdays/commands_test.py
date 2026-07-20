@@ -32,11 +32,13 @@ def birthdays(tmp_file: str) -> BirthdayCommands:
     return BirthdayCommands(tmp_file)
 
 
-async def test_birthday_task(birthdays) -> None:
+async def test_birthday_task(birthdays: BirthdayCommands) -> None:
     with mock.patch('discord.Client'):
         client = discord.Client()  # type: ignore[call-arg]
         client.guilds = [MockGuild('guild', 42)]  # type: ignore[misc]
 
+    # asyncio.sleep is patched so the task does not wait until midnight.
+    # wait_for cannot be used here for the same reason: it would never yield.
     with (
         mock.patch('asyncio.sleep'),
         mock.patch.object(birthdays, 'send_birthday_messages') as mock_send,
@@ -51,11 +53,11 @@ async def test_birthday_task(birthdays) -> None:
         assert mock_send.await_count >= 1
 
 
-async def test_post_init_shutdown(birthdays) -> None:
+async def test_post_init_shutdown(birthdays: BirthdayCommands) -> None:
     with mock.patch('discord.Client'):
         client = discord.Client()  # type: ignore[call-arg]
 
-    await birthdays.post_init(client)
+    await birthdays.post_init(client)  # type: ignore[arg-type]
     assert birthdays._birthday_task is not None
 
     await birthdays.post_shutdown()
@@ -63,7 +65,7 @@ async def test_post_init_shutdown(birthdays) -> None:
     assert birthdays.table._db is None
 
 
-async def test_send_birthday_messages(birthdays) -> None:
+async def test_send_birthday_messages(birthdays: BirthdayCommands) -> None:
     guild = MockGuild('guild', BIRTHDAY.guild_id)
     channel = MockChannel('channel', 42)
 
@@ -96,7 +98,9 @@ async def test_send_birthday_messages(birthdays) -> None:
         assert mock_send.await_count == 1
 
 
-async def test_send_birthday_messages_no_channel_found(birthdays) -> None:
+async def test_send_birthday_messages_no_channel_found(
+    birthdays: BirthdayCommands,
+) -> None:
     guild = MockGuild('guild', BIRTHDAY.guild_id)
 
     with mock.patch(
@@ -106,7 +110,7 @@ async def test_send_birthday_messages_no_channel_found(birthdays) -> None:
         await birthdays.send_birthday_messages(guild)
 
 
-async def test_add_birthday(birthdays) -> None:
+async def test_add_birthday(birthdays: BirthdayCommands) -> None:
     add_ = extract(birthdays.add)
 
     guild = MockGuild('guild', BIRTHDAY.guild_id)
@@ -128,7 +132,7 @@ async def test_add_birthday(birthdays) -> None:
     assert_responded(interaction, 'Added birthday')
 
 
-async def test_add_birthday_invalid_date(birthdays) -> None:
+async def test_add_birthday_invalid_date(birthdays: BirthdayCommands) -> None:
     add_ = extract(birthdays.add)
 
     guild = MockGuild('guild', BIRTHDAY.guild_id)
@@ -145,7 +149,7 @@ async def test_add_birthday_invalid_date(birthdays) -> None:
     assert_responded(interaction, 'Invalid birthday')
 
 
-async def test_list_birthdays(birthdays) -> None:
+async def test_list_birthdays(birthdays: BirthdayCommands) -> None:
     list_ = extract(birthdays.list)
 
     guild = MockGuild('guild', BIRTHDAY.guild_id)
@@ -170,7 +174,7 @@ async def test_list_birthdays(birthdays) -> None:
     )
 
 
-async def test_list_birthdays_empty(birthdays) -> None:
+async def test_list_birthdays_empty(birthdays: BirthdayCommands) -> None:
     list_ = extract(birthdays.list)
 
     guild = MockGuild('guild', BIRTHDAY.guild_id)
@@ -181,7 +185,7 @@ async def test_list_birthdays_empty(birthdays) -> None:
     assert_responded(interaction, 'no birthdays')
 
 
-async def test_remove_birthday(birthdays) -> None:
+async def test_remove_birthday(birthdays: BirthdayCommands) -> None:
     remove_ = extract(birthdays.remove)
 
     guild = MockGuild('guild', BIRTHDAY.guild_id)
@@ -199,7 +203,7 @@ async def test_remove_birthday(birthdays) -> None:
     assert_responded(interaction, 'Removed')
 
 
-async def test_remove_birthday_missing(birthdays) -> None:
+async def test_remove_birthday_missing(birthdays: BirthdayCommands) -> None:
     remove_ = extract(birthdays.remove)
 
     guild = MockGuild('guild', BIRTHDAY.guild_id)

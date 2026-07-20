@@ -9,6 +9,7 @@ import pytest
 from discord import app_commands
 
 from testing.asserts import assert_responded
+from testing.data import GUILD_CONFIG
 from testing.mock import MockChannel
 from testing.mock import MockClient
 from testing.mock import MockGuild
@@ -18,20 +19,7 @@ from testing.mock import MockMessage
 from testing.mock import MockUser
 from testing.utils import extract
 from threepseat.ext.rules.commands import RulesCommands
-from threepseat.ext.rules.data import GuildConfig
 from threepseat.ext.rules.exceptions import EventStartError
-
-GUILD_CONFIG = GuildConfig(
-    guild_id=1234,
-    enabled=1,
-    event_expectancy=0.5,
-    event_duration=24,
-    event_cooldown=5.0,
-    last_event=0,
-    max_offenses=3,
-    timeout_duration=300,
-    prefixes='3pseat, 3pfeet',
-)
 
 
 @pytest.fixture
@@ -41,7 +29,7 @@ def commands(tmp_file: str) -> RulesCommands:
     return commands
 
 
-async def test_handle_offending_message(commands) -> None:
+async def test_handle_offending_message(commands: RulesCommands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     message = MockMessage('')
     message.author = MockMember('member', 42, guild)
@@ -65,7 +53,7 @@ async def test_handle_offending_message(commands) -> None:
         assert mock_timeout.await_count == 1
 
 
-async def test_timeout_member(commands) -> None:
+async def test_timeout_member(commands: RulesCommands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     member = MockMember('member', 42, guild)
     commands.database.add_offense(GUILD_CONFIG.guild_id, 42)
@@ -75,10 +63,9 @@ async def test_timeout_member(commands) -> None:
         assert mock_timeout.await_count == 1
         assert 'timed out' in s
 
-    assert (
-        commands.database.get_user(GUILD_CONFIG.guild_id, 42).current_offenses
-        == 0
-    )
+    user = commands.database.get_user(GUILD_CONFIG.guild_id, 42)
+    assert user is not None
+    assert user.current_offenses == 0
 
     with mock.patch(
         'discord.Member.timeout',
@@ -88,7 +75,7 @@ async def test_timeout_member(commands) -> None:
         assert 'cannot be timed out' in s
 
 
-async def test_on_message(commands) -> None:
+async def test_on_message(commands: RulesCommands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     message = MockMessage('3pseat test message')
     message.author = MockMember('member', 42, guild)
@@ -116,7 +103,7 @@ async def test_on_message(commands) -> None:
         await commands.on_message(message)
         assert mock_handler.await_count == 0
 
-        commands.event_handlers[GUILD_CONFIG.guild_id] = object()
+        commands.event_handlers[GUILD_CONFIG.guild_id] = object()  # type: ignore[assignment]
         # skip because we mock ignore_message to return True
         mock_ignore.return_value = True
         await commands.on_message(message)
@@ -141,7 +128,7 @@ async def test_on_message(commands) -> None:
         assert mock_handler.await_count == 1
 
 
-async def test_start_event(commands) -> None:
+async def test_start_event(commands: RulesCommands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     channel = MockChannel('channel')
 
@@ -179,7 +166,7 @@ async def test_start_event(commands) -> None:
         assert len(commands.event_handlers) == 0
 
 
-async def test_resume_event(commands) -> None:
+async def test_resume_event(commands: RulesCommands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     channel = MockChannel('channel')
 
@@ -197,7 +184,7 @@ async def test_resume_event(commands) -> None:
         assert mock_send.await_count == 0
 
 
-async def test_stop_event(commands) -> None:
+async def test_stop_event(commands: RulesCommands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     channel = MockChannel('channel')
 
@@ -220,7 +207,7 @@ async def test_stop_event(commands) -> None:
         assert mock_send.await_count == 2
 
 
-async def test_stop_event_cancels_stale_task(commands) -> None:
+async def test_stop_event_cancels_stale_task(commands: RulesCommands) -> None:
     # Stopping an event must cancel its sleeping task. Otherwise the task
     # wakes after the original duration and ends whatever event is running
     # then, announcing the end of an event that just started.
@@ -249,7 +236,9 @@ async def test_stop_event_cancels_stale_task(commands) -> None:
         await commands.post_shutdown()
 
 
-async def test_start_event_cancels_overwritten_task(commands) -> None:
+async def test_start_event_cancels_overwritten_task(
+    commands: RulesCommands,
+) -> None:
     # Starting an event while one is running must not orphan the old task.
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     channel = MockChannel('channel')
@@ -272,7 +261,7 @@ async def test_start_event_cancels_overwritten_task(commands) -> None:
         await commands.post_shutdown()
 
 
-async def test_event_times_out(commands) -> None:
+async def test_event_times_out(commands: RulesCommands) -> None:
     # The task created by start_event runs stop_event itself, so stop_event
     # must not cancel the task it is running in before announcing the end.
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
@@ -293,7 +282,7 @@ async def test_event_times_out(commands) -> None:
     assert mock_send.await_count == 2
 
 
-async def test_event_starter(commands) -> None:
+async def test_event_starter(commands: RulesCommands) -> None:
     client = MockClient(MockUser('bot', 42))
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     starter = commands.event_starter(client)
@@ -313,6 +302,7 @@ async def test_event_starter(commands) -> None:
 
         # Test cooldown prevents starting
         config_orig = commands.database.get_config(GUILD_CONFIG.guild_id)
+        assert config_orig is not None
         config_new = config_orig._replace(
             event_cooldown=5,
             event_duration=0,
@@ -327,14 +317,14 @@ async def test_event_starter(commands) -> None:
     with mock.patch.object(client, 'get_guild', return_value=None):
         await func()
 
-    commands.event_handlers[GUILD_CONFIG.guild_id] = object()
+    commands.event_handlers[GUILD_CONFIG.guild_id] = object()  # type: ignore[assignment]
     await func()
 
     commands.database.update_config(GUILD_CONFIG._replace(enabled=0))
     await func()
 
 
-async def test_configure(commands) -> None:
+async def test_configure(commands: RulesCommands) -> None:
     configure_ = extract(commands.configure)
 
     interaction = MockInteraction(
@@ -347,7 +337,7 @@ async def test_configure(commands) -> None:
     assert_responded(interaction, 'Update')
 
 
-async def test_configuration(commands) -> None:
+async def test_configuration(commands: RulesCommands) -> None:
     configuration_ = extract(commands.configuration)
 
     interaction = MockInteraction(
@@ -369,7 +359,7 @@ async def test_configuration(commands) -> None:
     assert_responded(interaction, 'has not been configured')
 
 
-async def test_enable(commands) -> None:
+async def test_enable(commands: RulesCommands) -> None:
     enable_ = extract(commands.enable)
 
     interaction = MockInteraction(
@@ -394,7 +384,7 @@ async def test_enable(commands) -> None:
     assert_responded(interaction, '3pseat events are enabled')
 
 
-async def test_disable(commands) -> None:
+async def test_disable(commands: RulesCommands) -> None:
     disable_ = extract(commands.disable)
 
     interaction = MockInteraction(
@@ -418,7 +408,7 @@ async def test_disable(commands) -> None:
     assert_responded(interaction, 'events are disabled')
 
 
-async def test_offenses(commands) -> None:
+async def test_offenses(commands: RulesCommands) -> None:
     offenses_ = extract(commands.offenses)
 
     interaction = MockInteraction(
@@ -453,7 +443,7 @@ async def test_offenses(commands) -> None:
     assert_responded(interaction, 'has not broken the rules')
 
 
-async def test_add_offense(commands) -> None:
+async def test_add_offense(commands: RulesCommands) -> None:
     add_offense_ = extract(commands.add_offense)
 
     interaction = MockInteraction(
@@ -467,6 +457,7 @@ async def test_add_offense(commands) -> None:
     assert_responded(interaction, 'Added 2 offenses')
 
     data = commands.database.get_user(GUILD_CONFIG.guild_id, 42)
+    assert data is not None
     assert data.current_offenses == 2
     commands.database.update_user(data._replace(current_offenses=1000))
 
@@ -488,7 +479,7 @@ async def test_add_offense(commands) -> None:
     assert_responded(interaction, 'not been configured for this guild')
 
 
-async def test_remove_offenses(commands) -> None:
+async def test_remove_offenses(commands: RulesCommands) -> None:
     remove_offense_ = extract(commands.remove_offense)
 
     interaction = MockInteraction(
@@ -502,7 +493,7 @@ async def test_remove_offenses(commands) -> None:
     assert_responded(interaction, 'Removed 1 offense')
 
 
-async def test_reset_offenses(commands) -> None:
+async def test_reset_offenses(commands: RulesCommands) -> None:
     reset_offenses_ = extract(commands.reset_offenses)
 
     interaction = MockInteraction(
@@ -516,7 +507,9 @@ async def test_reset_offenses(commands) -> None:
     assert_responded(interaction, 'Reset offense count')
 
 
-async def test_on_error(commands, caplog) -> None:
+async def test_on_error(
+    commands: RulesCommands, caplog: pytest.LogCaptureFixture
+) -> None:
     interaction = MockInteraction(commands.remove_offense, user='user')
     await commands.on_error(
         interaction,
@@ -531,17 +524,12 @@ async def test_on_error(commands, caplog) -> None:
     assert any('test1' in record.message for record in caplog.records)
 
 
-async def test_resume_events(commands) -> None:
-    config = GuildConfig(
+async def test_resume_events(commands: RulesCommands) -> None:
+    # An event started recently enough that it should still be running.
+    config = GUILD_CONFIG._replace(
         guild_id=100,
-        enabled=1,
-        event_expectancy=0.5,
         event_duration=60,
-        event_cooldown=5.0,
         last_event=time.time(),
-        max_offenses=3,
-        timeout_duration=300,
-        prefixes='3pseat, 3pfeet',
     )
     guild = MockGuild('guild', config.guild_id)
     client = MockClient(MockUser('bot', 42))

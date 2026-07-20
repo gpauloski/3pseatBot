@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from unittest import mock
 
+import pytest
+
 from testing.mock import MockGuild
 from testing.mock import MockUser
 from threepseat.bot import Bot
@@ -19,7 +21,9 @@ from threepseat.ext.sounds import SoundCommands
 # like to push myself to 100% code coverage).
 
 
-async def test_bot_startup(tmp_file: str, caplog) -> None:
+async def test_bot_startup(
+    tmp_file: str, caplog: pytest.LogCaptureFixture
+) -> None:
     caplog.set_level(logging.INFO)
     with (
         mock.patch(
@@ -101,7 +105,9 @@ async def test_bot_setup_runs_once(tmp_file: str) -> None:
     assert mock_sync.await_count == sync_count
 
 
-async def test_bot_startup_isolates_failures(tmp_file: str, caplog) -> None:
+async def test_bot_startup_isolates_failures(
+    tmp_file: str, caplog: pytest.LogCaptureFixture
+) -> None:
     caplog.set_level(logging.INFO)
     bad = GamesCommands(tmp_file)
     good = BirthdayCommands(tmp_file)
@@ -171,7 +177,9 @@ async def test_bot_shutdown_without_extensions() -> None:
     assert mock_close.called
 
 
-async def test_bot_shutdown_isolates_failures(tmp_file: str, caplog) -> None:
+async def test_bot_shutdown_isolates_failures(
+    tmp_file: str, caplog: pytest.LogCaptureFixture
+) -> None:
     caplog.set_level(logging.ERROR)
     bad = GamesCommands(tmp_file)
     good = BirthdayCommands(tmp_file)

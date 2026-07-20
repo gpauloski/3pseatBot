@@ -1,30 +1,23 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 from unittest import mock
 
+from testing.data import REMINDER as SHARED_REMINDER
 from testing.mock import MockChannel
 from testing.mock import MockClient
 from testing.mock import MockGuild
 from testing.mock import MockMember
 from testing.mock import MockUser
 from testing.mock import MockVoiceChannel
-from threepseat.ext.reminders.data import Reminder
+from testing.utils import wait_for
 from threepseat.ext.reminders.data import ReminderType
 from threepseat.ext.reminders.utils import reminder_task
 from threepseat.ext.reminders.utils import send_text_reminder
 from threepseat.ext.reminders.utils import send_voice_reminder
 
-REMINDER = Reminder(
-    guild_id=1234,
-    channel_id=5678,
-    author_id=9012,
-    creation_time=0,
-    name='test',
-    text='test message',
-    delay_minutes=0.0001,  # type: ignore[arg-type]
-)
+# Run in roughly 10 ms rather than a minute.
+REMINDER = SHARED_REMINDER._replace(delay_minutes=0.0001)  # type: ignore[arg-type]
 
 
 async def test_reminder_task() -> None:
@@ -49,8 +42,7 @@ async def test_reminder_task() -> None:
         )
         task = reminder_task(client, REMINDER, ReminderType.ONE_TIME, None)
         task.start()
-        await asyncio.sleep(0.02)
-        assert mock_text.await_count == 1
+        await wait_for(lambda: mock_text.await_count == 1)
         task.cancel()
 
         guild.get_channel = mock.MagicMock(  # type: ignore[method-assign]
@@ -58,8 +50,7 @@ async def test_reminder_task() -> None:
         )
         task = reminder_task(client, REMINDER, ReminderType.ONE_TIME, None)
         task.start()
-        await asyncio.sleep(0.02)
-        assert mock_voice.await_count == 1
+        await wait_for(lambda: mock_voice.await_count == 1)
         task.cancel()
 
 
@@ -72,10 +63,10 @@ async def test_reminder_task_missing_guild(caplog) -> None:
 
     task = reminder_task(client, REMINDER, ReminderType.ONE_TIME, None)
     task.start()
-    await asyncio.sleep(0.02)
+    await wait_for(
+        lambda: any('find guild' in r.message for r in caplog.records),
+    )
     task.cancel()
-
-    assert any('find guild' in record.message for record in caplog.records)
 
 
 async def test_reminder_task_missing_channel(caplog) -> None:
@@ -91,12 +82,10 @@ async def test_reminder_task_missing_channel(caplog) -> None:
 
     task = reminder_task(client, REMINDER, ReminderType.ONE_TIME, None)
     task.start()
-    await asyncio.sleep(0.02)
-    task.cancel()
-
-    assert any(
-        'find text/voice' in record.message for record in caplog.records
+    await wait_for(
+        lambda: any('find text/voice' in r.message for r in caplog.records),
     )
+    task.cancel()
 
 
 async def test_reminder_task_callback() -> None:
@@ -117,13 +106,7 @@ async def test_reminder_task_callback() -> None:
         callback = mock.MagicMock()
         task = reminder_task(client, REMINDER, ReminderType.ONE_TIME, callback)
         task.start()
-        waited = 0
-        while mock_text.await_count == 0:
-            if waited >= 10:  # pragma: no cover
-                msg = 'Timeout waiting for reminder task to execute.'
-                raise TimeoutError(msg)
-            await asyncio.sleep(0.01)
-            waited += 1
+        await wait_for(lambda: mock_text.await_count > 0)
         task.cancel()
         assert callback.called
 

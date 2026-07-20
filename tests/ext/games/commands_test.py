@@ -22,7 +22,7 @@ def games(tmp_file: str) -> GamesCommands:
     return GamesCommands(tmp_file)
 
 
-async def test_autocomplete(games) -> None:
+async def test_autocomplete(games: GamesCommands) -> None:
     guild = MockGuild('guild', GAME.guild_id)
     interaction = MockInteraction(
         None,  # type: ignore[arg-type]
@@ -40,7 +40,7 @@ async def test_autocomplete(games) -> None:
     assert len(await games.autocomplete(interaction, current='A')) == 1
 
 
-async def test_add_game(games) -> None:
+async def test_add_game(games: GamesCommands) -> None:
     add_ = extract(games.add)
 
     guild = MockGuild('guild', GAME.guild_id)
@@ -54,7 +54,7 @@ async def test_add_game(games) -> None:
     assert_responded(interaction, 'Added')
 
 
-async def test_add_game_exists(games) -> None:
+async def test_add_game_exists(games: GamesCommands) -> None:
     add_ = extract(games.add)
 
     guild = MockGuild('guild', GAME.guild_id)
@@ -66,7 +66,7 @@ async def test_add_game_exists(games) -> None:
     assert_responded(interaction, 'already exists')
 
 
-async def test_list_games(games) -> None:
+async def test_list_games(games: GamesCommands) -> None:
     list_ = extract(games.list)
 
     guild = MockGuild('guild', GAME.guild_id)
@@ -83,7 +83,7 @@ async def test_list_games(games) -> None:
     assert 'Game C' not in message
 
 
-async def test_list_games_empty(games) -> None:
+async def test_list_games_empty(games: GamesCommands) -> None:
     list_ = extract(games.list)
 
     guild = MockGuild('guild', GAME.guild_id)
@@ -94,7 +94,7 @@ async def test_list_games_empty(games) -> None:
     assert_responded(interaction, 'No games')
 
 
-async def test_remove_game(games) -> None:
+async def test_remove_game(games: GamesCommands) -> None:
     remove_ = extract(games.remove)
 
     guild = MockGuild('guild', GAME.guild_id)
@@ -108,7 +108,7 @@ async def test_remove_game(games) -> None:
     assert_responded(interaction, 'Removed')
 
 
-async def test_remove_game_missing(games) -> None:
+async def test_remove_game_missing(games: GamesCommands) -> None:
     remove_ = extract(games.remove)
 
     guild = MockGuild('guild', GAME.guild_id)
@@ -119,7 +119,7 @@ async def test_remove_game_missing(games) -> None:
     assert_responded(interaction, 'does not exist')
 
 
-async def test_roll_games(games) -> None:
+async def test_roll_games(games: GamesCommands) -> None:
     roll_ = extract(games.roll)
 
     guild = MockGuild('guild', GAME.guild_id)
@@ -136,7 +136,7 @@ async def test_roll_games(games) -> None:
     assert 'Game C' not in message
 
 
-async def test_roll_games_empty(games) -> None:
+async def test_roll_games_empty(games: GamesCommands) -> None:
     roll_ = extract(games.roll)
 
     guild = MockGuild('guild', GAME.guild_id)

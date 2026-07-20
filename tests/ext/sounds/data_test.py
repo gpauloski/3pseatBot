@@ -60,8 +60,18 @@ def test_add_get_sound(sounds: SoundsTable) -> None:
     assert found.guild_id == TEST_SOUND.guild_id
     assert TEST_SOUND.name in found.filename
     assert str(TEST_SOUND.guild_id) in found.filename
-    # Check creation time within last 5 seconds
-    assert time.time() - found.created_time < 5
+    assert found.created_time == TEST_SOUND.created_time
+
+
+def test_new_sound_stamps_creation_time() -> None:
+    sound = Sound.new(
+        name='fresh',
+        description='test sound',
+        link=None,
+        author_id=1234,
+        guild_id=5678,
+    )
+    assert time.time() - sound.created_time < 5
 
 
 def test_add_sound_validation(sounds: SoundsTable) -> None:
