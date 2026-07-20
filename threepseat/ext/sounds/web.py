@@ -144,6 +144,31 @@ def create_app(  # noqa: PLR0913
     return app
 
 
+class AppContext(NamedTuple):
+    """Objects the routes need, resolved from the app config."""
+
+    bot: Bot
+    sounds: SoundsTable
+    member_sounds: MemberSoundTable
+    session: DiscordOAuth2Session
+
+
+def context() -> AppContext:
+    """Typed view of the objects create_app() stored on the app config.
+
+    quart's config is a plain dict of Any, so reading it directly in each
+    route discards the types. Resolving the keys in one place keeps the
+    routes typed and the key names in a single spot.
+    """
+    config = quart.current_app.config
+    return AppContext(
+        bot=config['bot'],
+        sounds=config['sounds'],
+        member_sounds=config['member_sounds'],
+        session=config['DISCORD_OAUTH2_SESSION'],
+    )
+
+
 def get_mutual_guilds(
     client: discord.Client,
     user: models.User,
@@ -207,10 +232,9 @@ async def resolve_member(
         a ``(member, None)`` pair on success, or ``(None, response)`` with a
         400 response to return to the caller when the user is not a member.
     """
-    discord_session = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    bot = quart.current_app.config['bot']
-    user = await discord_session.fetch_user()
-    member = get_member(bot, user, guild_id)
+    ctx = context()
+    user = await ctx.session.fetch_user()
+    member = get_member(ctx.bot, user, guild_id)
     if member is None:
         return None, quart.Response(
             'Cannot find your membership in the Guild.',
@@ -222,8 +246,7 @@ async def resolve_member(
 @sounds_blueprint.route('/')
 async def index() -> Response:
     """Home page."""
-    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    if not await discord.authorized:
+    if not await context().session.authorized:
         login_url = quart.url_for('sounds.login')
         return await quart.render_template('index.html', login_url=login_url)
     return quart.redirect(quart.url_for('sounds.guilds'))
@@ -233,11 +256,10 @@ async def index() -> Response:
 @requires_authorization
 async def guilds() -> Response:
     """Select guild page."""
-    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    bot = quart.current_app.config['bot']
-    user = await discord.fetch_user()
+    ctx = context()
+    user = await ctx.session.fetch_user()
 
-    guilds = get_mutual_guilds(bot, user)
+    guilds = get_mutual_guilds(ctx.bot, user)
 
     guild_data = [
         GuildData(
@@ -261,10 +283,9 @@ async def guilds() -> Response:
 @requires_authorization
 async def sound_grid(guild_id: int) -> Response:
     """Display grid of available sounds in guild."""
-    bot = quart.current_app.config['bot']
-    sounds = quart.current_app.config['sounds']
-    sound_list = sounds.all(guild_id)
-    guild = bot.get_guild(guild_id)
+    ctx = context()
+    sound_list = ctx.sounds.all(guild_id)
+    guild = ctx.bot.get_guild(guild_id)
 
     sound_data = [
         SoundData(
@@ -276,7 +297,7 @@ async def sound_grid(guild_id: int) -> Response:
                 guild_id=guild_id,
                 sound_name=sound.name,
             ),
-            author_name(bot, guild, sound.author_id),
+            author_name(ctx.bot, guild, sound.author_id),
             datetime.datetime.fromtimestamp(
                 sound.created_time,
                 tz=datetime.UTC,
@@ -296,10 +317,8 @@ async def sound_grid(guild_id: int) -> Response:
     # template can mark that card. Best-effort: never let it break the grid.
     entrance_sound: str | None = None
     try:
-        discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-        member_sounds = quart.current_app.config['member_sounds']
-        user = await discord.fetch_user()
-        current = member_sounds.get(member_id=user.id, guild_id=guild_id)
+        user = await ctx.session.fetch_user()
+        current = ctx.member_sounds.get(member_id=user.id, guild_id=guild_id)
         if current is not None:
             entrance_sound = current.name
     except Exception:  # pragma: no cover
@@ -323,7 +342,7 @@ async def sound_grid(guild_id: int) -> Response:
 @requires_authorization
 async def sound_play(guild_id: int, sound_name: str) -> Response:
     """Play a sound into the user's voice channel."""
-    sounds = quart.current_app.config['sounds']
+    sounds = context().sounds
     member, error = await resolve_member(guild_id)
     if error is not None:
         return error
@@ -361,27 +380,26 @@ async def set_entrance(guild_id: int, sound_name: str) -> Response:
     Setting the sound that is already registered clears it, so the same
     endpoint both selects and deselects.
     """
-    sounds = quart.current_app.config['sounds']
-    member_sounds = quart.current_app.config['member_sounds']
+    ctx = context()
 
     member, error = await resolve_member(guild_id)
     if error is not None:
         return error
     assert member is not None
 
-    sound = sounds.get(sound_name, guild_id=guild_id)
+    sound = ctx.sounds.get(sound_name, guild_id=guild_id)
     if sound is None:
         return quart.Response(
             f'Unable to locate a sound named {sound_name}.',
             400,
         )
 
-    current = member_sounds.get(member_id=member.id, guild_id=guild_id)
+    current = ctx.member_sounds.get(member_id=member.id, guild_id=guild_id)
     if current is not None and current.name == sound_name:
-        member_sounds.remove(member_id=member.id, guild_id=guild_id)
+        ctx.member_sounds.remove(member_id=member.id, guild_id=guild_id)
         active = False
     else:
-        member_sounds.update(
+        ctx.member_sounds.update(
             MemberSound(
                 member_id=member.id,
                 guild_id=guild_id,
@@ -398,7 +416,7 @@ async def set_entrance(guild_id: int, sound_name: str) -> Response:
 @requires_authorization
 async def sound_file(guild_id: int, sound_name: str) -> Response:
     """Serve a sound's MP3 for in-browser preview."""
-    sounds = quart.current_app.config['sounds']
+    sounds = context().sounds
     sound = sounds.get(sound_name, guild_id=guild_id)
     if sound is None:
         return quart.Response(
@@ -468,7 +486,7 @@ async def _parse_sound_request() -> _SoundRequest:
 @requires_authorization
 async def sound_add(guild_id: int) -> Response:
     """Add a sound to a guild from a YouTube link or an uploaded MP3 file."""
-    sounds = quart.current_app.config['sounds']
+    sounds = context().sounds
 
     member, error = await resolve_member(guild_id)
     if error is not None:
@@ -527,23 +545,21 @@ async def sound_add(guild_id: int) -> Response:
 @sounds_blueprint.route('/login/')
 async def login() -> Response:  # pragma: no cover
     """Login with discord OAuth."""
-    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    return cast('Response', await discord.create_session(prompt=True))
+    session = context().session
+    return cast('Response', await session.create_session(prompt=True))
 
 
 @sounds_blueprint.route('/logout/')
 async def logout() -> Response:  # pragma: no cover
     """Revoke discord OAuth."""
-    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    discord.revoke()
+    context().session.revoke()
     return quart.redirect(quart.url_for('sounds.index'))
 
 
 @sounds_blueprint.route('/callback/')
 async def callback() -> Response:  # pragma: no cover
     """Discord OAuth callback route."""
-    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    await discord.callback()
+    await context().session.callback()
     quart.session.permanent = True
     return quart.redirect(quart.url_for('sounds.guilds'))
 
