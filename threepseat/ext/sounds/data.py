@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import pathlib
+import tempfile
 import time
 import uuid
 from typing import NamedTuple
@@ -53,6 +55,90 @@ def validate_sound_name(name: str) -> None:
             'characters long.'
         )
         raise ValueError(msg)
+
+
+def validate_upload_extension(filename: str) -> str:
+    """Check that an uploaded file is a supported type.
+
+    Returns:
+        the lowercased file extension, including the leading dot.
+
+    Raises:
+        ValueError:
+            if the extension is neither MP3 nor a supported video format.
+    """
+    ext = pathlib.Path(filename.lower()).suffix
+    if ext != '.mp3' and ext not in SUPPORTED_VIDEO_EXTENSIONS:
+        msg = (
+            'The file must be an MP3 or a supported video '
+            f'({supported_video_extensions_str()}).'
+        )
+        raise ValueError(msg)
+    return ext
+
+
+def validate_upload_size(ext: str, size: int) -> None:
+    """Check an uploaded file against the size limit for its type.
+
+    Raises:
+        ValueError:
+            if the file is larger than the limit for its type.
+    """
+    max_size = (
+        MAX_SOUND_FILE_SIZE_BYTES
+        if ext == '.mp3'
+        else MAX_VIDEO_FILE_SIZE_BYTES
+    )
+    if size > max_size:
+        mb = max_size // (1024 * 1024)
+        msg = f'File size must be under {mb} MB.'
+        raise ValueError(msg)
+
+
+async def save_upload(content: bytes, ext: str, filepath: str) -> None:
+    """Save an uploaded sound file to filepath as an MP3.
+
+    Video uploads have their audio track extracted. In both cases the result
+    must be within the length limit. On failure the caller is responsible for
+    cleaning up filepath (see remove_if_exists()).
+
+    Args:
+        content (bytes): raw contents of the uploaded file.
+        ext (str): file extension of the upload, as returned by
+            validate_upload_extension().
+        filepath (str): path to write the resulting MP3 to.
+
+    Raises:
+        ValueError:
+            if the sound is longer than MAX_SOUND_LENGTH_SECONDS or the audio
+            could not be extracted from a video.
+    """
+    if ext == '.mp3':
+        await asyncio.to_thread(pathlib.Path(filepath).write_bytes, content)
+        _check_duration(await mp3_duration_seconds(filepath))
+    else:
+        # ffmpeg needs a real file to probe and read, so stage the upload.
+        with tempfile.NamedTemporaryFile(suffix=ext) as temp_file:
+            temp_file.write(content)
+            temp_file.flush()
+            _check_duration(await mp3_duration_seconds(temp_file.name))
+            await extract_audio(temp_file.name, filepath)
+
+
+def _check_duration(duration: float) -> None:
+    """Raise ValueError if a sound exceeds the length limit."""
+    if duration > MAX_SOUND_LENGTH_SECONDS:
+        msg = (
+            f'Sound is too long ({duration:.1f}s). Maximum length '
+            f'is {MAX_SOUND_LENGTH_SECONDS} seconds.'
+        )
+        raise ValueError(msg)
+
+
+def remove_if_exists(filepath: str) -> None:
+    """Remove a file if it exists, ignoring missing files."""
+    with contextlib.suppress(FileNotFoundError):
+        pathlib.Path(filepath).unlink()
 
 
 class Sound(NamedTuple):

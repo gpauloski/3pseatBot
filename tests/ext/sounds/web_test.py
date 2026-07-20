@@ -565,7 +565,7 @@ async def test_sound_add_success(quart_app) -> None:
             return_value=member,
         ),
         mock.patch(
-            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(return_value=1.0),
         ),
     ):
@@ -605,11 +605,11 @@ async def test_sound_add_video_success(quart_app) -> None:
             return_value=member,
         ),
         mock.patch(
-            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(return_value=1.0),
         ),
         mock.patch(
-            'threepseat.ext.sounds.web.extract_audio',
+            'threepseat.ext.sounds.data.extract_audio',
             side_effect=fake_extract,
         ) as mock_extract,
     ):
@@ -714,11 +714,11 @@ async def test_sound_add_video_extract_error(quart_app) -> None:
             return_value=member,
         ),
         mock.patch(
-            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(return_value=1.0),
         ),
         mock.patch(
-            'threepseat.ext.sounds.web.extract_audio',
+            'threepseat.ext.sounds.data.extract_audio',
             mock.AsyncMock(
                 side_effect=ValueError(
                     'Could not extract audio from the video.',
@@ -757,11 +757,11 @@ async def test_sound_add_video_too_long(quart_app) -> None:
             return_value=member,
         ),
         mock.patch(
-            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(return_value=999.0),
         ),
         mock.patch(
-            'threepseat.ext.sounds.web.extract_audio',
+            'threepseat.ext.sounds.data.extract_audio',
             mock.AsyncMock(),
         ) as mock_extract,
     ):
@@ -970,7 +970,7 @@ async def test_sound_add_too_long(quart_app) -> None:
             return_value=member,
         ),
         mock.patch(
-            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(return_value=999.0),
         ),
     ):
@@ -1017,7 +1017,7 @@ async def test_sound_add_duplicate_name(quart_app) -> None:
             return_value=member,
         ),
         mock.patch(
-            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(return_value=1.0),
         ),
     ):
@@ -1050,7 +1050,7 @@ async def test_sound_add_save_error(quart_app) -> None:
             return_value=member,
         ),
         mock.patch(
-            'threepseat.ext.sounds.web.mp3_duration_seconds',
+            'threepseat.ext.sounds.data.mp3_duration_seconds',
             mock.AsyncMock(side_effect=RuntimeError('probe failed')),
         ),
     ):

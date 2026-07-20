@@ -541,7 +541,7 @@ async def test_upload_command_success(
     )
 
     with mock.patch(
-        'threepseat.ext.sounds.commands._get_mp3_duration_s',
+        'threepseat.ext.sounds.data.mp3_duration_seconds',
         return_value=15.0,
     ):
         await upload_(
@@ -659,7 +659,7 @@ async def test_upload_command_duration_too_long(
     )
 
     with mock.patch(
-        'threepseat.ext.sounds.commands._get_mp3_duration_s',
+        'threepseat.ext.sounds.data.mp3_duration_seconds',
         return_value=2 * MAX_SOUND_LENGTH_SECONDS,
     ):
         await upload_(
@@ -691,7 +691,7 @@ async def test_upload_command_duration_extraction_error(
     )
 
     with mock.patch(
-        'threepseat.ext.sounds.commands._get_mp3_duration_s',
+        'threepseat.ext.sounds.data.mp3_duration_seconds',
         side_effect=Exception('FFmpeg error'),
     ):
         await upload_(
@@ -704,7 +704,7 @@ async def test_upload_command_duration_extraction_error(
 
     assert interaction.followed
     assert interaction.followup_message is not None
-    assert 'Could not process the audio file' in interaction.followup_message
+    assert 'Could not process the file' in interaction.followup_message
 
 
 @pytest.mark.asyncio
@@ -725,7 +725,7 @@ async def test_upload_command_write_disk_error(
     # Force a write error when saving the file to disk
     with (
         mock.patch(
-            'threepseat.ext.sounds.commands._get_mp3_duration_s',
+            'threepseat.ext.sounds.data.mp3_duration_seconds',
             return_value=10.0,
         ),
         mock.patch(
@@ -743,10 +743,7 @@ async def test_upload_command_write_disk_error(
 
     assert interaction.followed
     assert interaction.followup_message is not None
-    assert (
-        'Failed to save the sound to the database'
-        in interaction.followup_message
-    )
+    assert 'Could not process the file' in interaction.followup_message
 
 
 @pytest.mark.asyncio
@@ -765,12 +762,18 @@ async def test_upload_command_video_success(
     )
 
     # Emulate extraction by creating the destination MP3 so table.add finds it.
-    async def fake_extract(_file, _ext, filepath) -> None:
-        pathlib.Path(filepath).touch()
+    async def fake_extract(_source, mp3_path) -> None:
+        pathlib.Path(mp3_path).touch()
 
-    with mock.patch(
-        'threepseat.ext.sounds.commands._extract_video_audio',
-        side_effect=fake_extract,
+    with (
+        mock.patch(
+            'threepseat.ext.sounds.data.mp3_duration_seconds',
+            return_value=1.0,
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.data.extract_audio',
+            side_effect=fake_extract,
+        ),
     ):
         await upload_(
             sounds,
@@ -860,11 +863,8 @@ async def test_upload_command_video_too_long(
     )
 
     with mock.patch(
-        'threepseat.ext.sounds.commands._extract_video_audio',
-        side_effect=ValueError(
-            f'Sound is too long (99.0s). Maximum length is '
-            f'{MAX_SOUND_LENGTH_SECONDS} seconds.',
-        ),
+        'threepseat.ext.sounds.data.mp3_duration_seconds',
+        return_value=2 * MAX_SOUND_LENGTH_SECONDS,
     ):
         await upload_(
             sounds,
@@ -894,9 +894,15 @@ async def test_upload_command_video_extract_error(
         client=mockbot,
     )
 
-    with mock.patch(
-        'threepseat.ext.sounds.commands._extract_video_audio',
-        side_effect=RuntimeError('ffprobe blew up'),
+    with (
+        mock.patch(
+            'threepseat.ext.sounds.data.mp3_duration_seconds',
+            return_value=1.0,
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.data.extract_audio',
+            side_effect=RuntimeError('ffmpeg blew up'),
+        ),
     ):
         await upload_(
             sounds,
@@ -908,7 +914,7 @@ async def test_upload_command_video_extract_error(
 
     assert interaction.followed
     assert interaction.followup_message is not None
-    assert 'Could not process the video file' in interaction.followup_message
+    assert 'Could not process the file' in interaction.followup_message
 
 
 @pytest.mark.asyncio
