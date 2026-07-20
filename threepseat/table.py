@@ -186,11 +186,17 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
                 # any invalid kwarg, including wrong-typed values.
                 raise ValueError(msg)  # noqa: TRY004
 
-    def _all(self, **kwargs: Any) -> tuple[RowType, ...]:  # noqa: ANN401
+    def _all(self, *_: Any, **kwargs: Any) -> tuple[RowType, ...]:  # noqa: ANN401
         """Get all rows in the table match kwargs.
 
         Returns a tuple because the result is cached and shared by every
         caller of all().
+
+        Note:
+            Subclasses narrow this to the keys of their own row type (e.g.
+            `_all(self, guild_id: int)`). The unused `*_` is what makes that
+            legal: mypy treats a `(*args: Any, **kwargs: Any)` signature as
+            compatible with any override. Only keyword arguments are used.
         """
         self.validate_kwargs(kwargs)
 
@@ -209,8 +215,10 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
             ).fetchall()
             return tuple(self._row_type(*row) for row in rows)
 
-    def _get(self, **kwargs: Any) -> RowType | None:  # noqa: ANN401
+    def _get(self, *_: Any, **kwargs: Any) -> RowType | None:  # noqa: ANN401
         """Get the row in the table matching kwargs.
+
+        See _all() for why the unused `*_` is in the signature.
 
         Raises:
             ValueError:
@@ -261,8 +269,10 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
         self.all.cache_clear()
         self.get.cache_clear()
 
-    def remove(self, **kwargs: Any) -> int:  # noqa: ANN401
+    def remove(self, *_: Any, **kwargs: Any) -> int:  # noqa: ANN401
         """Remove a row from the table.
+
+        See _all() for why the unused `*_` is in the signature.
 
         Raises:
             ValueError:

@@ -160,15 +160,15 @@ class GuildConfigTable(SQLTableInterface[GuildConfig]):
             primary_keys=('guild_id',),
         )
 
-    def _all(self) -> tuple[GuildConfig, ...]:  # type: ignore[override]
+    def _all(self) -> tuple[GuildConfig, ...]:
         """Get guild configs."""
         return super()._all()
 
-    def _get(self, guild_id: int) -> GuildConfig | None:  # type: ignore[override]
+    def _get(self, guild_id: int) -> GuildConfig | None:
         """Get guild config."""
         return super()._get(guild_id=guild_id)
 
-    def remove(self, guild_id: int) -> int:  # type: ignore[override]
+    def remove(self, guild_id: int) -> int:
         """Remove a guild config from the table."""
         raise NotImplementedError
 
@@ -189,11 +189,11 @@ class UserOffensesTable(SQLTableInterface[UserOffenses]):
             primary_keys=('guild_id', 'user_id'),
         )
 
-    def _all(self, guild_id: int) -> tuple[UserOffenses, ...]:  # type: ignore[override]
+    def _all(self, guild_id: int) -> tuple[UserOffenses, ...]:
         """Get all user offenses in the guild."""
         return super()._all(guild_id=guild_id)
 
-    def _get(  # type: ignore[override]
+    def _get(
         self,
         guild_id: int,
         user_id: int,
@@ -201,6 +201,6 @@ class UserOffensesTable(SQLTableInterface[UserOffenses]):
         """Get user offenses."""
         return super()._get(guild_id=guild_id, user_id=user_id)
 
-    def remove(self, guild_id: int, user_id: int) -> int:  # type: ignore[override]
+    def remove(self, guild_id: int, user_id: int) -> int:
         """Remove a row."""
         raise NotImplementedError

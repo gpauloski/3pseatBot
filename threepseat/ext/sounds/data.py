@@ -234,28 +234,34 @@ class SoundsTable(SQLTableInterface[Sound]):
         self.update(sound)
         logger.info('added sound to database: %s', sound)
 
-    def _all(self, guild_id: int) -> tuple[Sound, ...]:  # type: ignore[override]
+    def _all(self, guild_id: int) -> tuple[Sound, ...]:
         """List sounds in database."""
         return super()._all(guild_id=guild_id)
 
-    def _get(self, name: str, guild_id: int) -> Sound | None:  # type: ignore[override]
+    def _get(self, name: str, guild_id: int) -> Sound | None:
         """Get sound in database."""
         return super()._get(name=name, guild_id=guild_id)
 
-    def remove(self, name: str, guild_id: int) -> None:  # type: ignore[override]
-        """Remove sound from database."""
+    def remove(self, name: str, guild_id: int) -> int:
+        """Remove a sound from the table and delete its file.
+
+        Returns:
+            the number of rows removed.
+        """
         sound = self.get(name=name, guild_id=guild_id)
+        if sound is None:
+            return 0
 
-        if sound is not None:
-            super().remove(name=name, guild_id=guild_id)
-            filepath = self.filepath(sound.filename)
-            pathlib.Path(filepath).unlink()
+        removed = super().remove(name=name, guild_id=guild_id)
+        filepath = self.filepath(sound.filename)
+        pathlib.Path(filepath).unlink()
 
-            logger.info(
-                'removed sound from database: (name=%s, guild_id=%s)',
-                name,
-                guild_id,
-            )
+        logger.info(
+            'removed sound from database: (name=%s, guild_id=%s)',
+            name,
+            guild_id,
+        )
+        return removed
 
 
 class MemberSound(NamedTuple):
@@ -283,11 +289,11 @@ class MemberSoundTable(SQLTableInterface[MemberSound]):
             primary_keys=('member_id', 'guild_id'),
         )
 
-    def _all(self, guild_id: int) -> tuple[MemberSound, ...]:  # type: ignore[override]
+    def _all(self, guild_id: int) -> tuple[MemberSound, ...]:
         """Get all member sounds in guild."""
         return super()._all(guild_id=guild_id)
 
-    def _get(  # type: ignore[override]
+    def _get(
         self,
         member_id: int,
         guild_id: int,
@@ -295,7 +301,7 @@ class MemberSoundTable(SQLTableInterface[MemberSound]):
         """Get MemberSound for member."""
         return super()._get(member_id=member_id, guild_id=guild_id)
 
-    def remove(self, member_id: int, guild_id: int) -> int:  # type: ignore[override]
+    def remove(self, member_id: int, guild_id: int) -> int:
         """Remove a MemberSound from the table."""
         return super().remove(member_id=member_id, guild_id=guild_id)
 
