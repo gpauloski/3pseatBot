@@ -32,6 +32,7 @@ class Bot(commands.Bot):
         """
         self.playing_title = playing_title
         self._cmd_group_exts = extensions
+        self._setup_complete = False
 
         intents = discord.Intents(
             guilds=True,
@@ -49,13 +50,19 @@ class Bot(commands.Bot):
         )
 
     async def on_ready(self) -> None:
-        """Bot on ready event."""
-        await self.setup()
+        """Bot on ready event.
+
+        Fires on every (re)connect, so the one-time setup is guarded. Setup
+        cannot move to setup_hook() because it needs the guild cache, which
+        is only populated once the gateway sends READY.
+        """
+        if not self._setup_complete:
+            await self.setup()
+            self._setup_complete = True
+
         await self.wait_until_ready()
         # Should not be none as we have waited for the login to succeed
         assert self.user is not None
-        # on_ready fires on every (re)connect, so setup() above re-runs and
-        # re-syncs the tree each time; the guild count makes repeats legible.
         logger.info(
             '%s (Client ID: %s) is ready! (%s guild(s))',
             self.user.name,
@@ -79,7 +86,13 @@ class Bot(commands.Bot):
         await super().close()
 
     async def setup(self) -> None:
-        """Setup operations to perform once bot is ready."""
+        """Register commands, listeners, and extensions, then sync the tree.
+
+        Runs once per process (see on_ready). Repeating it would add
+        duplicate listeners, start a second copy of each extension's
+        background tasks, and re-sync the command tree, which Discord rate
+        limits heavily.
+        """
         if self.playing_title is not None:
             await self.change_presence(
                 activity=discord.Game(name=self.playing_title),

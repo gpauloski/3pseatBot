@@ -74,6 +74,38 @@ async def test_bot_startup(tmp_file: str, caplog) -> None:
 
 
 @pytest.mark.asyncio
+async def test_bot_setup_runs_once(tmp_file: str) -> None:
+    # on_ready fires again on every reconnect. Repeating setup would add a
+    # second copy of every listener, restart each extension's background
+    # tasks, and re-sync the command tree, which Discord rate limits hard.
+    extension = BirthdayCommands(tmp_file)
+
+    with (
+        mock.patch(
+            'threepseat.bot.Bot.user',
+            new_callable=mock.PropertyMock(
+                return_value=MockUser('botuser', 1234),
+            ),
+        ),
+        mock.patch('threepseat.bot.Bot.wait_until_ready', mock.AsyncMock()),
+        mock.patch('threepseat.bot.Bot.change_presence', mock.AsyncMock()),
+        mock.patch(
+            'discord.app_commands.tree.CommandTree.sync',
+            mock.AsyncMock(),
+        ) as mock_sync,
+        mock.patch.object(extension, 'post_init', mock.AsyncMock()) as init,
+    ):
+        bot = Bot(extensions=[extension])
+        await bot.on_ready()
+        sync_count = mock_sync.await_count
+
+        await bot.on_ready()
+
+    assert init.await_count == 1
+    assert mock_sync.await_count == sync_count
+
+
+@pytest.mark.asyncio
 async def test_bot_startup_isolates_failures(tmp_file: str, caplog) -> None:
     caplog.set_level(logging.INFO)
     bad = GamesCommands(tmp_file)
