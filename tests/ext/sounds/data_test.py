@@ -196,6 +196,13 @@ def test_youtube_download_errors(tmp_path: pathlib.Path) -> None:
         with pytest.raises(ValueError, match='Clip is longer than'):
             download(link, filepath)
 
+        # Livestreams and some link types report no duration. Callers only
+        # catch ValueError, so a KeyError here would surface nothing to the
+        # user.
+        mock_extract.return_value = {}
+        with pytest.raises(ValueError, match='Could not determine the length'):
+            download(link, filepath)
+
         mock_extract.return_value = {'duration': 0}
         with (
             mock.patch(

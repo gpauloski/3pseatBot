@@ -254,7 +254,14 @@ def download(link: str, filepath: str) -> None:
             msg = 'Error extracting sound metadata.'
             raise ValueError(msg) from e
 
-        if int(metadata['duration']) > MAX_SOUND_LENGTH_SECONDS:
+        # Livestreams and some link types have no duration, in which case we
+        # cannot enforce the length limit.
+        duration = metadata.get('duration')
+        if duration is None:
+            msg = 'Could not determine the length of the clip.'
+            raise ValueError(msg)
+
+        if int(duration) > MAX_SOUND_LENGTH_SECONDS:
             msg = f'Clip is longer than {MAX_SOUND_LENGTH_SECONDS} seconds.'
             raise ValueError(msg)
 
