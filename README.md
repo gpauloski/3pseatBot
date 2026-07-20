@@ -12,7 +12,7 @@ functionality of a bot and support for adding your own cogs.
 Features include:
 
 - Simple slash command and event listener registration
-- General use slash commands: `/tts`, `/flip`, `/mmr` and more
+- General use slash commands: `/tts`, `/flip`, `/roll` and more
 - Birthday messages
 - Slash commands for creating custom slash commands
 - Voice TTS and text channel reminders

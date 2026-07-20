@@ -5,7 +5,6 @@ from threepseat.commands.emote import emote
 from threepseat.commands.general import flip
 from threepseat.commands.general import roll
 from threepseat.commands.general import source
-from threepseat.commands.mmr import mmr
 from threepseat.commands.tts import tts
 
 # Every app command the bot registers. Listed explicitly rather than
@@ -14,7 +13,6 @@ from threepseat.commands.tts import tts
 APP_COMMANDS: tuple[Command, ...] = (
     emote,
     flip,
-    mmr,
     roll,
     source,
     tts,

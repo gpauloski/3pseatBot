@@ -25,7 +25,6 @@ dependencies = [
     "gtts",
     "pynacl",
     "quart>=0.19.2",
-    "requests",
     "tzdata",
     "yt-dlp",
 ]
@@ -48,7 +47,6 @@ dev = [
     "ruff",
     "tox",
     "types-emoji",
-    "types-requests",
     "virtualenv",
 ]
 
