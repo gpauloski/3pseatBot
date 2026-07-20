@@ -242,6 +242,12 @@ class RulesCommands(CommandGroupExtension):
             guild.id,
             duration_readable,
         )
+        # A previous event for this guild may still have a task sleeping out
+        # its duration; drop it so it cannot end this event early.
+        previous = self.event_handlers.pop(guild.id, None)
+        if previous is not None:
+            previous.cancel()
+
         self.event_handlers[guild.id] = asyncio.create_task(
             self.stop_event(
                 guild=guild,
@@ -265,6 +271,12 @@ class RulesCommands(CommandGroupExtension):
         await asyncio.sleep(sleep_seconds)
 
         handler = self.event_handlers.pop(guild.id, None)
+        # Cancel the sleeping task, otherwise it wakes after its full duration
+        # and stops whichever event is running then. When this coroutine *is*
+        # that task, cancelling would abort the message below.
+        if handler is not None and handler is not asyncio.current_task():
+            handler.cancel()
+
         if handler is not None and channel is not None:
             logger.info(
                 'stopping rules event for %s (%s)', guild.name, guild.id

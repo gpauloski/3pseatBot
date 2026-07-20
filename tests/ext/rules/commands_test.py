@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from unittest import mock
@@ -222,6 +223,82 @@ async def test_stop_event(commands) -> None:
         # an active event
         await commands.stop_event(guild, channel)
         assert mock_send.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_stop_event_cancels_stale_task(commands) -> None:
+    # Stopping an event must cancel its sleeping task. Otherwise the task
+    # wakes after the original duration and ends whatever event is running
+    # then, announcing the end of an event that just started.
+    guild = MockGuild('guild', GUILD_CONFIG.guild_id)
+    channel = MockChannel('channel')
+
+    with (
+        mock.patch(
+            'threepseat.ext.rules.commands.primary_channel',
+            return_value=channel,
+        ),
+        mock.patch.object(channel, 'send', mock.AsyncMock()),
+    ):
+        await commands.start_event(guild)
+        first = commands.event_handlers[guild.id]
+
+        await commands.stop_event(guild, channel)
+        await asyncio.sleep(0)
+        assert first.cancelled() or first.cancelling()
+
+        # A new event is unaffected by the old task.
+        await commands.start_event(guild)
+        second = commands.event_handlers[guild.id]
+        assert second is not first
+
+        await commands.post_shutdown()
+
+
+@pytest.mark.asyncio
+async def test_start_event_cancels_overwritten_task(commands) -> None:
+    # Starting an event while one is running must not orphan the old task.
+    guild = MockGuild('guild', GUILD_CONFIG.guild_id)
+    channel = MockChannel('channel')
+
+    with (
+        mock.patch(
+            'threepseat.ext.rules.commands.primary_channel',
+            return_value=channel,
+        ),
+        mock.patch.object(channel, 'send', mock.AsyncMock()),
+    ):
+        await commands.start_event(guild)
+        first = commands.event_handlers[guild.id]
+
+        await commands.start_event(guild)
+        await asyncio.sleep(0)
+        assert first.cancelled() or first.cancelling()
+        assert commands.event_handlers[guild.id] is not first
+
+        await commands.post_shutdown()
+
+
+@pytest.mark.asyncio
+async def test_event_times_out(commands) -> None:
+    # The task created by start_event runs stop_event itself, so stop_event
+    # must not cancel the task it is running in before announcing the end.
+    guild = MockGuild('guild', GUILD_CONFIG.guild_id)
+    channel = MockChannel('channel')
+
+    with (
+        mock.patch(
+            'threepseat.ext.rules.commands.primary_channel',
+            return_value=channel,
+        ),
+        mock.patch.object(channel, 'send', mock.AsyncMock()) as mock_send,
+    ):
+        await commands.start_event(guild, duration=0)
+        await commands.event_handlers[guild.id]
+
+    assert guild.id not in commands.event_handlers
+    # Once to announce the start, once to announce the end.
+    assert mock_send.await_count == 2
 
 
 @pytest.mark.asyncio
