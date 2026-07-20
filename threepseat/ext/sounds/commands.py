@@ -495,18 +495,6 @@ class SoundCommands(CommandGroupExtension):
 
         return True
 
-    async def on_error(
-        self,
-        interaction: discord.Interaction[discord.Client],
-        error: app_commands.AppCommandError,
-    ) -> None:
-        """Callback for errors in child functions."""
-        if isinstance(error, app_commands.CheckFailure):
-            await interaction.response.send_message(str(error), ephemeral=True)
-            logger.info('app command check failed: %s', error)
-        else:
-            logger.exception(error)
-
 
 def _remove_if_exists(filepath: str) -> None:
     """Remove a file if it exists, ignoring missing files."""

@@ -664,15 +664,3 @@ class RulesCommands(CommandGroupExtension):
         await interaction.response.send_message(
             f'Reset offense count for {user.mention}.',
         )
-
-    async def on_error(
-        self,
-        interaction: discord.Interaction[discord.Client],
-        error: app_commands.AppCommandError,
-    ) -> None:
-        """Callback for errors in child functions."""
-        if isinstance(error, app_commands.CheckFailure):
-            await interaction.response.send_message(str(error), ephemeral=True)
-            logger.info('app command check failed: %s', error)
-        else:
-            logger.exception(error)
