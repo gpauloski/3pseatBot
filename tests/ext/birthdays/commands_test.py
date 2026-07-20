@@ -7,6 +7,7 @@ from unittest import mock
 import discord
 import pytest
 
+from testing.asserts import assert_responded
 from testing.mock import MockChannel
 from testing.mock import MockGuild
 from testing.mock import MockInteraction
@@ -124,9 +125,7 @@ async def test_add_birthday(birthdays) -> None:
     assert birthday.birth_month == BIRTHDAY.birth_month
     assert birthday.birth_day == BIRTHDAY.birth_day
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Added birthday' in interaction.response_message
+    assert_responded(interaction, 'Added birthday')
 
 
 async def test_add_birthday_invalid_date(birthdays) -> None:
@@ -143,9 +142,7 @@ async def test_add_birthday_invalid_date(birthdays) -> None:
         31,
     )
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Invalid birthday' in interaction.response_message
+    assert_responded(interaction, 'Invalid birthday')
 
 
 async def test_list_birthdays(birthdays) -> None:
@@ -181,9 +178,7 @@ async def test_list_birthdays_empty(birthdays) -> None:
 
     await list_(birthdays, interaction)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'no birthdays' in interaction.response_message
+    assert_responded(interaction, 'no birthdays')
 
 
 async def test_remove_birthday(birthdays) -> None:
@@ -201,9 +196,7 @@ async def test_remove_birthday(birthdays) -> None:
     )
 
     assert birthdays.table.get(BIRTHDAY.guild_id, BIRTHDAY.user_id) is None
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Removed' in interaction.response_message
+    assert_responded(interaction, 'Removed')
 
 
 async def test_remove_birthday_missing(birthdays) -> None:
@@ -214,6 +207,4 @@ async def test_remove_birthday_missing(birthdays) -> None:
 
     await remove_(birthdays, interaction, MockMember('user', 42, guild))
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'birthday has not been added' in interaction.response_message
+    assert_responded(interaction, 'birthday has not been added')

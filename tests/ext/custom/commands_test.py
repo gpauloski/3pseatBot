@@ -7,6 +7,8 @@ from unittest import mock
 import pytest
 from discord import app_commands
 
+from testing.asserts import assert_followed
+from testing.asserts import assert_responded
 from testing.mock import MockGuild
 from testing.mock import MockInteraction
 from testing.utils import extract
@@ -49,8 +51,7 @@ async def test_create(command_fixtures: tuple[Bot, CustomCommands]) -> None:
             'description',
             'this is command 1',
         )
-    assert interaction.followed
-    assert interaction.followup_message is not None
+    assert_followed(interaction, 'command1')
 
 
 async def test_create_invalid_name(
@@ -74,9 +75,7 @@ async def test_create_invalid_name(
         'description',
         'this command has a bad name',
     )
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'alphanumeric' in interaction.response_message
+    assert_responded(interaction, 'alphanumeric')
 
 
 async def test_list(command_fixtures: tuple[Bot, CustomCommands]) -> None:
@@ -92,9 +91,7 @@ async def test_list(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     )
 
     await list_(custom, interaction)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'no custom commands' in interaction.response_message
+    assert_responded(interaction, 'no custom commands')
 
     command = CustomCommand(
         name='mycommand',
@@ -120,9 +117,7 @@ async def test_list(command_fixtures: tuple[Bot, CustomCommands]) -> None:
         client=mockbot,
     )
     await list_(custom, interaction)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'mycommand' in interaction.response_message
+    assert_responded(interaction, 'mycommand')
 
 
 async def test_remove(command_fixtures: tuple[Bot, CustomCommands]) -> None:
@@ -148,9 +143,7 @@ async def test_remove(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     )
 
     await remove_(custom, interaction, 'mycommand')
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Removed' in interaction.followup_message
+    assert_followed(interaction, 'Removed')
 
     interaction = MockInteraction(
         custom.remove,
@@ -161,9 +154,7 @@ async def test_remove(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     )
 
     await remove_(custom, interaction, 'mycommand')
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'does not exist' in interaction.followup_message
+    assert_followed(interaction, 'does not exist')
 
 
 async def test_on_error(
@@ -183,9 +174,8 @@ async def test_on_error(
         interaction,
         app_commands.MissingPermissions(['test']),
     )
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'test' in interaction.response_message.lower()
+    message = assert_responded(interaction)
+    assert 'test' in message.lower()
 
     # Should not raise error, just log it
     caplog.set_level(logging.ERROR)

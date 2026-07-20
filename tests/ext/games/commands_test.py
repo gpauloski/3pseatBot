@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from testing.asserts import assert_responded
 from testing.mock import MockGuild
 from testing.mock import MockInteraction
 from testing.utils import extract
@@ -50,9 +51,7 @@ async def test_add_game(games) -> None:
     game = games.table.get(GAME.guild_id, GAME.name)
     assert game is not None
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Added' in interaction.response_message
+    assert_responded(interaction, 'Added')
 
 
 async def test_add_game_exists(games) -> None:
@@ -64,9 +63,7 @@ async def test_add_game_exists(games) -> None:
     games.table.update(GAME)
     await add_(games, interaction, GAME.name)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'already exists' in interaction.response_message
+    assert_responded(interaction, 'already exists')
 
 
 async def test_list_games(games) -> None:
@@ -81,11 +78,9 @@ async def test_list_games(games) -> None:
 
     await list_(games, interaction)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Game A' in interaction.response_message
-    assert 'Game B' in interaction.response_message
-    assert 'Game C' not in interaction.response_message
+    message = assert_responded(interaction, 'Game A')
+    assert 'Game B' in message
+    assert 'Game C' not in message
 
 
 async def test_list_games_empty(games) -> None:
@@ -96,9 +91,7 @@ async def test_list_games_empty(games) -> None:
 
     await list_(games, interaction)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'No games' in interaction.response_message
+    assert_responded(interaction, 'No games')
 
 
 async def test_remove_game(games) -> None:
@@ -112,9 +105,7 @@ async def test_remove_game(games) -> None:
     await remove_(games, interaction, GAME.name)
 
     assert games.table.get(GAME.guild_id, GAME.name) is None
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Removed' in interaction.response_message
+    assert_responded(interaction, 'Removed')
 
 
 async def test_remove_game_missing(games) -> None:
@@ -125,9 +116,7 @@ async def test_remove_game_missing(games) -> None:
 
     await remove_(games, interaction, GAME.name)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')
 
 
 async def test_roll_games(games) -> None:
@@ -142,13 +131,9 @@ async def test_roll_games(games) -> None:
 
     await roll_(games, interaction)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert (
-        'Game A' in interaction.response_message
-        or 'Game B' in interaction.response_message
-    )
-    assert 'Game C' not in interaction.response_message
+    message = assert_responded(interaction, 'Game')
+    assert 'Game A' in message or 'Game B' in message
+    assert 'Game C' not in message
 
 
 async def test_roll_games_empty(games) -> None:
@@ -159,6 +144,4 @@ async def test_roll_games_empty(games) -> None:
 
     await roll_(games, interaction)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'No games' in interaction.response_message
+    assert_responded(interaction, 'No games')

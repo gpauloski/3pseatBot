@@ -8,6 +8,7 @@ from unittest import mock
 import pytest
 from discord import app_commands
 
+from testing.asserts import assert_responded
 from testing.mock import MockChannel
 from testing.mock import MockClient
 from testing.mock import MockGuild
@@ -343,9 +344,7 @@ async def test_configure(commands) -> None:
     )
 
     await configure_(commands, interaction, prefixes='3pseat, 3pfeet')
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Update' in interaction.response_message
+    assert_responded(interaction, 'Update')
 
 
 async def test_configuration(commands) -> None:
@@ -358,9 +357,7 @@ async def test_configuration(commands) -> None:
     )
 
     await configuration_(commands, interaction)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Legacy 3pseat mode is' in interaction.response_message
+    assert_responded(interaction, 'Legacy 3pseat mode is')
 
     interaction = MockInteraction(
         commands.configuration,
@@ -369,9 +366,7 @@ async def test_configuration(commands) -> None:
     )
 
     await configuration_(commands, interaction)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'has not been configured' in interaction.response_message
+    assert_responded(interaction, 'has not been configured')
 
 
 async def test_enable(commands) -> None:
@@ -385,26 +380,18 @@ async def test_enable(commands) -> None:
 
     with mock.patch.object(commands, 'start_event') as mocked:
         await enable_(commands, interaction, immediate=True)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'Started an event' in interaction.response_message
+        assert_responded(interaction, 'Started an event')
 
         mocked.side_effect = EventStartError()
         await enable_(commands, interaction, immediate=True)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'Failed to start event' in interaction.response_message
+        assert_responded(interaction, 'Failed to start event')
 
     with mock.patch.object(commands.database, 'get_config', return_value=None):
         await enable_(commands, interaction, immediate=False)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'not been configured' in interaction.response_message
+        assert_responded(interaction, 'not been configured')
 
     await enable_(commands, interaction, immediate=False)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert '3pseat events are enabled' in interaction.response_message
+    assert_responded(interaction, '3pseat events are enabled')
 
 
 async def test_disable(commands) -> None:
@@ -421,20 +408,14 @@ async def test_disable(commands) -> None:
         mock.patch('threepseat.ext.rules.commands.primary_channel'),
     ):
         await disable_(commands, interaction, current=True)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'Stopping any current event' in interaction.response_message
+        assert_responded(interaction, 'Stopping any current event')
 
     with mock.patch.object(commands.database, 'get_config', return_value=None):
         await disable_(commands, interaction)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'not been configured' in interaction.response_message
+        assert_responded(interaction, 'not been configured')
 
     await disable_(commands, interaction)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'events are disabled' in interaction.response_message
+    assert_responded(interaction, 'events are disabled')
 
 
 async def test_offenses(commands) -> None:
@@ -449,14 +430,10 @@ async def test_offenses(commands) -> None:
 
     with mock.patch.object(commands.database, 'get_config', return_value=None):
         await offenses_(commands, interaction)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'not been configured' in interaction.response_message
+        assert_responded(interaction, 'not been configured')
 
     await offenses_(commands, interaction)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'no offenses yet in this guild' in interaction.response_message
+    assert_responded(interaction, 'no offenses yet in this guild')
 
     commands.database.add_offense(GUILD_CONFIG.guild_id, 42)
     commands.database.add_offense(GUILD_CONFIG.guild_id, 43)
@@ -466,20 +443,14 @@ async def test_offenses(commands) -> None:
         side_effect=[None, mock.MagicMock()],
     ):
         await offenses_(commands, interaction)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'Current offenses in this' in interaction.response_message
+        assert_responded(interaction, 'Current offenses in this')
 
     await offenses_(commands, interaction, user=member)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'currently has' in interaction.response_message
+    assert_responded(interaction, 'currently has')
 
     member = MockMember('user', 44, MockGuild('guild', GUILD_CONFIG.guild_id))
     await offenses_(commands, interaction, user=member)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'has not broken the rules' in interaction.response_message
+    assert_responded(interaction, 'has not broken the rules')
 
 
 async def test_add_offense(commands) -> None:
@@ -493,9 +464,7 @@ async def test_add_offense(commands) -> None:
     member = MockMember('user', 42, MockGuild('guild', GUILD_CONFIG.guild_id))
 
     await add_offense_(commands, interaction, member, count=2)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Added 2 offenses' in interaction.response_message
+    assert_responded(interaction, 'Added 2 offenses')
 
     data = commands.database.get_user(GUILD_CONFIG.guild_id, 42)
     assert data.current_offenses == 2
@@ -507,9 +476,7 @@ async def test_add_offense(commands) -> None:
         mock.AsyncMock(return_value='test'),
     ):
         await add_offense_(commands, interaction, member)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'test' in interaction.response_message
+    assert_responded(interaction, 'test')
 
     interaction = MockInteraction(
         commands.add_offense,
@@ -518,9 +485,7 @@ async def test_add_offense(commands) -> None:
     )
 
     await add_offense_(commands, interaction, member)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'not been configured for this guild' in interaction.response_message
+    assert_responded(interaction, 'not been configured for this guild')
 
 
 async def test_remove_offenses(commands) -> None:
@@ -534,9 +499,7 @@ async def test_remove_offenses(commands) -> None:
     member = MockMember('user', 42, MockGuild('guild', GUILD_CONFIG.guild_id))
 
     await remove_offense_(commands, interaction, member)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Removed 1 offense' in interaction.response_message
+    assert_responded(interaction, 'Removed 1 offense')
 
 
 async def test_reset_offenses(commands) -> None:
@@ -550,9 +513,7 @@ async def test_reset_offenses(commands) -> None:
     member = MockMember('user', 42, MockGuild('guild', GUILD_CONFIG.guild_id))
 
     await reset_offenses_(commands, interaction, member)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Reset offense count' in interaction.response_message
+    assert_responded(interaction, 'Reset offense count')
 
 
 async def test_on_error(commands, caplog) -> None:
@@ -561,9 +522,8 @@ async def test_on_error(commands, caplog) -> None:
         interaction,
         app_commands.MissingPermissions(['test']),
     )
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'test' in interaction.response_message.lower()
+    message = assert_responded(interaction)
+    assert 'test' in message.lower()
 
     # Should not raise error, just log it
     caplog.set_level(logging.ERROR)

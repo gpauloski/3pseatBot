@@ -5,6 +5,7 @@ from unittest import mock
 import discord
 from emoji import emojize
 
+from testing.asserts import assert_followed
 from testing.mock import MockInteraction
 from testing.utils import extract
 from threepseat.commands.emote import emote
@@ -36,12 +37,8 @@ async def test_emote() -> None:
     ):
         await emote_(interaction)
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert (
-        'emote' in interaction.followup_message
-        or emojize(':game_die:') in interaction.followup_message
-    )
+    message = assert_followed(interaction)
+    assert 'emote' in message or emojize(':game_die:') in message
 
 
 async def test_emote_no_emotes() -> None:
@@ -56,9 +53,7 @@ async def test_emote_no_emotes() -> None:
     ):
         await emote_(interaction)
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'no custom emotes' in interaction.followup_message
+    assert_followed(interaction, 'no custom emotes')
 
 
 async def test_emote_no_matches() -> None:
@@ -75,6 +70,4 @@ async def test_emote_no_matches() -> None:
     ):
         await emote_(interaction, match='missing')
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'No guild emotes match' in interaction.followup_message
+    assert_followed(interaction, 'No guild emotes match')

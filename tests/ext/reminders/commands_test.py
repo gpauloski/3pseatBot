@@ -6,6 +6,7 @@ from unittest import mock
 import discord
 import pytest
 
+from testing.asserts import assert_responded
 from testing.mock import MockChannel
 from testing.mock import MockClient
 from testing.mock import MockGuild
@@ -177,9 +178,7 @@ async def test_create_one_time(reminders) -> None:
 
     assert reminders.table.get(REMINDER.guild_id, REMINDER.name) is None
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Created' in interaction.response_message
+    assert_responded(interaction, 'Created')
 
 
 async def test_create_repeating(reminders) -> None:
@@ -204,9 +203,7 @@ async def test_create_repeating(reminders) -> None:
 
     assert reminders.table.get(REMINDER.guild_id, REMINDER.name) is not None
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Created' in interaction.response_message
+    assert_responded(interaction, 'Created')
 
 
 async def test_create_alphanumeric_check(reminders) -> None:
@@ -229,9 +226,7 @@ async def test_create_alphanumeric_check(reminders) -> None:
             REMINDER.delay_minutes,
         )
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'alphanumeric' in interaction.response_message
+    assert_responded(interaction, 'alphanumeric')
 
 
 async def test_create_name_exists(reminders) -> None:
@@ -256,9 +251,7 @@ async def test_create_name_exists(reminders) -> None:
             REMINDER.delay_minutes,
         )
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'already exists' in interaction.response_message
+    assert_responded(interaction, 'already exists')
 
 
 async def test_create_one_time_warn_long_delay(reminders) -> None:
@@ -281,9 +274,7 @@ async def test_create_one_time_warn_long_delay(reminders) -> None:
             WARN_ON_LONG_DELAY + 1,
         )
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'long delays may be lost' in interaction.response_message
+    assert_responded(interaction, 'long delays may be lost')
 
 
 async def test_info(reminders) -> None:
@@ -305,11 +296,9 @@ async def test_info(reminders) -> None:
     ):
         await info_(reminders, interaction, REMINDER.name)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert REMINDER.name in interaction.response_message
-    assert REMINDER.text in interaction.response_message
-    assert ReminderType.ONE_TIME.value in interaction.response_message
+    message = assert_responded(interaction, REMINDER.name)
+    assert REMINDER.text in message
+    assert ReminderType.ONE_TIME.value in message
 
 
 async def test_info_empty(reminders) -> None:
@@ -323,9 +312,7 @@ async def test_info_empty(reminders) -> None:
 
     await info_(reminders, interaction, REMINDER.name)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')
 
 
 async def test_list(reminders) -> None:
@@ -360,10 +347,8 @@ async def test_list(reminders) -> None:
     ):
         await list_(reminders, interaction)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'a:' in interaction.response_message
-    assert 'b:' in interaction.response_message
+    message = assert_responded(interaction, 'a:')
+    assert 'b:' in message
 
 
 async def test_list_empty(reminders) -> None:
@@ -377,9 +362,7 @@ async def test_list_empty(reminders) -> None:
 
     await list_(reminders, interaction)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'no reminders' in interaction.response_message
+    assert_responded(interaction, 'no reminders')
 
 
 async def test_remove_one_time(reminders) -> None:
@@ -403,9 +386,7 @@ async def test_remove_one_time(reminders) -> None:
     await remove_(reminders, interaction, REMINDER.name)
     assert key not in reminders._tasks
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Removed' in interaction.response_message
+    assert_responded(interaction, 'Removed')
 
 
 async def test_remove_repeating(reminders) -> None:
@@ -451,9 +432,7 @@ async def test_remove_repeating(reminders) -> None:
     assert key not in reminders._tasks
     assert reminders.table.get(REMINDER.guild_id, REMINDER.name) is None
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Removed' in interaction.response_message
+    assert_responded(interaction, 'Removed')
 
 
 async def test_remove_missing(reminders) -> None:
@@ -467,6 +446,4 @@ async def test_remove_missing(reminders) -> None:
 
     await remove_(reminders, interaction, REMINDER.name)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')

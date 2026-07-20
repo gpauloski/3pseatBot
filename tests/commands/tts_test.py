@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from unittest import mock
 
+from testing.asserts import assert_followed
+from testing.asserts import assert_responded
 from testing.mock import MockGuild
 from testing.mock import MockInteraction
 from testing.mock import MockMember
@@ -26,9 +28,7 @@ async def test_tts_command() -> None:
     ):
         await tts_(interaction, 'test message')
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Played' in interaction.followup_message
+    assert_followed(interaction, 'Played')
 
 
 async def test_tts_command_text_too_long() -> None:
@@ -43,9 +43,7 @@ async def test_tts_command_text_too_long() -> None:
 
     await tts_(interaction, 'x' * 201)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Text length is limited' in interaction.response_message
+    assert_responded(interaction, 'Text length is limited')
 
 
 async def test_tts_command_not_in_voice_channel() -> None:
@@ -64,9 +62,7 @@ async def test_tts_command_not_in_voice_channel() -> None:
     ):
         await tts_(interaction, 'test message')
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'must be in a voice channel' in interaction.followup_message
+    assert_followed(interaction, 'must be in a voice channel')
 
 
 async def test_tts_command_exception() -> None:
@@ -89,6 +85,4 @@ async def test_tts_command_exception() -> None:
     ):
         await tts_(interaction, 'test message')
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Failed to play TTS' in interaction.followup_message
+    assert_followed(interaction, 'Failed to play TTS')

@@ -9,6 +9,8 @@ import discord
 import pytest
 from discord import app_commands
 
+from testing.asserts import assert_followed
+from testing.asserts import assert_responded
 from testing.mock import MockGuild
 from testing.mock import MockInteraction
 from testing.mock import MockMember
@@ -68,9 +70,7 @@ async def test_add_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
         description='a sound',
     )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Added' in interaction.followup_message
+    assert_followed(interaction, 'Added')
 
 
 async def test_add_command_invalid_name(
@@ -100,9 +100,7 @@ async def test_add_command_invalid_name(
             description='a sound',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Name must' in interaction.followup_message
+    assert_followed(interaction, 'Name must')
     assert mock_download.call_count == 0
 
 
@@ -129,9 +127,7 @@ async def test_add_command_exists(
             description='a sound',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'already exists' in interaction.followup_message
+    assert_followed(interaction, 'already exists')
 
 
 async def test_add_command_failure(
@@ -160,9 +156,7 @@ async def test_add_command_failure(
             description='a sound',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Error downloading sound.' in interaction.followup_message
+    assert_followed(interaction, 'Error downloading sound.')
 
 
 async def test_autocomplete(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
@@ -212,9 +206,7 @@ async def test_list_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     )
     await list_(sounds, interaction)
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'no sounds' in interaction.followup_message
+    assert_followed(interaction, 'no sounds')
 
     interaction = MockInteraction(
         sounds.add,
@@ -240,9 +232,7 @@ async def test_list_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     )
     await list_(sounds, interaction)
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'mysound' in interaction.followup_message
+    assert_followed(interaction, 'mysound')
 
 
 async def test_info_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
@@ -259,9 +249,7 @@ async def test_info_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     )
     await info_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')
 
     interaction = MockInteraction(
         sounds.add,
@@ -287,9 +275,7 @@ async def test_info_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     )
     await info_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'mysound' in interaction.response_message
+    assert_responded(interaction, 'mysound')
 
 
 async def test_play_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
@@ -331,9 +317,7 @@ async def test_play_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     ):
         await play_(sounds, interaction, name='mysound')
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Played!' in interaction.followup_message
+    assert_followed(interaction, 'Played!')
 
 
 async def test_play_command_missing(
@@ -351,9 +335,7 @@ async def test_play_command_missing(
     )
     await play_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')
 
 
 async def test_play_command_not_in_channel(
@@ -391,9 +373,7 @@ async def test_play_command_not_in_channel(
     ):
         await play_(sounds, interaction, name='mysound')
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'voice channel' in interaction.followup_message
+    assert_followed(interaction, 'voice channel')
 
 
 async def test_play_command_error(
@@ -437,9 +417,7 @@ async def test_play_command_error(
     ):
         await play_(sounds, interaction, name='mysound')
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Failed to play' in interaction.followup_message
+    assert_followed(interaction, 'Failed to play')
 
 
 async def test_remove_command_missing(
@@ -457,9 +435,7 @@ async def test_remove_command_missing(
     )
     await remove_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')
 
 
 async def test_remove_command(
@@ -494,9 +470,7 @@ async def test_remove_command(
     )
     await remove_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Removed' in interaction.response_message
+    assert_responded(interaction, 'Removed')
 
     interaction = MockInteraction(
         sounds.info,
@@ -507,9 +481,7 @@ async def test_remove_command(
     )
     await info_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')
 
 
 async def test_upload_command_success(
@@ -538,9 +510,7 @@ async def test_upload_command_success(
             description='a fresh sound',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Uploaded and added' in interaction.followup_message
+    assert_followed(interaction, 'Uploaded and added')
 
 
 async def test_upload_command_invalid_extension(
@@ -565,9 +535,7 @@ async def test_upload_command_invalid_extension(
         description='should fail extension check',
     )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'must be an MP3' in interaction.followup_message
+    assert_followed(interaction, 'must be an MP3')
 
 
 async def test_upload_command_invalid_name(
@@ -594,9 +562,7 @@ async def test_upload_command_invalid_name(
         description='should fail name check',
     )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Name must' in interaction.followup_message
+    assert_followed(interaction, 'Name must')
 
 
 async def test_upload_command_file_too_large(
@@ -621,9 +587,7 @@ async def test_upload_command_file_too_large(
         description='should fail size check',
     )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'File size must be under' in interaction.followup_message
+    assert_followed(interaction, 'File size must be under')
 
 
 async def test_upload_command_duration_too_long(
@@ -652,9 +616,7 @@ async def test_upload_command_duration_too_long(
             description='should fail duration check',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Sound is too long' in interaction.followup_message
+    assert_followed(interaction, 'Sound is too long')
 
 
 async def test_upload_command_duration_extraction_error(
@@ -683,9 +645,7 @@ async def test_upload_command_duration_extraction_error(
             description='should handle parsing exceptions gracefully',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Could not process the file' in interaction.followup_message
+    assert_followed(interaction, 'Could not process the file')
 
 
 async def test_upload_command_write_disk_error(
@@ -721,9 +681,7 @@ async def test_upload_command_write_disk_error(
             description='should fail gracefully on file save',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Could not process the file' in interaction.followup_message
+    assert_followed(interaction, 'Could not process the file')
 
 
 async def test_upload_command_video_success(
@@ -762,9 +720,7 @@ async def test_upload_command_video_success(
             description='a video sound',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Uploaded and added' in interaction.followup_message
+    assert_followed(interaction, 'Uploaded and added')
 
 
 async def test_upload_command_unsupported_type(
@@ -789,9 +745,7 @@ async def test_upload_command_unsupported_type(
         description='unsupported container',
     )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'supported video' in interaction.followup_message
+    assert_followed(interaction, 'supported video')
 
 
 async def test_upload_command_video_too_large(
@@ -819,9 +773,7 @@ async def test_upload_command_video_too_large(
         description='should fail size check',
     )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'File size must be under' in interaction.followup_message
+    assert_followed(interaction, 'File size must be under')
 
 
 async def test_upload_command_video_too_long(
@@ -850,9 +802,7 @@ async def test_upload_command_video_too_long(
             description='should fail duration check',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Sound is too long' in interaction.followup_message
+    assert_followed(interaction, 'Sound is too long')
 
 
 async def test_upload_command_video_extract_error(
@@ -887,9 +837,7 @@ async def test_upload_command_video_extract_error(
             description='should handle extraction failures',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Could not process the file' in interaction.followup_message
+    assert_followed(interaction, 'Could not process the file')
 
 
 async def test_on_error(
@@ -909,9 +857,8 @@ async def test_on_error(
         interaction,
         app_commands.MissingPermissions(['test']),
     )
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'test' in interaction.response_message.lower()
+    message = assert_responded(interaction)
+    assert 'test' in message.lower()
 
     # Should not raise error, just log it
     caplog.set_level(logging.ERROR)
@@ -1011,9 +958,7 @@ async def test_register_command_sound_missing(
 
     await register_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')
 
 
 async def test_register_command(
@@ -1045,6 +990,4 @@ async def test_register_command(
     await register_(sounds, interaction, name='mysound')
     assert len(sounds.join_table.all(interaction.guild.id)) == 1
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Updated your voice channel entry' in interaction.response_message
+    assert_responded(interaction, 'Updated your voice channel entry')
