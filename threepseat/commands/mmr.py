@@ -25,7 +25,11 @@ logger = logging.getLogger(__name__)
 
 DequeMaker = Callable[[], collections.deque[str]]
 
-# Mapping[{Guild, Channel, User} ID, Deque[str]]
+# Recently queried summoner lists, used to populate autocomplete. Keyed by
+# guild, channel, or user ID (see cache_add): these are all Discord
+# snowflakes, drawn from one ID space, so entries of different kinds cannot
+# collide. Bounded per key by the deque's maxlen, but the dict itself grows
+# with the number of distinct IDs that have used /mmr.
 caches: dict[int, collections.deque[str]] = collections.defaultdict(
     cast('DequeMaker', functools.partial(collections.deque, maxlen=10)),
 )
@@ -171,7 +175,10 @@ def cache_add(
     """Add item to cache.
 
     Preference is to first try adding to guild cache, then channel cache, and
-    defaulting to user cache if neither of the previous exist.
+    defaulting to user cache if neither of the previous exist. Sharing one
+    dict across the three is safe because Discord IDs are snowflakes from a
+    single ID space. autocomplete_summoners() must resolve the key the same
+    way to read back what is written here.
     """
     if guild is not None:
         cache = caches[guild.id]
