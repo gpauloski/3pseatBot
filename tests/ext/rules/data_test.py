@@ -2,24 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from threepseat.ext.rules.data import GuildConfig
+from testing.data import GUILD_CONFIG
 from threepseat.ext.rules.data import RulesDatabase
 from threepseat.ext.rules.data import UserOffenses
 from threepseat.ext.rules.exceptions import GuildNotConfiguredError
 from threepseat.ext.rules.exceptions import MaxOffensesExceededError
-
-GUILD_CONFIG = GuildConfig(
-    guild_id=1234,
-    enabled=1,
-    event_expectancy=0.5,
-    event_duration=24,
-    event_cooldown=5.0,
-    last_event=0,
-    max_offenses=3,
-    timeout_duration=300,
-    prefixes='3pseat, 3pfeet',
-)
-
 
 USER_OFFENSES = UserOffenses(
     guild_id=1234,

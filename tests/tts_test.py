@@ -18,9 +18,9 @@ def test_accent_from_str() -> None:
     assert isinstance(Accent.from_str('', random_if_unknown=True), Accent)
 
 
-def test_tts_as_mp3() -> None:
+async def test_tts_as_mp3() -> None:
     with mock.patch('threepseat.tts.gTTS'):
-        with tts_as_mp3('test message') as fp:
+        async with tts_as_mp3('test message') as fp:
             filepath = fp
             assert pathlib.Path(fp).is_file()
         # File gets cleaned up

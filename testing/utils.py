@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import pathlib
+import time
 import uuid
 from collections.abc import Awaitable
 from collections.abc import Callable
@@ -17,22 +19,33 @@ from testing.config import EXAMPLE_CONFIG
 
 
 @pytest.fixture
-def tmp_file(tmp_path: pathlib.Path) -> Generator[str, None, None]:
-    """Fixture that random file path."""
-    filepath = tmp_path / str(uuid.uuid4())
-    yield str(filepath)
-    if filepath.exists():  # pragma: no branch
-        filepath.unlink()
+def tmp_file(tmp_path: pathlib.Path) -> str:
+    """Fixture that returns a random file path."""
+    # tmp_path is removed by pytest, so nothing to clean up here.
+    return str(tmp_path / str(uuid.uuid4()))
 
 
 @pytest.fixture
-def config(tmp_path: pathlib.Path) -> Generator[str, None, None]:
+def config(tmp_path: pathlib.Path) -> str:
     """Fixture that generates path to valid bot config file."""
     filepath = tmp_path / 'config.json'
     with filepath.open('w') as f:
         json.dump(EXAMPLE_CONFIG, f)
-    yield str(filepath)
-    filepath.unlink()
+    return str(filepath)
+
+
+async def wait_for(
+    predicate: Callable[[], bool],
+    max_wait: float = 5.0,
+    interval: float = 0.01,
+) -> None:
+    """Wait for a background task to make the predicate true."""
+    deadline = time.monotonic() + max_wait
+    while not predicate():
+        if time.monotonic() > deadline:  # pragma: no cover
+            msg = 'Timeout waiting for condition to become true.'
+            raise TimeoutError(msg)
+        await asyncio.sleep(interval)
 
 
 def extract(

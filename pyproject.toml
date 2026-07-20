@@ -25,7 +25,6 @@ dependencies = [
     "gtts",
     "pynacl",
     "quart>=0.19.2",
-    "requests",
     "tzdata",
     "yt-dlp",
 ]
@@ -48,7 +47,6 @@ dev = [
     "ruff",
     "tox",
     "types-emoji",
-    "types-requests",
     "virtualenv",
 ]
 
@@ -86,7 +84,7 @@ module = "tests.*"
 allow_incomplete_defs = true
 allow_untyped_defs = true
 
-[tool.pytest]
+[tool.pytest.ini_options]
 asyncio_mode = "auto"
 filterwarnings = [
     "ignore::DeprecationWarning:async_oauthlib.oauth1_session",

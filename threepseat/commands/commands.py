@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-from typing import TypeVar
 
 import discord
 from discord import app_commands
@@ -10,30 +9,9 @@ from discord.app_commands.commands import Command as _Command
 from discord.app_commands.commands import Group
 from discord.ext import commands
 
-type Command = _Command[Any, Any, Any]
-CommandType = TypeVar('CommandType', Command, Group)
-T = TypeVar('T')
+type Command = _Command[Any, Any, Any] | Group
 
-_app_commands: list[Command | Group] = []
 logger = logging.getLogger(__name__)
-
-
-def register_app_command(command: CommandType) -> CommandType:  # noqa: UP047
-    """Register the app command.
-
-    Usage:
-        >>> @register
-        >>> @app_command.command()
-        >>> def mycommand(interaction, ...): ...
-    """
-    _app_commands.append(command)
-    return command
-
-
-def registered_app_commands() -> list[Command | Group]:
-    """Get list of registered application commands."""
-    # Shallow copy here so caller does not mess up our list by accident
-    return _app_commands[:]
 
 
 def extract_command_options(

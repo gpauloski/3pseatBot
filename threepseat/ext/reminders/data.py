@@ -51,11 +51,11 @@ class RemindersTable(SQLTableInterface[Reminder]):
             primary_keys=('guild_id', 'name'),
         )
 
-    def _all(self, guild_id: int) -> list[Reminder]:  # type: ignore[override]
+    def _all(self, guild_id: int) -> tuple[Reminder, ...]:
         """Get all reminders in guild."""
         return super()._all(guild_id=guild_id)
 
-    def _get(  # type: ignore[override]
+    def _get(
         self,
         guild_id: int,
         name: str,
@@ -63,6 +63,6 @@ class RemindersTable(SQLTableInterface[Reminder]):
         """Get specific reminder."""
         return super()._get(guild_id=guild_id, name=name)
 
-    def remove(self, guild_id: int, name: str) -> int:  # type: ignore[override]
+    def remove(self, guild_id: int, name: str) -> int:
         """Remove a reminder."""
         return super().remove(guild_id=guild_id, name=name)

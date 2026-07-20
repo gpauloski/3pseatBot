@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import datetime
 import logging
 import os
-import pathlib
 import secrets
-import tempfile
 import time
 from collections.abc import Awaitable
 from collections.abc import Callable
@@ -24,18 +21,16 @@ from werkzeug.wrappers.response import Response as werkseug_Response
 
 from threepseat.bot import Bot
 from threepseat.ext.sounds.data import MAX_SOUND_DESCRIPTION_CHARS
-from threepseat.ext.sounds.data import MAX_SOUND_FILE_SIZE_BYTES
-from threepseat.ext.sounds.data import MAX_SOUND_LENGTH_SECONDS
 from threepseat.ext.sounds.data import MAX_VIDEO_FILE_SIZE_BYTES
-from threepseat.ext.sounds.data import SUPPORTED_VIDEO_EXTENSIONS
 from threepseat.ext.sounds.data import MemberSound
 from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import Sound
 from threepseat.ext.sounds.data import SoundsTable
 from threepseat.ext.sounds.data import download
-from threepseat.ext.sounds.data import extract_audio
-from threepseat.ext.sounds.data import mp3_duration_seconds
-from threepseat.ext.sounds.data import supported_video_extensions_str
+from threepseat.ext.sounds.data import remove_if_exists
+from threepseat.ext.sounds.data import save_upload
+from threepseat.ext.sounds.data import validate_upload_extension
+from threepseat.ext.sounds.data import validate_upload_size
 from threepseat.utils import play_sound
 from threepseat.utils import voice_channel
 
@@ -149,6 +144,31 @@ def create_app(  # noqa: PLR0913
     return app
 
 
+class AppContext(NamedTuple):
+    """Objects the routes need, resolved from the app config."""
+
+    bot: Bot
+    sounds: SoundsTable
+    member_sounds: MemberSoundTable
+    session: DiscordOAuth2Session
+
+
+def context() -> AppContext:
+    """Typed view of the objects create_app() stored on the app config.
+
+    quart's config is a plain dict of Any, so reading it directly in each
+    route discards the types. Resolving the keys in one place keeps the
+    routes typed and the key names in a single spot.
+    """
+    config = quart.current_app.config
+    return AppContext(
+        bot=config['bot'],
+        sounds=config['sounds'],
+        member_sounds=config['member_sounds'],
+        session=config['DISCORD_OAUTH2_SESSION'],
+    )
+
+
 def get_mutual_guilds(
     client: discord.Client,
     user: models.User,
@@ -212,10 +232,9 @@ async def resolve_member(
         a ``(member, None)`` pair on success, or ``(None, response)`` with a
         400 response to return to the caller when the user is not a member.
     """
-    discord_session = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    bot = quart.current_app.config['bot']
-    user = await discord_session.fetch_user()
-    member = get_member(bot, user, guild_id)
+    ctx = context()
+    user = await ctx.session.fetch_user()
+    member = get_member(ctx.bot, user, guild_id)
     if member is None:
         return None, quart.Response(
             'Cannot find your membership in the Guild.',
@@ -227,8 +246,7 @@ async def resolve_member(
 @sounds_blueprint.route('/')
 async def index() -> Response:
     """Home page."""
-    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    if not await discord.authorized:
+    if not await context().session.authorized:
         login_url = quart.url_for('sounds.login')
         return await quart.render_template('index.html', login_url=login_url)
     return quart.redirect(quart.url_for('sounds.guilds'))
@@ -238,11 +256,10 @@ async def index() -> Response:
 @requires_authorization
 async def guilds() -> Response:
     """Select guild page."""
-    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    bot = quart.current_app.config['bot']
-    user = await discord.fetch_user()
+    ctx = context()
+    user = await ctx.session.fetch_user()
 
-    guilds = get_mutual_guilds(bot, user)
+    guilds = get_mutual_guilds(ctx.bot, user)
 
     guild_data = [
         GuildData(
@@ -266,10 +283,9 @@ async def guilds() -> Response:
 @requires_authorization
 async def sound_grid(guild_id: int) -> Response:
     """Display grid of available sounds in guild."""
-    bot = quart.current_app.config['bot']
-    sounds = quart.current_app.config['sounds']
-    sound_list = sounds.all(guild_id)
-    guild = bot.get_guild(guild_id)
+    ctx = context()
+    sound_list = ctx.sounds.all(guild_id)
+    guild = ctx.bot.get_guild(guild_id)
 
     sound_data = [
         SoundData(
@@ -281,7 +297,7 @@ async def sound_grid(guild_id: int) -> Response:
                 guild_id=guild_id,
                 sound_name=sound.name,
             ),
-            author_name(bot, guild, sound.author_id),
+            author_name(ctx.bot, guild, sound.author_id),
             datetime.datetime.fromtimestamp(
                 sound.created_time,
                 tz=datetime.UTC,
@@ -301,10 +317,8 @@ async def sound_grid(guild_id: int) -> Response:
     # template can mark that card. Best-effort: never let it break the grid.
     entrance_sound: str | None = None
     try:
-        discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-        member_sounds = quart.current_app.config['member_sounds']
-        user = await discord.fetch_user()
-        current = member_sounds.get(member_id=user.id, guild_id=guild_id)
+        user = await ctx.session.fetch_user()
+        current = ctx.member_sounds.get(member_id=user.id, guild_id=guild_id)
         if current is not None:
             entrance_sound = current.name
     except Exception:  # pragma: no cover
@@ -328,7 +342,7 @@ async def sound_grid(guild_id: int) -> Response:
 @requires_authorization
 async def sound_play(guild_id: int, sound_name: str) -> Response:
     """Play a sound into the user's voice channel."""
-    sounds = quart.current_app.config['sounds']
+    sounds = context().sounds
     member, error = await resolve_member(guild_id)
     if error is not None:
         return error
@@ -366,27 +380,26 @@ async def set_entrance(guild_id: int, sound_name: str) -> Response:
     Setting the sound that is already registered clears it, so the same
     endpoint both selects and deselects.
     """
-    sounds = quart.current_app.config['sounds']
-    member_sounds = quart.current_app.config['member_sounds']
+    ctx = context()
 
     member, error = await resolve_member(guild_id)
     if error is not None:
         return error
     assert member is not None
 
-    sound = sounds.get(sound_name, guild_id=guild_id)
+    sound = ctx.sounds.get(sound_name, guild_id=guild_id)
     if sound is None:
         return quart.Response(
             f'Unable to locate a sound named {sound_name}.',
             400,
         )
 
-    current = member_sounds.get(member_id=member.id, guild_id=guild_id)
+    current = ctx.member_sounds.get(member_id=member.id, guild_id=guild_id)
     if current is not None and current.name == sound_name:
-        member_sounds.remove(member_id=member.id, guild_id=guild_id)
+        ctx.member_sounds.remove(member_id=member.id, guild_id=guild_id)
         active = False
     else:
-        member_sounds.update(
+        ctx.member_sounds.update(
             MemberSound(
                 member_id=member.id,
                 guild_id=guild_id,
@@ -403,7 +416,7 @@ async def set_entrance(guild_id: int, sound_name: str) -> Response:
 @requires_authorization
 async def sound_file(guild_id: int, sound_name: str) -> Response:
     """Serve a sound's MP3 for in-browser preview."""
-    sounds = quart.current_app.config['sounds']
+    sounds = context().sounds
     sound = sounds.get(sound_name, guild_id=guild_id)
     if sound is None:
         return quart.Response(
@@ -416,17 +429,26 @@ async def sound_file(guild_id: int, sound_name: str) -> Response:
     )
 
 
-@sounds_blueprint.route('/sounds/<int:guild_id>/add', methods=['POST'])
-@requires_authorization
-async def sound_add(guild_id: int) -> Response:  # noqa: C901, PLR0911, PLR0912, PLR0915
-    """Add a sound to a guild from a YouTube link or an uploaded MP3 file."""
-    sounds = quart.current_app.config['sounds']
+class _SoundRequest(NamedTuple):
+    """Validated contents of the add-a-sound form."""
 
-    member, error = await resolve_member(guild_id)
-    if error is not None:
-        return error
-    assert member is not None
+    name: str
+    description: str
+    link: str
+    content: bytes | None
+    ext: str
 
+
+async def _parse_sound_request() -> _SoundRequest:
+    """Parse and validate the add-a-sound form.
+
+    The upload is fully validated here so that sound_add() never writes an
+    unchecked file to disk.
+
+    Raises:
+        ValueError:
+            with a user-facing message if the form is invalid.
+    """
     form = await quart.request.form
     files = await quart.request.files
     name = form.get('name', '').strip()
@@ -436,153 +458,108 @@ async def sound_add(guild_id: int) -> Response:  # noqa: C901, PLR0911, PLR0912,
     has_file = file is not None and bool(file.filename)
 
     if len(description) == 0 or len(description) > MAX_SOUND_DESCRIPTION_CHARS:
-        return quart.Response(
+        msg = (
             'Description must be between 1 and '
-            f'{MAX_SOUND_DESCRIPTION_CHARS} characters.',
-            400,
+            f'{MAX_SOUND_DESCRIPTION_CHARS} characters.'
         )
+        raise ValueError(msg)
     if link and has_file:
-        return quart.Response(
-            'Provide either a YouTube link or an MP3 file, not both.',
-            400,
-        )
+        msg = 'Provide either a YouTube link or an MP3 file, not both.'
+        raise ValueError(msg)
+    if not link and not has_file:
+        msg = 'Provide a YouTube link or an MP3 or video file.'
+        raise ValueError(msg)
 
-    # Validate the upload before touching disk. The YouTube link is
-    # validated (including duration) by download() below.
+    # A link is validated (including its duration) by download() later.
     content: bytes | None = None
     ext = ''
-    if not link and has_file:
+    if not link:
         assert file is not None
-        filename = file.filename or ''
-        ext = pathlib.Path(filename.lower()).suffix
-        is_mp3 = ext == '.mp3'
-        is_video = ext in SUPPORTED_VIDEO_EXTENSIONS
-        if not is_mp3 and not is_video:
-            return quart.Response(
-                'The file must be an MP3 or a supported video '
-                f'({supported_video_extensions_str()}).',
-                400,
-            )
+        ext = validate_upload_extension(file.filename or '')
         content = file.read()
-        max_size = (
-            MAX_SOUND_FILE_SIZE_BYTES if is_mp3 else MAX_VIDEO_FILE_SIZE_BYTES
-        )
-        if len(content) > max_size:
-            mb = max_size // (1024 * 1024)
-            return quart.Response(f'File size must be under {mb} MB.', 400)
-    elif not link:
-        return quart.Response(
-            'Provide a YouTube link or an MP3 or video file.',
-            400,
-        )
+        validate_upload_size(ext, len(content))
 
-    sound = Sound.new(
-        name=name,
-        description=description,
-        link=link or None,
-        author_id=member.id,
-        guild_id=guild_id,
-    )
+    return _SoundRequest(name, description, link, content, ext)
+
+
+@sounds_blueprint.route('/sounds/<int:guild_id>/add', methods=['POST'])
+@requires_authorization
+async def sound_add(guild_id: int) -> Response:
+    """Add a sound to a guild from a YouTube link or an uploaded MP3 file."""
+    sounds = context().sounds
+
+    member, error = await resolve_member(guild_id)
+    if error is not None:
+        return error
+    assert member is not None
+
+    try:
+        request = await _parse_sound_request()
+        # Sound.new validates the name, which is part of the filename, so
+        # nothing below can write outside the sounds directory.
+        sound = Sound.new(
+            name=request.name,
+            description=request.description,
+            link=request.link or None,
+            author_id=member.id,
+            guild_id=guild_id,
+        )
+    except ValueError as e:
+        return quart.Response(str(e), 400)
+
     filepath = sounds.filepath(sound.filename)
 
     logger.info(
         'processing sound upload %r from %s (%s) for guild %s (source: %s)',
-        name,
+        request.name,
         member.display_name,
         member.id,
         guild_id,
-        'link' if link else ext.lstrip('.'),
+        'link' if request.link else request.ext.lstrip('.'),
     )
 
     try:
-        if link:
+        if request.link:
             # download() enforces the duration limit and raises ValueError
             # on any download/extraction error. It is blocking, so run it in
             # a thread to avoid stalling the event loop.
-            await asyncio.to_thread(download, link, filepath)
-        elif ext == '.mp3':
-            assert content is not None
-            await asyncio.to_thread(
-                pathlib.Path(filepath).write_bytes,
-                content,
-            )
-            duration = await mp3_duration_seconds(filepath)
-            if duration > MAX_SOUND_LENGTH_SECONDS:
-                msg = (
-                    f'Sound is too long ({duration:.1f}s). Maximum length '
-                    f'is {MAX_SOUND_LENGTH_SECONDS} seconds.'
-                )
-                raise ValueError(msg)  # noqa: TRY301
+            await asyncio.to_thread(download, request.link, filepath)
         else:
-            # Video: probe the duration and strip the audio to an MP3.
-            assert content is not None
-            await _extract_video_audio(content, ext, filepath)
+            assert request.content is not None
+            await save_upload(request.content, request.ext, filepath)
 
         # add() validates the name (alphanumeric, length, uniqueness) and
         # that the file exists on disk.
         sounds.add(sound)
     except ValueError as e:
-        _remove_if_exists(filepath)
+        remove_if_exists(filepath)
         return quart.Response(str(e), 400)
     except Exception:
         logger.exception('error saving uploaded sound')
-        _remove_if_exists(filepath)
+        remove_if_exists(filepath)
         return quart.Response('Failed to save the sound.', 400)
 
     return quart.Response('', 200)
 
 
-def _remove_if_exists(filepath: str) -> None:
-    """Remove a file if it exists, ignoring missing files."""
-    with contextlib.suppress(FileNotFoundError):  # pragma: no cover
-        pathlib.Path(filepath).unlink()
-
-
-async def _extract_video_audio(
-    content: bytes,
-    ext: str,
-    filepath: str,
-) -> None:
-    """Probe an uploaded video's duration and strip its audio to filepath.
-
-    Raises:
-        ValueError:
-            if the clip is longer than MAX_SOUND_LENGTH_SECONDS or the audio
-            cannot be extracted.
-    """
-    with tempfile.NamedTemporaryFile(suffix=ext) as temp_file:
-        temp_file.write(content)
-        temp_file.flush()
-        duration = await mp3_duration_seconds(temp_file.name)
-        if duration > MAX_SOUND_LENGTH_SECONDS:
-            msg = (
-                f'Sound is too long ({duration:.1f}s). Maximum length '
-                f'is {MAX_SOUND_LENGTH_SECONDS} seconds.'
-            )
-            raise ValueError(msg)
-        await extract_audio(temp_file.name, filepath)
-
-
 @sounds_blueprint.route('/login/')
 async def login() -> Response:  # pragma: no cover
     """Login with discord OAuth."""
-    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    return cast('Response', await discord.create_session(prompt=True))
+    session = context().session
+    return cast('Response', await session.create_session(prompt=True))
 
 
 @sounds_blueprint.route('/logout/')
 async def logout() -> Response:  # pragma: no cover
     """Revoke discord OAuth."""
-    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    discord.revoke()
+    context().session.revoke()
     return quart.redirect(quart.url_for('sounds.index'))
 
 
 @sounds_blueprint.route('/callback/')
 async def callback() -> Response:  # pragma: no cover
     """Discord OAuth callback route."""
-    discord = quart.current_app.config['DISCORD_OAUTH2_SESSION']
-    await discord.callback()
+    await context().session.callback()
     quart.session.permanent = True
     return quart.redirect(quart.url_for('sounds.guilds'))
 

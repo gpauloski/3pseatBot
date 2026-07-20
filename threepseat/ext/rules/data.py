@@ -67,7 +67,7 @@ class RulesDatabase:
         """Get configuration for guild."""
         return self.config_table.get(guild_id)
 
-    def get_configs(self) -> list[GuildConfig]:
+    def get_configs(self) -> tuple[GuildConfig, ...]:
         """Get all guild configs."""
         return self.config_table.all()
 
@@ -83,7 +83,7 @@ class RulesDatabase:
         """Get the user offenses matching the guild and user id."""
         return self.offenses_table.get(guild_id, user_id)
 
-    def get_users(self, guild_id: int) -> list[UserOffenses]:
+    def get_users(self, guild_id: int) -> tuple[UserOffenses, ...]:
         """Get all user offenses in a guild."""
         return self.offenses_table.all(guild_id)
 
@@ -160,15 +160,15 @@ class GuildConfigTable(SQLTableInterface[GuildConfig]):
             primary_keys=('guild_id',),
         )
 
-    def _all(self) -> list[GuildConfig]:  # type: ignore[override]
+    def _all(self) -> tuple[GuildConfig, ...]:
         """Get guild configs."""
         return super()._all()
 
-    def _get(self, guild_id: int) -> GuildConfig | None:  # type: ignore[override]
+    def _get(self, guild_id: int) -> GuildConfig | None:
         """Get guild config."""
         return super()._get(guild_id=guild_id)
 
-    def remove(self, guild_id: int) -> int:  # type: ignore[override]
+    def remove(self, guild_id: int) -> int:
         """Remove a guild config from the table."""
         raise NotImplementedError
 
@@ -189,11 +189,11 @@ class UserOffensesTable(SQLTableInterface[UserOffenses]):
             primary_keys=('guild_id', 'user_id'),
         )
 
-    def _all(self, guild_id: int) -> list[UserOffenses]:  # type: ignore[override]
+    def _all(self, guild_id: int) -> tuple[UserOffenses, ...]:
         """Get all user offenses in the guild."""
         return super()._all(guild_id=guild_id)
 
-    def _get(  # type: ignore[override]
+    def _get(
         self,
         guild_id: int,
         user_id: int,
@@ -201,6 +201,6 @@ class UserOffensesTable(SQLTableInterface[UserOffenses]):
         """Get user offenses."""
         return super()._get(guild_id=guild_id, user_id=user_id)
 
-    def remove(self, guild_id: int, user_id: int) -> int:  # type: ignore[override]
+    def remove(self, guild_id: int, user_id: int) -> int:
         """Remove a row."""
         raise NotImplementedError

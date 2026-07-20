@@ -6,28 +6,20 @@ from unittest import mock
 import discord
 import pytest
 
+from testing.asserts import assert_responded
+from testing.data import REMINDER
 from testing.mock import MockChannel
 from testing.mock import MockClient
 from testing.mock import MockGuild
 from testing.mock import MockInteraction
 from testing.mock import MockUser
 from testing.utils import extract
+from testing.utils import wait_for
 from threepseat.ext.reminders.commands import WARN_ON_LONG_DELAY
 from threepseat.ext.reminders.commands import ReminderCommands
 from threepseat.ext.reminders.commands import ReminderTask
 from threepseat.ext.reminders.commands import ReminderTaskKey
-from threepseat.ext.reminders.data import Reminder
 from threepseat.ext.reminders.data import ReminderType
-
-REMINDER = Reminder(
-    guild_id=1234,
-    channel_id=5678,
-    author_id=9012,
-    creation_time=0,
-    name='test',
-    text='test message',
-    delay_minutes=1,
-)
 
 
 @pytest.fixture
@@ -35,8 +27,7 @@ def reminders(tmp_file: str) -> ReminderCommands:
     return ReminderCommands(tmp_file)
 
 
-@pytest.mark.asyncio
-async def test_start_repeating_reminders(reminders) -> None:
+async def test_start_repeating_reminders(reminders: ReminderCommands) -> None:
     reminders.table.update(REMINDER._replace(name='a'))
     reminders.table.update(REMINDER._replace(name='b'))
 
@@ -46,7 +37,7 @@ async def test_start_repeating_reminders(reminders) -> None:
             MockGuild('guild', REMINDER.guild_id),
             MockGuild('guild', 42),
         ]
-        await reminders.post_init(client)
+        await reminders.post_init(client)  # type: ignore[arg-type]
 
     assert len(reminders._tasks) == 2
 
@@ -56,11 +47,10 @@ async def test_start_repeating_reminders(reminders) -> None:
     assert reminders.table._db is None
     for task in tasks:
         with pytest.raises(asyncio.CancelledError):
-            await task._task
+            await task._task  # type: ignore[misc]
 
 
-@pytest.mark.asyncio
-async def test_start_stop_reminder(reminders) -> None:
+async def test_start_stop_reminder(reminders: ReminderCommands) -> None:
     with mock.patch('discord.Client'):
         reminders.start_reminder(
             discord.Client(),  # type: ignore[call-arg]
@@ -79,14 +69,13 @@ async def test_start_stop_reminder(reminders) -> None:
     reminders.stop_reminder(REMINDER.guild_id, REMINDER.name)
     assert len(reminders._tasks) == 0
     with pytest.raises(asyncio.exceptions.CancelledError):
-        await value.task._task
+        await value.task._task  # type: ignore[misc]
 
     # Should be idempotent
     reminders.stop_reminder(REMINDER.guild_id, REMINDER.name)
 
 
-@pytest.mark.asyncio
-async def test_autocomplete(reminders) -> None:
+async def test_autocomplete(reminders: ReminderCommands) -> None:
     interaction = MockInteraction(
         None,  # type: ignore[arg-type]
         user='calling-user',
@@ -113,11 +102,12 @@ async def test_autocomplete(reminders) -> None:
     reminders.stop_reminder(REMINDER.guild_id, 'b')
     for task in tasks:
         with pytest.raises(asyncio.CancelledError):
-            await task._task
+            await task._task  # type: ignore[misc]
 
 
-@pytest.mark.asyncio
-async def test_one_time_reminders_delete_themselves(reminders) -> None:
+async def test_one_time_reminders_delete_themselves(
+    reminders: ReminderCommands,
+) -> None:
     with mock.patch(
         'threepseat.ext.reminders.utils.send_text_reminder',
     ) as mock_send:
@@ -145,22 +135,20 @@ async def test_one_time_reminders_delete_themselves(reminders) -> None:
         value_a = reminders._tasks[key_a]
         value_b = reminders._tasks[key_b]
 
-        # Sleep for 50 ms to ensure task runs
-        await asyncio.sleep(0.05)
+        await wait_for(lambda: key_a not in reminders._tasks)
 
-        assert key_a not in reminders._tasks
+        # The one time reminder removed itself; the repeating one did not.
         assert key_b in reminders._tasks
         reminders.stop_reminder(REMINDER.guild_id, 'b')
 
         assert mock_send.await_count >= 1
 
-        await value_a.task._task
+        await value_a.task._task  # type: ignore[misc]
         with pytest.raises(asyncio.exceptions.CancelledError):
-            await value_b.task._task
+            await value_b.task._task  # type: ignore[misc]
 
 
-@pytest.mark.asyncio
-async def test_create_one_time(reminders) -> None:
+async def test_create_one_time(reminders: ReminderCommands) -> None:
     create_ = extract(reminders.create)
 
     interaction = MockInteraction(
@@ -182,13 +170,10 @@ async def test_create_one_time(reminders) -> None:
 
     assert reminders.table.get(REMINDER.guild_id, REMINDER.name) is None
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Created' in interaction.response_message
+    assert_responded(interaction, 'Created')
 
 
-@pytest.mark.asyncio
-async def test_create_repeating(reminders) -> None:
+async def test_create_repeating(reminders: ReminderCommands) -> None:
     create_ = extract(reminders.create)
 
     interaction = MockInteraction(
@@ -210,13 +195,10 @@ async def test_create_repeating(reminders) -> None:
 
     assert reminders.table.get(REMINDER.guild_id, REMINDER.name) is not None
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Created' in interaction.response_message
+    assert_responded(interaction, 'Created')
 
 
-@pytest.mark.asyncio
-async def test_create_alphanumeric_check(reminders) -> None:
+async def test_create_alphanumeric_check(reminders: ReminderCommands) -> None:
     create_ = extract(reminders.create)
 
     interaction = MockInteraction(
@@ -236,13 +218,10 @@ async def test_create_alphanumeric_check(reminders) -> None:
             REMINDER.delay_minutes,
         )
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'alphanumeric' in interaction.response_message
+    assert_responded(interaction, 'alphanumeric')
 
 
-@pytest.mark.asyncio
-async def test_create_name_exists(reminders) -> None:
+async def test_create_name_exists(reminders: ReminderCommands) -> None:
     create_ = extract(reminders.create)
 
     interaction = MockInteraction(
@@ -252,7 +231,7 @@ async def test_create_name_exists(reminders) -> None:
     )
 
     key = ReminderTaskKey(REMINDER.guild_id, REMINDER.name)
-    reminders._tasks[key] = None
+    reminders._tasks[key] = None  # type: ignore[assignment]
     with mock.patch.object(reminders, 'start_reminder'):
         await create_(
             reminders,
@@ -264,13 +243,12 @@ async def test_create_name_exists(reminders) -> None:
             REMINDER.delay_minutes,
         )
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'already exists' in interaction.response_message
+    assert_responded(interaction, 'already exists')
 
 
-@pytest.mark.asyncio
-async def test_create_one_time_warn_long_delay(reminders) -> None:
+async def test_create_one_time_warn_long_delay(
+    reminders: ReminderCommands,
+) -> None:
     create_ = extract(reminders.create)
 
     interaction = MockInteraction(
@@ -290,13 +268,10 @@ async def test_create_one_time_warn_long_delay(reminders) -> None:
             WARN_ON_LONG_DELAY + 1,
         )
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'long delays may be lost' in interaction.response_message
+    assert_responded(interaction, 'long delays may be lost')
 
 
-@pytest.mark.asyncio
-async def test_info(reminders) -> None:
+async def test_info(reminders: ReminderCommands) -> None:
     info_ = extract(reminders.info)
 
     key = ReminderTaskKey(REMINDER.guild_id, REMINDER.name)
@@ -315,15 +290,12 @@ async def test_info(reminders) -> None:
     ):
         await info_(reminders, interaction, REMINDER.name)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert REMINDER.name in interaction.response_message
-    assert REMINDER.text in interaction.response_message
-    assert ReminderType.ONE_TIME.value in interaction.response_message
+    message = assert_responded(interaction, REMINDER.name)
+    assert REMINDER.text in message
+    assert ReminderType.ONE_TIME.value in message
 
 
-@pytest.mark.asyncio
-async def test_info_empty(reminders) -> None:
+async def test_info_empty(reminders: ReminderCommands) -> None:
     info_ = extract(reminders.info)
 
     interaction = MockInteraction(
@@ -334,13 +306,10 @@ async def test_info_empty(reminders) -> None:
 
     await info_(reminders, interaction, REMINDER.name)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')
 
 
-@pytest.mark.asyncio
-async def test_list(reminders) -> None:
+async def test_list(reminders: ReminderCommands) -> None:
     list_ = extract(reminders.list)
 
     key = ReminderTaskKey(REMINDER.guild_id, 'a')
@@ -372,14 +341,11 @@ async def test_list(reminders) -> None:
     ):
         await list_(reminders, interaction)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'a:' in interaction.response_message
-    assert 'b:' in interaction.response_message
+    message = assert_responded(interaction, 'a:')
+    assert 'b:' in message
 
 
-@pytest.mark.asyncio
-async def test_list_empty(reminders) -> None:
+async def test_list_empty(reminders: ReminderCommands) -> None:
     list_ = extract(reminders.list)
 
     interaction = MockInteraction(
@@ -390,13 +356,10 @@ async def test_list_empty(reminders) -> None:
 
     await list_(reminders, interaction)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'no reminders' in interaction.response_message
+    assert_responded(interaction, 'no reminders')
 
 
-@pytest.mark.asyncio
-async def test_remove_one_time(reminders) -> None:
+async def test_remove_one_time(reminders: ReminderCommands) -> None:
     remove_ = extract(reminders.remove)
 
     interaction = MockInteraction(
@@ -417,13 +380,10 @@ async def test_remove_one_time(reminders) -> None:
     await remove_(reminders, interaction, REMINDER.name)
     assert key not in reminders._tasks
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Removed' in interaction.response_message
+    assert_responded(interaction, 'Removed')
 
 
-@pytest.mark.asyncio
-async def test_remove_repeating(reminders) -> None:
+async def test_remove_repeating(reminders: ReminderCommands) -> None:
     create_ = extract(reminders.create)
     remove_ = extract(reminders.remove)
 
@@ -466,13 +426,10 @@ async def test_remove_repeating(reminders) -> None:
     assert key not in reminders._tasks
     assert reminders.table.get(REMINDER.guild_id, REMINDER.name) is None
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Removed' in interaction.response_message
+    assert_responded(interaction, 'Removed')
 
 
-@pytest.mark.asyncio
-async def test_remove_missing(reminders) -> None:
+async def test_remove_missing(reminders: ReminderCommands) -> None:
     remove_ = extract(reminders.remove)
 
     interaction = MockInteraction(
@@ -483,6 +440,4 @@ async def test_remove_missing(reminders) -> None:
 
     await remove_(reminders, interaction, REMINDER.name)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')

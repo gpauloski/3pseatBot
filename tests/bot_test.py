@@ -21,8 +21,9 @@ from threepseat.ext.sounds import SoundCommands
 # like to push myself to 100% code coverage).
 
 
-@pytest.mark.asyncio
-async def test_bot_startup(tmp_file: str, caplog) -> None:
+async def test_bot_startup(
+    tmp_file: str, caplog: pytest.LogCaptureFixture
+) -> None:
     caplog.set_level(logging.INFO)
     with (
         mock.patch(
@@ -73,8 +74,40 @@ async def test_bot_startup(tmp_file: str, caplog) -> None:
     assert any('ready!' in record.message for record in caplog.records)
 
 
-@pytest.mark.asyncio
-async def test_bot_startup_isolates_failures(tmp_file: str, caplog) -> None:
+async def test_bot_setup_runs_once(tmp_file: str) -> None:
+    # on_ready fires again on every reconnect. Repeating setup would add a
+    # second copy of every listener, restart each extension's background
+    # tasks, and re-sync the command tree, which Discord rate limits hard.
+    extension = BirthdayCommands(tmp_file)
+
+    with (
+        mock.patch(
+            'threepseat.bot.Bot.user',
+            new_callable=mock.PropertyMock(
+                return_value=MockUser('botuser', 1234),
+            ),
+        ),
+        mock.patch('threepseat.bot.Bot.wait_until_ready', mock.AsyncMock()),
+        mock.patch('threepseat.bot.Bot.change_presence', mock.AsyncMock()),
+        mock.patch(
+            'discord.app_commands.tree.CommandTree.sync',
+            mock.AsyncMock(),
+        ) as mock_sync,
+        mock.patch.object(extension, 'post_init', mock.AsyncMock()) as init,
+    ):
+        bot = Bot(extensions=[extension])
+        await bot.on_ready()
+        sync_count = mock_sync.await_count
+
+        await bot.on_ready()
+
+    assert init.await_count == 1
+    assert mock_sync.await_count == sync_count
+
+
+async def test_bot_startup_isolates_failures(
+    tmp_file: str, caplog: pytest.LogCaptureFixture
+) -> None:
     caplog.set_level(logging.INFO)
     bad = GamesCommands(tmp_file)
     good = BirthdayCommands(tmp_file)
@@ -106,7 +139,6 @@ async def test_bot_startup_isolates_failures(tmp_file: str, caplog) -> None:
     )
 
 
-@pytest.mark.asyncio
 async def test_bot_shutdown_closes_extensions(tmp_file: str) -> None:
     birthdays = BirthdayCommands(tmp_file)
     custom = CustomCommands(tmp_file)
@@ -133,7 +165,6 @@ async def test_bot_shutdown_closes_extensions(tmp_file: str) -> None:
     assert sounds.join_table._db is None
 
 
-@pytest.mark.asyncio
 async def test_bot_shutdown_without_extensions() -> None:
     bot = Bot()
 
@@ -146,8 +177,9 @@ async def test_bot_shutdown_without_extensions() -> None:
     assert mock_close.called
 
 
-@pytest.mark.asyncio
-async def test_bot_shutdown_isolates_failures(tmp_file: str, caplog) -> None:
+async def test_bot_shutdown_isolates_failures(
+    tmp_file: str, caplog: pytest.LogCaptureFixture
+) -> None:
     caplog.set_level(logging.ERROR)
     bad = GamesCommands(tmp_file)
     good = BirthdayCommands(tmp_file)

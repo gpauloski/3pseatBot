@@ -34,6 +34,8 @@ BUILTIN_TO_SQLITE = {
 
 RowType = TypeVar('RowType', bound=NamedTuple)
 
+CACHE_MAXSIZE = 1024
+
 
 class Field(NamedTuple):
     """Field/column in SQLite3 table."""
@@ -110,8 +112,11 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
                 f'CREATE TABLE IF NOT EXISTS {self.name} ({columns_str})',
             )
 
-        self.all = functools.cache(self._all)
-        self.get = functools.cache(self._get)
+        # Bounded because the cache key is the full kwargs combination, so an
+        # unbounded cache would retain an entry for every distinct query ever
+        # made (misses included).
+        self.all = functools.lru_cache(maxsize=CACHE_MAXSIZE)(self._all)
+        self.get = functools.lru_cache(maxsize=CACHE_MAXSIZE)(self._get)
 
     @property
     def field_names(self) -> tuple[str, ...]:
@@ -181,8 +186,18 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
                 # any invalid kwarg, including wrong-typed values.
                 raise ValueError(msg)  # noqa: TRY004
 
-    def _all(self, **kwargs: Any) -> list[RowType]:  # noqa: ANN401
-        """Get all rows in the table match kwargs."""
+    def _all(self, *_: Any, **kwargs: Any) -> tuple[RowType, ...]:  # noqa: ANN401
+        """Get all rows in the table match kwargs.
+
+        Returns a tuple because the result is cached and shared by every
+        caller of all().
+
+        Note:
+            Subclasses narrow this to the keys of their own row type (e.g.
+            `_all(self, guild_id: int)`). The unused `*_` is what makes that
+            legal: mypy treats a `(*args: Any, **kwargs: Any)` signature as
+            compatible with any override. Only keyword arguments are used.
+        """
         self.validate_kwargs(kwargs)
 
         where = (
@@ -198,10 +213,12 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
                 f'SELECT * FROM {self.name} {where}',  # noqa: S608
                 kwargs,
             ).fetchall()
-            return [self._row_type(*row) for row in rows]
+            return tuple(self._row_type(*row) for row in rows)
 
-    def _get(self, **kwargs: Any) -> RowType | None:  # noqa: ANN401
+    def _get(self, *_: Any, **kwargs: Any) -> RowType | None:  # noqa: ANN401
         """Get the row in the table matching kwargs.
+
+        See _all() for why the unused `*_` is in the signature.
 
         Raises:
             ValueError:
@@ -252,8 +269,10 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
         self.all.cache_clear()
         self.get.cache_clear()
 
-    def remove(self, **kwargs: Any) -> int:  # noqa: ANN401
+    def remove(self, *_: Any, **kwargs: Any) -> int:  # noqa: ANN401
         """Remove a row from the table.
+
+        See _all() for why the unused `*_` is in the signature.
 
         Raises:
             ValueError:
@@ -298,11 +317,11 @@ def fields_to_insert_str(fields: Sequence[str]) -> str:
 
 
 def fields_to_search_str(fields: Iterable[str]) -> str:
-    """Format field names as a SQL update string.
+    """Format field names as a SQL search string.
 
     Example:
         ('name', 'date', 'kind') ->
-            "name = :name ANY date = :date ANY kind = :kind"
+            "name = :name AND date = :date AND kind = :kind"
     """
     return ' AND '.join([f'{f} = :{f}' for f in fields])
 

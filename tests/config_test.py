@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import pathlib
 import re
 
@@ -54,12 +53,8 @@ def test_config_template() -> None:
     assert Config.template() == TEMPLATE_CONFIG
 
 
-def test_load_config(tmp_path: pathlib.Path) -> None:
-    filepath = tmp_path / 'config.json'
-    with filepath.open('w') as f:
-        json.dump(EXAMPLE_CONFIG, f)
-
-    cfg = load(str(filepath))
+def test_load_config(config: str) -> None:
+    cfg = load(config)
     assert cfg == Config(**EXAMPLE_CONFIG)  # type: ignore[arg-type]
 
 

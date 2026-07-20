@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import pathlib
 from unittest import mock
 
 import discord
 import pytest
 
+from testing.mock import MockChannel
 from testing.mock import MockClient
 from testing.mock import MockGuild
 from testing.mock import MockMember
@@ -14,7 +14,6 @@ from testing.mock import MockUser
 from testing.mock import MockVoiceChannel
 from threepseat.bot import Bot
 from threepseat.utils import alphanumeric
-from threepseat.utils import cached_load
 from threepseat.utils import leave_on_empty
 from threepseat.utils import play_sound
 from threepseat.utils import primary_channel
@@ -30,16 +29,6 @@ def test_alphanumeric() -> None:
     assert not alphanumeric('$')
 
 
-def test_cached_load(tmp_path: pathlib.Path) -> None:
-    test_file = tmp_path / 'file.bytes'
-    data = b'12345'
-    with test_file.open('wb') as f:
-        f.write(data)
-
-    found = cached_load(test_file)
-    assert found.getvalue() == data
-
-
 def test_split_strings() -> None:
     assert split_strings('') == []
     assert split_strings('     ') == []
@@ -50,13 +39,14 @@ def test_split_strings() -> None:
 
 def test_primary_channel() -> None:
     guild = MockGuild('myguild', 5678)
-    with mock.patch('discord.TextChannel'):
-        channel = discord.TextChannel()  # type: ignore[call-arg]
+    text_channel = MockChannel('text-channel')
+    voice_channel = MockVoiceChannel()
+
     with mock.patch(
         'discord.Guild.system_channel',
-        mock.PropertyMock(return_value=channel),
+        mock.PropertyMock(return_value=text_channel),
     ):
-        assert primary_channel(guild) == channel
+        assert primary_channel(guild) == text_channel
 
     with (
         mock.patch(
@@ -67,22 +57,21 @@ def test_primary_channel() -> None:
             'discord.Guild.me',
             mock.PropertyMock(),
         ),
+        mock.patch.object(
+            text_channel,
+            'permissions_for',
+            return_value=mock.MagicMock(send_messages=True),
+        ),
     ):
         guild._channels = {}
         assert primary_channel(guild) is None
 
-        guild._channels = {'c1': channel}  # type: ignore[dict-item]
-        with mock.patch('threepseat.utils.isinstance', return_value=True):
-            assert primary_channel(guild) == channel
+        guild._channels = {'c1': text_channel}  # type: ignore[dict-item]
+        assert primary_channel(guild) == text_channel
 
-        with mock.patch('discord.VoiceChannel'):
-            channel = discord.VoiceChannel()  # type: ignore[assignment, call-arg]
-        guild._channels = {'c1': channel}  # type: ignore[dict-item]
-        with mock.patch(
-            'threepseat.utils.isinstance',
-            return_value=False,
-        ):  # pragma: no branch
-            assert primary_channel(guild) is None
+        # Voice channels cannot be posted in, so they are never candidates.
+        guild._channels = {'c1': voice_channel}  # type: ignore[dict-item]
+        assert primary_channel(guild) is None
 
 
 @pytest.mark.parametrize(
@@ -155,7 +144,6 @@ def test_voice_channel() -> None:
     assert voice_channel(member) is None
 
 
-@pytest.mark.asyncio
 @mock.patch('discord.FFmpegOpusAudio')
 async def test_play_sound(mock_audio) -> None:
     sound = 'filepath'
@@ -207,7 +195,6 @@ async def test_play_sound(mock_audio) -> None:
     assert mock_audio.call_count == 2
 
 
-@pytest.mark.asyncio
 async def test_leave_on_empty() -> None:
     class MockVoiceClient(discord.VoiceClient):
         def __init__(self) -> None:

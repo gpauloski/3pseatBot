@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import logging
+import asyncio
 import time
 from unittest import mock
 
 import pytest
-from discord import app_commands
 
+from testing.asserts import assert_responded
+from testing.data import GUILD_CONFIG
 from testing.mock import MockChannel
 from testing.mock import MockClient
 from testing.mock import MockGuild
@@ -16,20 +17,7 @@ from testing.mock import MockMessage
 from testing.mock import MockUser
 from testing.utils import extract
 from threepseat.ext.rules.commands import RulesCommands
-from threepseat.ext.rules.data import GuildConfig
 from threepseat.ext.rules.exceptions import EventStartError
-
-GUILD_CONFIG = GuildConfig(
-    guild_id=1234,
-    enabled=1,
-    event_expectancy=0.5,
-    event_duration=24,
-    event_cooldown=5.0,
-    last_event=0,
-    max_offenses=3,
-    timeout_duration=300,
-    prefixes='3pseat, 3pfeet',
-)
 
 
 @pytest.fixture
@@ -39,8 +27,7 @@ def commands(tmp_file: str) -> RulesCommands:
     return commands
 
 
-@pytest.mark.asyncio
-async def test_handle_offending_message(commands) -> None:
+async def test_handle_offending_message(commands: RulesCommands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     message = MockMessage('')
     message.author = MockMember('member', 42, guild)
@@ -64,8 +51,7 @@ async def test_handle_offending_message(commands) -> None:
         assert mock_timeout.await_count == 1
 
 
-@pytest.mark.asyncio
-async def test_timeout_member(commands) -> None:
+async def test_timeout_member(commands: RulesCommands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     member = MockMember('member', 42, guild)
     commands.database.add_offense(GUILD_CONFIG.guild_id, 42)
@@ -75,21 +61,19 @@ async def test_timeout_member(commands) -> None:
         assert mock_timeout.await_count == 1
         assert 'timed out' in s
 
-    assert (
-        commands.database.get_user(GUILD_CONFIG.guild_id, 42).current_offenses
-        == 0
-    )
+    user = commands.database.get_user(GUILD_CONFIG.guild_id, 42)
+    assert user is not None
+    assert user.current_offenses == 0
 
     with mock.patch(
         'discord.Member.timeout',
         mock.AsyncMock(side_effect=Exception()),
-    ) as mock_timeout:
+    ):
         s = await commands.timeout_member(member, 1)
         assert 'cannot be timed out' in s
 
 
-@pytest.mark.asyncio
-async def test_on_message(commands) -> None:
+async def test_on_message(commands: RulesCommands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     message = MockMessage('3pseat test message')
     message.author = MockMember('member', 42, guild)
@@ -117,7 +101,7 @@ async def test_on_message(commands) -> None:
         await commands.on_message(message)
         assert mock_handler.await_count == 0
 
-        commands.event_handlers[GUILD_CONFIG.guild_id] = object()
+        commands.event_handlers[GUILD_CONFIG.guild_id] = object()  # type: ignore[assignment]
         # skip because we mock ignore_message to return True
         mock_ignore.return_value = True
         await commands.on_message(message)
@@ -142,8 +126,7 @@ async def test_on_message(commands) -> None:
         assert mock_handler.await_count == 1
 
 
-@pytest.mark.asyncio
-async def test_start_event(commands) -> None:
+async def test_start_event(commands: RulesCommands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     channel = MockChannel('channel')
 
@@ -181,8 +164,7 @@ async def test_start_event(commands) -> None:
         assert len(commands.event_handlers) == 0
 
 
-@pytest.mark.asyncio
-async def test_resume_event(commands) -> None:
+async def test_resume_event(commands: RulesCommands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     channel = MockChannel('channel')
 
@@ -200,8 +182,7 @@ async def test_resume_event(commands) -> None:
         assert mock_send.await_count == 0
 
 
-@pytest.mark.asyncio
-async def test_stop_event(commands) -> None:
+async def test_stop_event(commands: RulesCommands) -> None:
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     channel = MockChannel('channel')
 
@@ -224,8 +205,82 @@ async def test_stop_event(commands) -> None:
         assert mock_send.await_count == 2
 
 
-@pytest.mark.asyncio
-async def test_event_starter(commands) -> None:
+async def test_stop_event_cancels_stale_task(commands: RulesCommands) -> None:
+    # Stopping an event must cancel its sleeping task. Otherwise the task
+    # wakes after the original duration and ends whatever event is running
+    # then, announcing the end of an event that just started.
+    guild = MockGuild('guild', GUILD_CONFIG.guild_id)
+    channel = MockChannel('channel')
+
+    with (
+        mock.patch(
+            'threepseat.ext.rules.commands.primary_channel',
+            return_value=channel,
+        ),
+        mock.patch.object(channel, 'send', mock.AsyncMock()),
+    ):
+        await commands.start_event(guild)
+        first = commands.event_handlers[guild.id]
+
+        await commands.stop_event(guild, channel)
+        await asyncio.sleep(0)
+        assert first.cancelled() or first.cancelling()
+
+        # A new event is unaffected by the old task.
+        await commands.start_event(guild)
+        second = commands.event_handlers[guild.id]
+        assert second is not first
+
+        await commands.post_shutdown()
+
+
+async def test_start_event_cancels_overwritten_task(
+    commands: RulesCommands,
+) -> None:
+    # Starting an event while one is running must not orphan the old task.
+    guild = MockGuild('guild', GUILD_CONFIG.guild_id)
+    channel = MockChannel('channel')
+
+    with (
+        mock.patch(
+            'threepseat.ext.rules.commands.primary_channel',
+            return_value=channel,
+        ),
+        mock.patch.object(channel, 'send', mock.AsyncMock()),
+    ):
+        await commands.start_event(guild)
+        first = commands.event_handlers[guild.id]
+
+        await commands.start_event(guild)
+        await asyncio.sleep(0)
+        assert first.cancelled() or first.cancelling()
+        assert commands.event_handlers[guild.id] is not first
+
+        await commands.post_shutdown()
+
+
+async def test_event_times_out(commands: RulesCommands) -> None:
+    # The task created by start_event runs stop_event itself, so stop_event
+    # must not cancel the task it is running in before announcing the end.
+    guild = MockGuild('guild', GUILD_CONFIG.guild_id)
+    channel = MockChannel('channel')
+
+    with (
+        mock.patch(
+            'threepseat.ext.rules.commands.primary_channel',
+            return_value=channel,
+        ),
+        mock.patch.object(channel, 'send', mock.AsyncMock()) as mock_send,
+    ):
+        await commands.start_event(guild, duration=0)
+        await commands.event_handlers[guild.id]
+
+    assert guild.id not in commands.event_handlers
+    # Once to announce the start, once to announce the end.
+    assert mock_send.await_count == 2
+
+
+async def test_event_starter(commands: RulesCommands) -> None:
     client = MockClient(MockUser('bot', 42))
     guild = MockGuild('guild', GUILD_CONFIG.guild_id)
     starter = commands.event_starter(client)
@@ -245,6 +300,7 @@ async def test_event_starter(commands) -> None:
 
         # Test cooldown prevents starting
         config_orig = commands.database.get_config(GUILD_CONFIG.guild_id)
+        assert config_orig is not None
         config_new = config_orig._replace(
             event_cooldown=5,
             event_duration=0,
@@ -259,15 +315,14 @@ async def test_event_starter(commands) -> None:
     with mock.patch.object(client, 'get_guild', return_value=None):
         await func()
 
-    commands.event_handlers[GUILD_CONFIG.guild_id] = object()
+    commands.event_handlers[GUILD_CONFIG.guild_id] = object()  # type: ignore[assignment]
     await func()
 
     commands.database.update_config(GUILD_CONFIG._replace(enabled=0))
     await func()
 
 
-@pytest.mark.asyncio
-async def test_configure(commands) -> None:
+async def test_configure(commands: RulesCommands) -> None:
     configure_ = extract(commands.configure)
 
     interaction = MockInteraction(
@@ -277,13 +332,10 @@ async def test_configure(commands) -> None:
     )
 
     await configure_(commands, interaction, prefixes='3pseat, 3pfeet')
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Update' in interaction.response_message
+    assert_responded(interaction, 'Update')
 
 
-@pytest.mark.asyncio
-async def test_configuration(commands) -> None:
+async def test_configuration(commands: RulesCommands) -> None:
     configuration_ = extract(commands.configuration)
 
     interaction = MockInteraction(
@@ -293,9 +345,7 @@ async def test_configuration(commands) -> None:
     )
 
     await configuration_(commands, interaction)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Legacy 3pseat mode is' in interaction.response_message
+    assert_responded(interaction, 'Legacy 3pseat mode is')
 
     interaction = MockInteraction(
         commands.configuration,
@@ -304,13 +354,10 @@ async def test_configuration(commands) -> None:
     )
 
     await configuration_(commands, interaction)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'has not been configured' in interaction.response_message
+    assert_responded(interaction, 'has not been configured')
 
 
-@pytest.mark.asyncio
-async def test_enable(commands) -> None:
+async def test_enable(commands: RulesCommands) -> None:
     enable_ = extract(commands.enable)
 
     interaction = MockInteraction(
@@ -321,30 +368,21 @@ async def test_enable(commands) -> None:
 
     with mock.patch.object(commands, 'start_event') as mocked:
         await enable_(commands, interaction, immediate=True)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'Started an event' in interaction.response_message
+        assert_responded(interaction, 'Started an event')
 
         mocked.side_effect = EventStartError()
         await enable_(commands, interaction, immediate=True)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'Failed to start event' in interaction.response_message
+        assert_responded(interaction, 'Failed to start event')
 
     with mock.patch.object(commands.database, 'get_config', return_value=None):
         await enable_(commands, interaction, immediate=False)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'not been configured' in interaction.response_message
+        assert_responded(interaction, 'not been configured')
 
     await enable_(commands, interaction, immediate=False)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert '3pseat events are enabled' in interaction.response_message
+    assert_responded(interaction, '3pseat events are enabled')
 
 
-@pytest.mark.asyncio
-async def test_disable(commands) -> None:
+async def test_disable(commands: RulesCommands) -> None:
     disable_ = extract(commands.disable)
 
     interaction = MockInteraction(
@@ -358,24 +396,17 @@ async def test_disable(commands) -> None:
         mock.patch('threepseat.ext.rules.commands.primary_channel'),
     ):
         await disable_(commands, interaction, current=True)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'Stopping any current event' in interaction.response_message
+        assert_responded(interaction, 'Stopping any current event')
 
     with mock.patch.object(commands.database, 'get_config', return_value=None):
         await disable_(commands, interaction)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'not been configured' in interaction.response_message
+        assert_responded(interaction, 'not been configured')
 
     await disable_(commands, interaction)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'events are disabled' in interaction.response_message
+    assert_responded(interaction, 'events are disabled')
 
 
-@pytest.mark.asyncio
-async def test_offenses(commands) -> None:
+async def test_offenses(commands: RulesCommands) -> None:
     offenses_ = extract(commands.offenses)
 
     interaction = MockInteraction(
@@ -387,14 +418,10 @@ async def test_offenses(commands) -> None:
 
     with mock.patch.object(commands.database, 'get_config', return_value=None):
         await offenses_(commands, interaction)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'not been configured' in interaction.response_message
+        assert_responded(interaction, 'not been configured')
 
     await offenses_(commands, interaction)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'no offenses yet in this guild' in interaction.response_message
+    assert_responded(interaction, 'no offenses yet in this guild')
 
     commands.database.add_offense(GUILD_CONFIG.guild_id, 42)
     commands.database.add_offense(GUILD_CONFIG.guild_id, 43)
@@ -404,24 +431,17 @@ async def test_offenses(commands) -> None:
         side_effect=[None, mock.MagicMock()],
     ):
         await offenses_(commands, interaction)
-        assert interaction.responded
-        assert interaction.response_message is not None
-        assert 'Current offenses in this' in interaction.response_message
+        assert_responded(interaction, 'Current offenses in this')
 
     await offenses_(commands, interaction, user=member)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'currently has' in interaction.response_message
+    assert_responded(interaction, 'currently has')
 
     member = MockMember('user', 44, MockGuild('guild', GUILD_CONFIG.guild_id))
     await offenses_(commands, interaction, user=member)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'has not broken the rules' in interaction.response_message
+    assert_responded(interaction, 'has not broken the rules')
 
 
-@pytest.mark.asyncio
-async def test_add_offense(commands) -> None:
+async def test_add_offense(commands: RulesCommands) -> None:
     add_offense_ = extract(commands.add_offense)
 
     interaction = MockInteraction(
@@ -432,11 +452,10 @@ async def test_add_offense(commands) -> None:
     member = MockMember('user', 42, MockGuild('guild', GUILD_CONFIG.guild_id))
 
     await add_offense_(commands, interaction, member, count=2)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Added 2 offenses' in interaction.response_message
+    assert_responded(interaction, 'Added 2 offenses')
 
     data = commands.database.get_user(GUILD_CONFIG.guild_id, 42)
+    assert data is not None
     assert data.current_offenses == 2
     commands.database.update_user(data._replace(current_offenses=1000))
 
@@ -446,9 +465,7 @@ async def test_add_offense(commands) -> None:
         mock.AsyncMock(return_value='test'),
     ):
         await add_offense_(commands, interaction, member)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'test' in interaction.response_message
+    assert_responded(interaction, 'test')
 
     interaction = MockInteraction(
         commands.add_offense,
@@ -457,13 +474,10 @@ async def test_add_offense(commands) -> None:
     )
 
     await add_offense_(commands, interaction, member)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'not been configured for this guild' in interaction.response_message
+    assert_responded(interaction, 'not been configured for this guild')
 
 
-@pytest.mark.asyncio
-async def test_remove_offenses(commands) -> None:
+async def test_remove_offenses(commands: RulesCommands) -> None:
     remove_offense_ = extract(commands.remove_offense)
 
     interaction = MockInteraction(
@@ -474,13 +488,10 @@ async def test_remove_offenses(commands) -> None:
     member = MockMember('user', 42, MockGuild('guild', GUILD_CONFIG.guild_id))
 
     await remove_offense_(commands, interaction, member)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Removed 1 offense' in interaction.response_message
+    assert_responded(interaction, 'Removed 1 offense')
 
 
-@pytest.mark.asyncio
-async def test_reset_offenses(commands) -> None:
+async def test_reset_offenses(commands: RulesCommands) -> None:
     reset_offenses_ = extract(commands.reset_offenses)
 
     interaction = MockInteraction(
@@ -491,40 +502,15 @@ async def test_reset_offenses(commands) -> None:
     member = MockMember('user', 42, MockGuild('guild', GUILD_CONFIG.guild_id))
 
     await reset_offenses_(commands, interaction, member)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Reset offense count' in interaction.response_message
+    assert_responded(interaction, 'Reset offense count')
 
 
-@pytest.mark.asyncio
-async def test_on_error(commands, caplog) -> None:
-    interaction = MockInteraction(commands.remove_offense, user='user')
-    await commands.on_error(
-        interaction,
-        app_commands.MissingPermissions(['test']),
-    )
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'test' in interaction.response_message.lower()
-
-    # Should not raise error, just log it
-    caplog.set_level(logging.ERROR)
-    await commands.on_error(interaction, app_commands.AppCommandError('test1'))
-    assert any('test1' in record.message for record in caplog.records)
-
-
-@pytest.mark.asyncio
-async def test_resume_events(commands) -> None:
-    config = GuildConfig(
+async def test_resume_events(commands: RulesCommands) -> None:
+    # An event started recently enough that it should still be running.
+    config = GUILD_CONFIG._replace(
         guild_id=100,
-        enabled=1,
-        event_expectancy=0.5,
         event_duration=60,
-        event_cooldown=5.0,
         last_event=time.time(),
-        max_offenses=3,
-        timeout_duration=300,
-        prefixes='3pseat, 3pfeet',
     )
     guild = MockGuild('guild', config.guild_id)
     client = MockClient(MockUser('bot', 42))

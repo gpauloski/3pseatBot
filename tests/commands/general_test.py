@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import pytest
-
+from testing.asserts import assert_responded
 from testing.mock import MockInteraction
 from testing.mock import MockUser
 from testing.utils import extract
@@ -10,7 +9,6 @@ from threepseat.commands.general import roll
 from threepseat.commands.general import source
 
 
-@pytest.mark.asyncio
 async def test_flip() -> None:
     flip_ = extract(flip)
 
@@ -25,20 +23,15 @@ async def test_flip() -> None:
 
     res = await flip_(interaction, user)
     assert res in ('heads', 'tails')
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'reply-user' in interaction.response_message
+    assert_responded(interaction, 'reply-user')
 
     interaction = MockInteraction(flip, user='calling-user')
 
     res = await flip_(interaction)
     assert res in ('heads', 'tails')
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'calling-user' in interaction.response_message
+    assert_responded(interaction, 'calling-user')
 
 
-@pytest.mark.asyncio
 async def test_roll() -> None:
     roll_ = extract(roll)
 
@@ -48,27 +41,20 @@ async def test_roll() -> None:
 
     res = await roll_(interaction, start, end, user)
     assert start <= res <= end
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'reply-user' in interaction.response_message
+    assert_responded(interaction, 'reply-user')
 
     interaction = MockInteraction(roll, user='calling-user')
 
     # roll should flip start and end to be consecutive
     res = await roll_(interaction, end, start)
     assert start <= res <= end
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'calling-user' in interaction.response_message
+    assert_responded(interaction, 'calling-user')
 
 
-@pytest.mark.asyncio
 async def test_source() -> None:
     source_ = extract(source)
 
-    interaction = MockInteraction(roll, user='calling-user')
+    interaction = MockInteraction(source, user='calling-user')
 
     await source_(interaction)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'github' in interaction.response_message
+    assert_responded(interaction, 'github')

@@ -7,8 +7,9 @@ from unittest import mock
 
 import discord
 import pytest
-from discord import app_commands
 
+from testing.asserts import assert_followed
+from testing.asserts import assert_responded
 from testing.mock import MockGuild
 from testing.mock import MockInteraction
 from testing.mock import MockMember
@@ -48,7 +49,6 @@ def create_mock_attachment(
     return attachment
 
 
-@pytest.mark.asyncio
 async def test_add_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
@@ -69,12 +69,40 @@ async def test_add_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
         description='a sound',
     )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Added' in interaction.followup_message
+    assert_followed(interaction, 'Added')
 
 
-@pytest.mark.asyncio
+async def test_add_command_invalid_name(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    # A '../' name would escape the sounds directory, so it must be rejected
+    # before download() writes anything.
+    mockbot, sounds = sound_fixtures
+    add_ = extract(sounds.add)
+
+    interaction = MockInteraction(
+        sounds.add,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    with mock.patch(
+        'threepseat.ext.sounds.commands.download',
+    ) as mock_download:
+        await add_(
+            sounds,
+            interaction,
+            name='../../evil',
+            link='localhost',
+            description='a sound',
+        )
+
+    assert_followed(interaction, 'Name must')
+    assert mock_download.call_count == 0
+
+
 async def test_add_command_exists(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -98,12 +126,9 @@ async def test_add_command_exists(
             description='a sound',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'already exists' in interaction.followup_message
+    assert_followed(interaction, 'already exists')
 
 
-@pytest.mark.asyncio
 async def test_add_command_failure(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -118,21 +143,21 @@ async def test_add_command_failure(
         client=mockbot,
     )
 
-    with mock.patch('os.path.isfile', return_value=True):
+    with mock.patch(
+        'threepseat.ext.sounds.commands.download',
+        side_effect=ValueError('Error downloading sound.'),
+    ):
         await add_(
             sounds,
             interaction,
-            name='invalid sound name (too long)',
+            name='mysound',
             link='localhost',
             description='a sound',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'alphanumeric' in interaction.followup_message
+    assert_followed(interaction, 'Error downloading sound.')
 
 
-@pytest.mark.asyncio
 async def test_autocomplete(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
@@ -166,7 +191,6 @@ async def test_autocomplete(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     assert len(choices) == 0
 
 
-@pytest.mark.asyncio
 async def test_list_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
@@ -181,9 +205,7 @@ async def test_list_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     )
     await list_(sounds, interaction)
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'no sounds' in interaction.followup_message
+    assert_followed(interaction, 'no sounds')
 
     interaction = MockInteraction(
         sounds.add,
@@ -209,12 +231,9 @@ async def test_list_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     )
     await list_(sounds, interaction)
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'mysound' in interaction.followup_message
+    assert_followed(interaction, 'mysound')
 
 
-@pytest.mark.asyncio
 async def test_info_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
@@ -229,9 +248,7 @@ async def test_info_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     )
     await info_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')
 
     interaction = MockInteraction(
         sounds.add,
@@ -257,12 +274,9 @@ async def test_info_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     )
     await info_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'mysound' in interaction.response_message
+    assert_responded(interaction, 'mysound')
 
 
-@pytest.mark.asyncio
 async def test_play_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
@@ -302,12 +316,9 @@ async def test_play_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     ):
         await play_(sounds, interaction, name='mysound')
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Played!' in interaction.followup_message
+    assert_followed(interaction, 'Played!')
 
 
-@pytest.mark.asyncio
 async def test_play_command_missing(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -323,12 +334,9 @@ async def test_play_command_missing(
     )
     await play_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')
 
 
-@pytest.mark.asyncio
 async def test_play_command_not_in_channel(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -364,12 +372,9 @@ async def test_play_command_not_in_channel(
     ):
         await play_(sounds, interaction, name='mysound')
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'voice channel' in interaction.followup_message
+    assert_followed(interaction, 'voice channel')
 
 
-@pytest.mark.asyncio
 async def test_play_command_error(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -411,12 +416,9 @@ async def test_play_command_error(
     ):
         await play_(sounds, interaction, name='mysound')
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Failed to play' in interaction.followup_message
+    assert_followed(interaction, 'Failed to play')
 
 
-@pytest.mark.asyncio
 async def test_remove_command_missing(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -432,12 +434,9 @@ async def test_remove_command_missing(
     )
     await remove_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')
 
 
-@pytest.mark.asyncio
 async def test_remove_command(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -470,9 +469,7 @@ async def test_remove_command(
     )
     await remove_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Removed' in interaction.response_message
+    assert_responded(interaction, 'Removed')
 
     interaction = MockInteraction(
         sounds.info,
@@ -483,12 +480,9 @@ async def test_remove_command(
     )
     await info_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')
 
 
-@pytest.mark.asyncio
 async def test_upload_command_success(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -504,7 +498,7 @@ async def test_upload_command_success(
     )
 
     with mock.patch(
-        'threepseat.ext.sounds.commands._get_mp3_duration_s',
+        'threepseat.ext.sounds.data.mp3_duration_seconds',
         return_value=15.0,
     ):
         await upload_(
@@ -515,12 +509,9 @@ async def test_upload_command_success(
             description='a fresh sound',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Uploaded and added' in interaction.followup_message
+    assert_followed(interaction, 'Uploaded and added')
 
 
-@pytest.mark.asyncio
 async def test_upload_command_invalid_extension(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -543,12 +534,36 @@ async def test_upload_command_invalid_extension(
         description='should fail extension check',
     )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'must be an MP3' in interaction.followup_message
+    assert_followed(interaction, 'must be an MP3')
 
 
-@pytest.mark.asyncio
+async def test_upload_command_invalid_name(
+    sound_fixtures: tuple[Bot, SoundCommands],
+) -> None:
+    # The name becomes part of the filename, so it is validated before the
+    # upload is written anywhere.
+    mockbot, sounds = sound_fixtures
+    upload_ = extract(sounds.upload)
+
+    interaction = MockInteraction(
+        sounds.upload,
+        user='calling-user',
+        channel='mychannel',
+        guild='myguild',
+        client=mockbot,
+    )
+
+    await upload_(
+        sounds,
+        interaction,
+        file=create_mock_attachment(filename='test.mp3'),
+        name='../../evil',
+        description='should fail name check',
+    )
+
+    assert_followed(interaction, 'Name must')
+
+
 async def test_upload_command_file_too_large(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -571,12 +586,9 @@ async def test_upload_command_file_too_large(
         description='should fail size check',
     )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'File size must be under' in interaction.followup_message
+    assert_followed(interaction, 'File size must be under')
 
 
-@pytest.mark.asyncio
 async def test_upload_command_duration_too_long(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -592,7 +604,7 @@ async def test_upload_command_duration_too_long(
     )
 
     with mock.patch(
-        'threepseat.ext.sounds.commands._get_mp3_duration_s',
+        'threepseat.ext.sounds.data.mp3_duration_seconds',
         return_value=2 * MAX_SOUND_LENGTH_SECONDS,
     ):
         await upload_(
@@ -603,12 +615,9 @@ async def test_upload_command_duration_too_long(
             description='should fail duration check',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Sound is too long' in interaction.followup_message
+    assert_followed(interaction, 'Sound is too long')
 
 
-@pytest.mark.asyncio
 async def test_upload_command_duration_extraction_error(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -624,7 +633,7 @@ async def test_upload_command_duration_extraction_error(
     )
 
     with mock.patch(
-        'threepseat.ext.sounds.commands._get_mp3_duration_s',
+        'threepseat.ext.sounds.data.mp3_duration_seconds',
         side_effect=Exception('FFmpeg error'),
     ):
         await upload_(
@@ -635,12 +644,9 @@ async def test_upload_command_duration_extraction_error(
             description='should handle parsing exceptions gracefully',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Could not process the audio file' in interaction.followup_message
+    assert_followed(interaction, 'Could not process the file')
 
 
-@pytest.mark.asyncio
 async def test_upload_command_write_disk_error(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -658,7 +664,7 @@ async def test_upload_command_write_disk_error(
     # Force a write error when saving the file to disk
     with (
         mock.patch(
-            'threepseat.ext.sounds.commands._get_mp3_duration_s',
+            'threepseat.ext.sounds.data.mp3_duration_seconds',
             return_value=10.0,
         ),
         mock.patch(
@@ -674,15 +680,9 @@ async def test_upload_command_write_disk_error(
             description='should fail gracefully on file save',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert (
-        'Failed to save the sound to the database'
-        in interaction.followup_message
-    )
+    assert_followed(interaction, 'Could not process the file')
 
 
-@pytest.mark.asyncio
 async def test_upload_command_video_success(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -698,12 +698,18 @@ async def test_upload_command_video_success(
     )
 
     # Emulate extraction by creating the destination MP3 so table.add finds it.
-    async def fake_extract(_file, _ext, filepath) -> None:
-        pathlib.Path(filepath).touch()
+    async def fake_extract(_source, mp3_path) -> None:
+        pathlib.Path(mp3_path).touch()
 
-    with mock.patch(
-        'threepseat.ext.sounds.commands._extract_video_audio',
-        side_effect=fake_extract,
+    with (
+        mock.patch(
+            'threepseat.ext.sounds.data.mp3_duration_seconds',
+            return_value=1.0,
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.data.extract_audio',
+            side_effect=fake_extract,
+        ),
     ):
         await upload_(
             sounds,
@@ -713,12 +719,9 @@ async def test_upload_command_video_success(
             description='a video sound',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Uploaded and added' in interaction.followup_message
+    assert_followed(interaction, 'Uploaded and added')
 
 
-@pytest.mark.asyncio
 async def test_upload_command_unsupported_type(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -741,12 +744,9 @@ async def test_upload_command_unsupported_type(
         description='unsupported container',
     )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'supported video' in interaction.followup_message
+    assert_followed(interaction, 'supported video')
 
 
-@pytest.mark.asyncio
 async def test_upload_command_video_too_large(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -772,12 +772,9 @@ async def test_upload_command_video_too_large(
         description='should fail size check',
     )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'File size must be under' in interaction.followup_message
+    assert_followed(interaction, 'File size must be under')
 
 
-@pytest.mark.asyncio
 async def test_upload_command_video_too_long(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -793,11 +790,8 @@ async def test_upload_command_video_too_long(
     )
 
     with mock.patch(
-        'threepseat.ext.sounds.commands._extract_video_audio',
-        side_effect=ValueError(
-            f'Sound is too long (99.0s). Maximum length is '
-            f'{MAX_SOUND_LENGTH_SECONDS} seconds.',
-        ),
+        'threepseat.ext.sounds.data.mp3_duration_seconds',
+        return_value=2 * MAX_SOUND_LENGTH_SECONDS,
     ):
         await upload_(
             sounds,
@@ -807,12 +801,9 @@ async def test_upload_command_video_too_long(
             description='should fail duration check',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Sound is too long' in interaction.followup_message
+    assert_followed(interaction, 'Sound is too long')
 
 
-@pytest.mark.asyncio
 async def test_upload_command_video_extract_error(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -827,9 +818,15 @@ async def test_upload_command_video_extract_error(
         client=mockbot,
     )
 
-    with mock.patch(
-        'threepseat.ext.sounds.commands._extract_video_audio',
-        side_effect=RuntimeError('ffprobe blew up'),
+    with (
+        mock.patch(
+            'threepseat.ext.sounds.data.mp3_duration_seconds',
+            return_value=1.0,
+        ),
+        mock.patch(
+            'threepseat.ext.sounds.data.extract_audio',
+            side_effect=RuntimeError('ffmpeg blew up'),
+        ),
     ):
         await upload_(
             sounds,
@@ -839,40 +836,9 @@ async def test_upload_command_video_extract_error(
             description='should handle extraction failures',
         )
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Could not process the video file' in interaction.followup_message
+    assert_followed(interaction, 'Could not process the file')
 
 
-@pytest.mark.asyncio
-async def test_on_error(
-    sound_fixtures: tuple[Bot, SoundCommands],
-    caplog,
-) -> None:
-    mockbot, sounds = sound_fixtures
-
-    interaction = MockInteraction(
-        sounds.remove,
-        user='calling-user',
-        channel='mychannel',
-        guild='myguild',
-        client=mockbot,
-    )
-    await sounds.on_error(
-        interaction,
-        app_commands.MissingPermissions(['test']),
-    )
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'test' in interaction.response_message.lower()
-
-    # Should not raise error, just log it
-    caplog.set_level(logging.ERROR)
-    await sounds.on_error(interaction, app_commands.AppCommandError('test1'))
-    assert any('test1' in record.message for record in caplog.records)
-
-
-@pytest.mark.asyncio
 async def test_post_init(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -888,10 +854,9 @@ async def test_post_init(
     assert sounds.join_table._db is None
 
 
-@pytest.mark.asyncio
 async def test_voice_state_update(
     sound_fixtures: tuple[Bot, SoundCommands],
-    caplog,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     _, sounds = sound_fixtures
 
@@ -939,6 +904,7 @@ async def test_voice_state_update(
         await sounds.on_voice_state_update(member, before, after)
         assert mock_play.await_count == 1
 
+    caplog.set_level(logging.ERROR)
     with mock.patch(
         'threepseat.ext.sounds.commands.play_sound',
         side_effect=Exception(),
@@ -946,11 +912,9 @@ async def test_voice_state_update(
         # exception should be captured and logged
         await sounds.on_voice_state_update(member, before, after)
 
-    caplog.set_level(logging.ERROR)
     assert any('exception' in record.message for record in caplog.records)
 
 
-@pytest.mark.asyncio
 async def test_register_command_sound_missing(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -967,12 +931,9 @@ async def test_register_command_sound_missing(
 
     await register_(sounds, interaction, name='mysound')
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'does not exist' in interaction.response_message
+    assert_responded(interaction, 'does not exist')
 
 
-@pytest.mark.asyncio
 async def test_register_command(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -1002,6 +963,4 @@ async def test_register_command(
     await register_(sounds, interaction, name='mysound')
     assert len(sounds.join_table.all(interaction.guild.id)) == 1
 
-    assert interaction.response
-    assert interaction.response_message is not None
-    assert 'Updated your voice channel entry' in interaction.response_message
+    assert_responded(interaction, 'Updated your voice channel entry')

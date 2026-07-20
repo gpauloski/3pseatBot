@@ -132,5 +132,5 @@ async def send_voice_reminder(
     accent = Accent.from_str('', random_if_unknown=True)
     slow = random.random() < SLOW_VOICE_PROBABILITY
 
-    with tts_as_mp3(message, accent=accent, slow=slow) as fp:
+    async with tts_as_mp3(message, accent=accent, slow=slow) as fp:
         await play_sound(fp, channel, wait=True)

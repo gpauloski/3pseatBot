@@ -6,6 +6,7 @@ from unittest import mock
 
 import pytest
 
+from threepseat.ext.sounds.data import MAX_SOUND_NAME_CHARS
 from threepseat.ext.sounds.data import MemberSound
 from threepseat.ext.sounds.data import MemberSoundTable
 from threepseat.ext.sounds.data import Sound
@@ -59,8 +60,18 @@ def test_add_get_sound(sounds: SoundsTable) -> None:
     assert found.guild_id == TEST_SOUND.guild_id
     assert TEST_SOUND.name in found.filename
     assert str(TEST_SOUND.guild_id) in found.filename
-    # Check creation time within last 5 seconds
-    assert time.time() - found.created_time < 5
+    assert found.created_time == TEST_SOUND.created_time
+
+
+def test_new_sound_stamps_creation_time() -> None:
+    sound = Sound.new(
+        name='fresh',
+        description='test sound',
+        link=None,
+        author_id=1234,
+        guild_id=5678,
+    )
+    assert time.time() - sound.created_time < 5
 
 
 def test_add_sound_validation(sounds: SoundsTable) -> None:
@@ -78,6 +89,28 @@ def test_add_sound_validation(sounds: SoundsTable) -> None:
 
     with pytest.raises(ValueError, match='does not exist'):
         sounds.add(TEST_SOUND._replace(filename='foo.mp3'))
+
+
+@pytest.mark.parametrize(
+    ('name', 'match'),
+    [
+        ('../../evil', 'alphanumeric'),
+        ('my sound', 'alphanumeric'),
+        ('', 'between'),
+        ('x' * (MAX_SOUND_NAME_CHARS + 1), 'between'),
+    ],
+)
+def test_new_sound_validates_name(name: str, match: str) -> None:
+    # The name ends up in the filename, so Sound.new must reject bad names
+    # before any caller can use the path.
+    with pytest.raises(ValueError, match=match):
+        Sound.new(
+            name=name,
+            description='test sound',
+            link=None,
+            author_id=1234,
+            guild_id=5678,
+        )
 
 
 def test_add_sound_exists(sounds: SoundsTable) -> None:
@@ -173,6 +206,13 @@ def test_youtube_download_errors(tmp_path: pathlib.Path) -> None:
         with pytest.raises(ValueError, match='Clip is longer than'):
             download(link, filepath)
 
+        # Livestreams and some link types report no duration. Callers only
+        # catch ValueError, so a KeyError here would surface nothing to the
+        # user.
+        mock_extract.return_value = {}
+        with pytest.raises(ValueError, match='Could not determine the length'):
+            download(link, filepath)
+
         mock_extract.return_value = {'duration': 0}
         with (
             mock.patch(
@@ -205,15 +245,13 @@ def _mock_ffprobe_process(
 ) -> mock.MagicMock:
     proc = mock.MagicMock()
     proc.returncode = returncode
+    proc.communicate = mock.AsyncMock(return_value=(stdout, stderr))
+    # Real AsyncMock (not an auto-created child) so assert_not_awaited() in
+    # test_mp3_duration_seconds_drains_pipes actually checks something.
     proc.wait = mock.AsyncMock()
-    proc.stdout = mock.MagicMock()
-    proc.stdout.read = mock.AsyncMock(return_value=stdout)
-    proc.stderr = mock.MagicMock()
-    proc.stderr.read = mock.AsyncMock(return_value=stderr)
     return proc
 
 
-@pytest.mark.asyncio
 async def test_mp3_duration_seconds(tmp_path: pathlib.Path) -> None:
     filepath = str(tmp_path / 'test.mp3')
     proc = _mock_ffprobe_process(
@@ -230,7 +268,6 @@ async def test_mp3_duration_seconds(tmp_path: pathlib.Path) -> None:
     assert duration == 12.5
 
 
-@pytest.mark.asyncio
 async def test_mp3_duration_seconds_ffprobe_error(
     tmp_path: pathlib.Path,
 ) -> None:
@@ -246,32 +283,49 @@ async def test_mp3_duration_seconds_ffprobe_error(
             'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
             mock.AsyncMock(return_value=proc),
         ),
-        pytest.raises(RuntimeError, match='ffmpeg failed'),
+        pytest.raises(RuntimeError, match='ffprobe failed'),
     ):
         await mp3_duration_seconds(filepath)
 
 
-@pytest.mark.asyncio
-async def test_mp3_duration_seconds_no_pipes(tmp_path: pathlib.Path) -> None:
-    # ffprobe fails and the subprocess has no stdout/stderr pipes attached.
+async def test_mp3_duration_seconds_ffprobe_error_no_output(
+    tmp_path: pathlib.Path,
+) -> None:
+    # ffprobe failed without writing anything to stderr.
     filepath = str(tmp_path / 'test.mp3')
-    proc = mock.MagicMock()
-    proc.returncode = 1
-    proc.wait = mock.AsyncMock()
-    proc.stdout = None
-    proc.stderr = None
+    proc = _mock_ffprobe_process(returncode=1, stdout=b'', stderr=b'')
 
     with (
         mock.patch(
             'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
             mock.AsyncMock(return_value=proc),
         ),
-        pytest.raises(RuntimeError, match='ffmpeg failed'),
+        pytest.raises(RuntimeError, match='ffprobe failed'),
     ):
         await mp3_duration_seconds(filepath)
 
 
-@pytest.mark.asyncio
+async def test_mp3_duration_seconds_drains_pipes(
+    tmp_path: pathlib.Path,
+) -> None:
+    # The pipes must be drained while waiting; reading them only after wait()
+    # deadlocks when the child fills the OS pipe buffer.
+    filepath = str(tmp_path / 'test.mp3')
+    proc = _mock_ffprobe_process(
+        returncode=0,
+        stdout=b'{"format": {"duration": "1.0"}}',
+    )
+
+    with mock.patch(
+        'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
+        mock.AsyncMock(return_value=proc),
+    ):
+        await mp3_duration_seconds(filepath)
+
+    proc.communicate.assert_awaited_once()
+    proc.wait.assert_not_awaited()
+
+
 async def test_extract_audio(tmp_path: pathlib.Path) -> None:
     source = str(tmp_path / 'clip.mp4')
     mp3_path = str(tmp_path / 'out.mp3')
@@ -285,7 +339,6 @@ async def test_extract_audio(tmp_path: pathlib.Path) -> None:
         await extract_audio(source, mp3_path)
 
 
-@pytest.mark.asyncio
 async def test_extract_audio_error(tmp_path: pathlib.Path) -> None:
     source = str(tmp_path / 'clip.mp4')
     mp3_path = str(tmp_path / 'out.mp3')

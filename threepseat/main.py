@@ -8,6 +8,9 @@ import sys
 from collections.abc import Sequence
 from types import FrameType
 
+from hypercorn.asyncio import serve
+from hypercorn.config import Config as HypercornConfig
+
 import threepseat
 from threepseat import config
 from threepseat.bot import Bot
@@ -23,8 +26,60 @@ from threepseat.logging import configure_logging
 logger = logging.getLogger(__name__)
 
 
+def webapp_config(cfg: config.Config) -> HypercornConfig:
+    """Build the hypercorn config used to serve the sounds web app.
+
+    Quart's `run_task()` hardcodes `accesslog = '-'`, which makes hypercorn
+    install its own stdout handlers with its own format and reset the
+    `hypercorn.*` log levels to INFO, overriding `configure_logging()`. Handing
+    it `Logger` instances instead leaves those loggers alone, so hypercorn's
+    output uses our format and respects the levels in `threepseat.logging`.
+    """
+    hypercorn_config = HypercornConfig()
+    hypercorn_config.access_log_format = '%(h)s %(r)s %(s)s %(b)s %(D)s'
+    hypercorn_config.accesslog = logging.getLogger('hypercorn.access')
+    hypercorn_config.errorlog = logging.getLogger('hypercorn.error')
+    # Bind to all interfaces since this runs in a container and needs to be
+    # reachable via the host's port mapping.
+    hypercorn_config.bind = [f'0.0.0.0:{cfg.sounds_port}']
+    hypercorn_config.certfile = cfg.sounds_certfile
+    hypercorn_config.keyfile = cfg.sounds_keyfile
+    return hypercorn_config
+
+
+def quiet_ssl_shutdown_errors(loop: asyncio.AbstractEventLoop) -> None:
+    """Stop logging aborted TLS connections as unhandled exceptions.
+
+    A client that goes away without completing the TLS close handshake leaves
+    hypercorn awaiting `wait_closed()`, which eventually raises `TimeoutError:
+    SSL shutdown timed out`. Hypercorn does not catch that, so it escapes the
+    connection callback and asyncio's default handler logs it at ERROR with a
+    traceback. Nothing is wrong: the connection is already gone.
+    """
+    default = loop.get_exception_handler()
+
+    def handler(
+        loop: asyncio.AbstractEventLoop,
+        context: dict[str, object],
+    ) -> None:
+        exception = context.get('exception')
+        if isinstance(exception, TimeoutError) and (
+            context.get('message') == 'Unhandled exception in '
+            'client_connected_cb'
+        ):
+            logger.debug('client connection closed without a TLS shutdown')
+        elif default is None:
+            loop.default_exception_handler(context)
+        else:
+            default(loop, context)
+
+    loop.set_exception_handler(handler)
+
+
 async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
     """Run asyncio services."""
+    quiet_ssl_shutdown_errors(asyncio.get_running_loop())
+
     birthday_commands = BirthdayCommands(cfg.sqlite_database)
     custom_commands = CustomCommands(cfg.sqlite_database)
     games_commands = GamesCommands(cfg.sqlite_database)
@@ -66,13 +121,9 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
     async with bot:
         results = await asyncio.gather(
             bot.start(cfg.bot_token, reconnect=True),
-            webapp.run_task(
-                # Bind to all interfaces since this runs in a container and
-                # needs to be reachable via the host's port mapping.
-                host='0.0.0.0',  # noqa: S104
-                port=cfg.sounds_port,
-                certfile=cfg.sounds_certfile,
-                keyfile=cfg.sounds_keyfile,
+            serve(
+                webapp,
+                webapp_config(cfg),
                 shutdown_trigger=wait_for_shutdown,
             ),
             return_exceptions=True,
@@ -100,7 +151,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description='3pseatBot CLI',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        prog='python -m threepseatbot',
+        # Matches the console script in pyproject.toml; "python -m threepseat"
+        # also works but the installed entrypoint is what users are told about.
+        prog='threepseatbot',
     )
 
     # https://stackoverflow.com/a/8521644/812183

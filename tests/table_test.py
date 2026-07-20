@@ -7,6 +7,7 @@ from typing import NamedTuple
 
 import pytest
 
+from threepseat.table import CACHE_MAXSIZE
 from threepseat.table import Field
 from threepseat.table import SQLTableInterface
 from threepseat.table import field_names
@@ -36,7 +37,7 @@ def table(
     )
 
 
-def test_table_init(tmp_file) -> None:
+def test_table_init(tmp_file: str) -> None:
     table = SQLTableInterface(ExampleRow, 'mytable', tmp_file)
 
     # Check mytable is created
@@ -87,18 +88,18 @@ def test_validate_kwargs() -> None:
         table.validate_kwargs({'guild_id': 'not an int'})
 
 
-def test_add_get(table) -> None:
+def test_add_get(table: SQLTableInterface[ExampleRow]) -> None:
     row = ExampleRow(0, 0, 0.0, None, True)
     table.update(row)
     assert table.get(guild_id=0, user_id=0) == row
 
 
-def test_get_with_no_params(table) -> None:
+def test_get_with_no_params(table: SQLTableInterface[ExampleRow]) -> None:
     with pytest.raises(ValueError, match='At least one argument'):
         table.get()
 
 
-def test_get_multiple_values(table) -> None:
+def test_get_multiple_values(table: SQLTableInterface[ExampleRow]) -> None:
     row = ExampleRow(0, 0, 0.0, None, True)
     table.update(row)
 
@@ -110,7 +111,7 @@ def test_get_multiple_values(table) -> None:
         table.get(user_id=0)
 
 
-def test_update(table) -> None:
+def test_update(table: SQLTableInterface[ExampleRow]) -> None:
     row = ExampleRow(0, 0, 0.0, None, True)
 
     table.update(row._replace(timestamp=1.0))
@@ -124,7 +125,7 @@ def test_update(table) -> None:
     assert result.timestamp == 2.0
 
 
-def test_update_multiple_rows(table) -> None:
+def test_update_multiple_rows(table: SQLTableInterface[ExampleRow]) -> None:
     row = ExampleRow(0, 0, 0.0, None, True)
 
     table.update(row)
@@ -136,7 +137,7 @@ def test_update_multiple_rows(table) -> None:
         table.update(row._replace(admin=False))
 
 
-def test_all(table) -> None:
+def test_all(table: SQLTableInterface[ExampleRow]) -> None:
     row = ExampleRow(0, 0, 0.0, None, True)
 
     table.update(row._replace(user_id=1))
@@ -152,7 +153,7 @@ def test_all(table) -> None:
     assert len(rows) == 3
 
 
-def test_remove(table) -> None:
+def test_remove(table: SQLTableInterface[ExampleRow]) -> None:
     row = ExampleRow(0, 0, 0.0, None, True)
 
     assert table.remove(guild_id=row.guild_id, user_id=row.user_id) == 0
@@ -172,7 +173,9 @@ def test_remove(table) -> None:
     assert table.remove(guild_id=row.guild_id, user_id=row.user_id) == 2
 
 
-def test_remove_without_primary_keys(table) -> None:
+def test_remove_without_primary_keys(
+    table: SQLTableInterface[ExampleRow],
+) -> None:
     with pytest.raises(ValueError, match='must be the primary keys'):
         table.remove()
 
@@ -180,7 +183,7 @@ def test_remove_without_primary_keys(table) -> None:
         table.remove(guild_id=0, user_id=0, timestamp=0.0)
 
 
-def test_get_caching(table) -> None:
+def test_get_caching(table: SQLTableInterface[ExampleRow]) -> None:
     row = ExampleRow(0, 0, 0.0, None, True)
 
     table.update(row)
@@ -196,7 +199,7 @@ def test_get_caching(table) -> None:
     assert table.get.cache_info().misses == 1
 
 
-def test_all_caching(table) -> None:
+def test_all_caching(table: SQLTableInterface[ExampleRow]) -> None:
     row = ExampleRow(0, 0, 0.0, None, True)
 
     table.update(row)
@@ -212,7 +215,22 @@ def test_all_caching(table) -> None:
     assert table.all.cache_info().misses == 1
 
 
-def test_update_resets_cache(table) -> None:
+def test_caches_are_bounded(table: SQLTableInterface[ExampleRow]) -> None:
+    # Keys are the full kwargs combination, including ones that miss, so an
+    # unbounded cache would grow forever.
+    assert table.all.cache_info().maxsize == CACHE_MAXSIZE
+    assert table.get.cache_info().maxsize == CACHE_MAXSIZE
+
+
+def test_all_returns_immutable_result(
+    table: SQLTableInterface[ExampleRow],
+) -> None:
+    # Callers share the cached object, so it must not be mutable.
+    table.update(ExampleRow(0, 0, 0.0, None, True))
+    assert isinstance(table.all(guild_id=0), tuple)
+
+
+def test_update_resets_cache(table: SQLTableInterface[ExampleRow]) -> None:
     row = ExampleRow(0, 0, 0.0, None, True)
 
     table.update(row)
@@ -229,7 +247,7 @@ def test_update_resets_cache(table) -> None:
     assert table.all.cache_info().misses == 0
 
 
-def test_remove_resets_cache(table) -> None:
+def test_remove_resets_cache(table: SQLTableInterface[ExampleRow]) -> None:
     row = ExampleRow(0, 0, 0.0, None, True)
 
     table.update(row)
@@ -332,7 +350,7 @@ def test_field_types() -> None:
         assert expected_value == found_type[field] == found_instance[field]
 
 
-def test_connection_is_reused(table) -> None:
+def test_connection_is_reused(table: SQLTableInterface[ExampleRow]) -> None:
     with table.connect() as db1:
         pass
     with table.connect() as db2:
@@ -354,7 +372,7 @@ def test_in_memory_database_persists() -> None:
     assert table.get(guild_id=0, user_id=0) == row
 
 
-def test_close_reopens_on_demand(table) -> None:
+def test_close_reopens_on_demand(table: SQLTableInterface[ExampleRow]) -> None:
     row = ExampleRow(0, 0, 0.0, None, True)
     table.update(row)
     table.close()
@@ -364,6 +382,6 @@ def test_close_reopens_on_demand(table) -> None:
     assert table.get(guild_id=0, user_id=0) == row
 
 
-def test_close_is_idempotent(table) -> None:
+def test_close_is_idempotent(table: SQLTableInterface[ExampleRow]) -> None:
     table.close()
     table.close()

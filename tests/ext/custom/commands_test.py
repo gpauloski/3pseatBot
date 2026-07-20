@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import logging
 from collections.abc import Generator
 from unittest import mock
 
 import pytest
-from discord import app_commands
 
+from testing.asserts import assert_followed
+from testing.asserts import assert_responded
 from testing.mock import MockGuild
 from testing.mock import MockInteraction
 from testing.utils import extract
@@ -25,7 +25,6 @@ def command_fixtures(
         yield bot, cc
 
 
-@pytest.mark.asyncio
 async def test_create(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     mockbot, custom = command_fixtures
     create_ = extract(custom.create)
@@ -50,11 +49,9 @@ async def test_create(command_fixtures: tuple[Bot, CustomCommands]) -> None:
             'description',
             'this is command 1',
         )
-    assert interaction.followed
-    assert interaction.followup_message is not None
+    assert_followed(interaction, 'command1')
 
 
-@pytest.mark.asyncio
 async def test_create_invalid_name(
     command_fixtures: tuple[Bot, CustomCommands],
 ) -> None:
@@ -76,12 +73,9 @@ async def test_create_invalid_name(
         'description',
         'this command has a bad name',
     )
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'alphanumeric' in interaction.response_message
+    assert_responded(interaction, 'alphanumeric')
 
 
-@pytest.mark.asyncio
 async def test_list(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     mockbot, custom = command_fixtures
     list_ = extract(custom.list)
@@ -95,9 +89,7 @@ async def test_list(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     )
 
     await list_(custom, interaction)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'no custom commands' in interaction.response_message
+    assert_responded(interaction, 'no custom commands')
 
     command = CustomCommand(
         name='mycommand',
@@ -123,12 +115,9 @@ async def test_list(command_fixtures: tuple[Bot, CustomCommands]) -> None:
         client=mockbot,
     )
     await list_(custom, interaction)
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'mycommand' in interaction.response_message
+    assert_responded(interaction, 'mycommand')
 
 
-@pytest.mark.asyncio
 async def test_remove(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     mockbot, custom = command_fixtures
     remove_ = extract(custom.remove)
@@ -152,9 +141,7 @@ async def test_remove(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     )
 
     await remove_(custom, interaction, 'mycommand')
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'Removed' in interaction.followup_message
+    assert_followed(interaction, 'Removed')
 
     interaction = MockInteraction(
         custom.remove,
@@ -165,40 +152,9 @@ async def test_remove(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     )
 
     await remove_(custom, interaction, 'mycommand')
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'does not exist' in interaction.followup_message
+    assert_followed(interaction, 'does not exist')
 
 
-@pytest.mark.asyncio
-async def test_on_error(
-    command_fixtures: tuple[Bot, CustomCommands],
-    caplog,
-) -> None:
-    mockbot, custom = command_fixtures
-
-    interaction = MockInteraction(
-        custom.remove,
-        user='calling-user',
-        channel='mychannel',
-        guild='myguild',
-        client=mockbot,
-    )
-    await custom.on_error(
-        interaction,
-        app_commands.MissingPermissions(['test']),
-    )
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'test' in interaction.response_message.lower()
-
-    # Should not raise error, just log it
-    caplog.set_level(logging.ERROR)
-    await custom.on_error(interaction, app_commands.AppCommandError('test1'))
-    assert any('test1' in record.message for record in caplog.records)
-
-
-@pytest.mark.asyncio
 async def test_autocomplete(tmp_file: str) -> None:
     custom = CustomCommands(tmp_file)
     command = CustomCommand(

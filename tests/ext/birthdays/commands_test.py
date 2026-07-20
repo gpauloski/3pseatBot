@@ -7,6 +7,7 @@ from unittest import mock
 import discord
 import pytest
 
+from testing.asserts import assert_responded
 from testing.mock import MockChannel
 from testing.mock import MockGuild
 from testing.mock import MockInteraction
@@ -31,12 +32,13 @@ def birthdays(tmp_file: str) -> BirthdayCommands:
     return BirthdayCommands(tmp_file)
 
 
-@pytest.mark.asyncio
-async def test_birthday_task(birthdays) -> None:
+async def test_birthday_task(birthdays: BirthdayCommands) -> None:
     with mock.patch('discord.Client'):
         client = discord.Client()  # type: ignore[call-arg]
         client.guilds = [MockGuild('guild', 42)]  # type: ignore[misc]
 
+    # asyncio.sleep is patched so the task does not wait until midnight.
+    # wait_for cannot be used here for the same reason: it would never yield.
     with (
         mock.patch('asyncio.sleep'),
         mock.patch.object(birthdays, 'send_birthday_messages') as mock_send,
@@ -51,12 +53,11 @@ async def test_birthday_task(birthdays) -> None:
         assert mock_send.await_count >= 1
 
 
-@pytest.mark.asyncio
-async def test_post_init_shutdown(birthdays) -> None:
+async def test_post_init_shutdown(birthdays: BirthdayCommands) -> None:
     with mock.patch('discord.Client'):
         client = discord.Client()  # type: ignore[call-arg]
 
-    await birthdays.post_init(client)
+    await birthdays.post_init(client)  # type: ignore[arg-type]
     assert birthdays._birthday_task is not None
 
     await birthdays.post_shutdown()
@@ -64,8 +65,7 @@ async def test_post_init_shutdown(birthdays) -> None:
     assert birthdays.table._db is None
 
 
-@pytest.mark.asyncio
-async def test_send_birthday_messages(birthdays) -> None:
+async def test_send_birthday_messages(birthdays: BirthdayCommands) -> None:
     guild = MockGuild('guild', BIRTHDAY.guild_id)
     channel = MockChannel('channel', 42)
 
@@ -98,8 +98,9 @@ async def test_send_birthday_messages(birthdays) -> None:
         assert mock_send.await_count == 1
 
 
-@pytest.mark.asyncio
-async def test_send_birthday_messages_no_channel_found(birthdays) -> None:
+async def test_send_birthday_messages_no_channel_found(
+    birthdays: BirthdayCommands,
+) -> None:
     guild = MockGuild('guild', BIRTHDAY.guild_id)
 
     with mock.patch(
@@ -109,8 +110,7 @@ async def test_send_birthday_messages_no_channel_found(birthdays) -> None:
         await birthdays.send_birthday_messages(guild)
 
 
-@pytest.mark.asyncio
-async def test_add_birthday(birthdays) -> None:
+async def test_add_birthday(birthdays: BirthdayCommands) -> None:
     add_ = extract(birthdays.add)
 
     guild = MockGuild('guild', BIRTHDAY.guild_id)
@@ -129,13 +129,10 @@ async def test_add_birthday(birthdays) -> None:
     assert birthday.birth_month == BIRTHDAY.birth_month
     assert birthday.birth_day == BIRTHDAY.birth_day
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Added birthday' in interaction.response_message
+    assert_responded(interaction, 'Added birthday')
 
 
-@pytest.mark.asyncio
-async def test_add_birthday_invalid_date(birthdays) -> None:
+async def test_add_birthday_invalid_date(birthdays: BirthdayCommands) -> None:
     add_ = extract(birthdays.add)
 
     guild = MockGuild('guild', BIRTHDAY.guild_id)
@@ -149,13 +146,10 @@ async def test_add_birthday_invalid_date(birthdays) -> None:
         31,
     )
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Invalid birthday' in interaction.response_message
+    assert_responded(interaction, 'Invalid birthday')
 
 
-@pytest.mark.asyncio
-async def test_list_birthdays(birthdays) -> None:
+async def test_list_birthdays(birthdays: BirthdayCommands) -> None:
     list_ = extract(birthdays.list)
 
     guild = MockGuild('guild', BIRTHDAY.guild_id)
@@ -165,21 +159,22 @@ async def test_list_birthdays(birthdays) -> None:
     birthdays.table.update(BIRTHDAY._replace(user_id=2))
     birthdays.table.update(BIRTHDAY._replace(guild_id=0, user_id=1))
 
-    # Mock second call to get_member to return None
-    _members = [MockMember('user', 1, guild), None]
+    # The second birthday in this guild belongs to a member that cannot be
+    # resolved, and the third belongs to another guild, so only one is listed.
+    member = MockMember('user', 1, guild)
 
-    with mock.patch.object(guild, 'get_member', side_effect=_members):
+    with mock.patch.object(guild, 'get_member', side_effect=[member, None]):
         await list_(birthdays, interaction)
 
     assert interaction.followed
-    assert interaction.followup_message is not None
-    # One output line because there are three rows, two in the guild we
-    # query from, and one of the members in the guild will not be found
-    assert len(interaction.followup_message.split('\n')) == 1
+    month = Months(BIRTHDAY.birth_month).name
+    assert (
+        interaction.followup_message
+        == f'{member.mention}: {month} {BIRTHDAY.birth_day}'
+    )
 
 
-@pytest.mark.asyncio
-async def test_list_birthdays_empty(birthdays) -> None:
+async def test_list_birthdays_empty(birthdays: BirthdayCommands) -> None:
     list_ = extract(birthdays.list)
 
     guild = MockGuild('guild', BIRTHDAY.guild_id)
@@ -187,13 +182,10 @@ async def test_list_birthdays_empty(birthdays) -> None:
 
     await list_(birthdays, interaction)
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'no birthdays' in interaction.response_message
+    assert_responded(interaction, 'no birthdays')
 
 
-@pytest.mark.asyncio
-async def test_remove_birthday(birthdays) -> None:
+async def test_remove_birthday(birthdays: BirthdayCommands) -> None:
     remove_ = extract(birthdays.remove)
 
     guild = MockGuild('guild', BIRTHDAY.guild_id)
@@ -208,13 +200,10 @@ async def test_remove_birthday(birthdays) -> None:
     )
 
     assert birthdays.table.get(BIRTHDAY.guild_id, BIRTHDAY.user_id) is None
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'Removed' in interaction.response_message
+    assert_responded(interaction, 'Removed')
 
 
-@pytest.mark.asyncio
-async def test_remove_birthday_missing(birthdays) -> None:
+async def test_remove_birthday_missing(birthdays: BirthdayCommands) -> None:
     remove_ = extract(birthdays.remove)
 
     guild = MockGuild('guild', BIRTHDAY.guild_id)
@@ -222,6 +211,4 @@ async def test_remove_birthday_missing(birthdays) -> None:
 
     await remove_(birthdays, interaction, MockMember('user', 42, guild))
 
-    assert interaction.responded
-    assert interaction.response_message is not None
-    assert 'birthday has not been added' in interaction.response_message
+    assert_responded(interaction, 'birthday has not been added')

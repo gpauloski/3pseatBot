@@ -3,9 +3,9 @@ from __future__ import annotations
 from unittest import mock
 
 import discord
-import pytest
 from emoji import emojize
 
+from testing.asserts import assert_followed
 from testing.mock import MockInteraction
 from testing.utils import extract
 from threepseat.commands.emote import emote
@@ -23,7 +23,6 @@ class _MockEmoji(discord.Emoji):
         return self._name
 
 
-@pytest.mark.asyncio
 async def test_emote() -> None:
     emote_ = extract(emote)
 
@@ -38,15 +37,10 @@ async def test_emote() -> None:
     ):
         await emote_(interaction)
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert (
-        'emote' in interaction.followup_message
-        or emojize(':game_die:') in interaction.followup_message
-    )
+    message = assert_followed(interaction)
+    assert 'emote' in message or emojize(':game_die:') in message
 
 
-@pytest.mark.asyncio
 async def test_emote_no_emotes() -> None:
     emote_ = extract(emote)
 
@@ -59,12 +53,9 @@ async def test_emote_no_emotes() -> None:
     ):
         await emote_(interaction)
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'no custom emotes' in interaction.followup_message
+    assert_followed(interaction, 'no custom emotes')
 
 
-@pytest.mark.asyncio
 async def test_emote_no_matches() -> None:
     emote_ = extract(emote)
 
@@ -79,6 +70,4 @@ async def test_emote_no_matches() -> None:
     ):
         await emote_(interaction, match='missing')
 
-    assert interaction.followed
-    assert interaction.followup_message is not None
-    assert 'No guild emotes match' in interaction.followup_message
+    assert_followed(interaction, 'No guild emotes match')

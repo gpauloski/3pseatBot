@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import pathlib
+import tempfile
 import time
 import uuid
 from typing import NamedTuple
@@ -32,6 +34,113 @@ def supported_video_extensions_str() -> str:
     )
 
 
+def validate_sound_name(name: str) -> None:
+    """Check a user-supplied sound name.
+
+    The name is interpolated into the sound's filename, so this must be
+    called before anything is written to disk. Otherwise a name like
+    '../../evil' would escape the sounds directory.
+
+    Raises:
+        ValueError:
+            if the name contains non-alphanumeric characters or is not
+            between 1 and MAX_SOUND_NAME_CHARS characters long.
+    """
+    if not alphanumeric(name):
+        msg = 'Name must contain only alphanumeric characters.'
+        raise ValueError(msg)
+    if len(name) == 0 or len(name) > MAX_SOUND_NAME_CHARS:
+        msg = (
+            f'Name must be between 1 and {MAX_SOUND_NAME_CHARS} '
+            'characters long.'
+        )
+        raise ValueError(msg)
+
+
+def validate_upload_extension(filename: str) -> str:
+    """Check that an uploaded file is a supported type.
+
+    Returns:
+        the lowercased file extension, including the leading dot.
+
+    Raises:
+        ValueError:
+            if the extension is neither MP3 nor a supported video format.
+    """
+    ext = pathlib.Path(filename.lower()).suffix
+    if ext != '.mp3' and ext not in SUPPORTED_VIDEO_EXTENSIONS:
+        msg = (
+            'The file must be an MP3 or a supported video '
+            f'({supported_video_extensions_str()}).'
+        )
+        raise ValueError(msg)
+    return ext
+
+
+def validate_upload_size(ext: str, size: int) -> None:
+    """Check an uploaded file against the size limit for its type.
+
+    Raises:
+        ValueError:
+            if the file is larger than the limit for its type.
+    """
+    max_size = (
+        MAX_SOUND_FILE_SIZE_BYTES
+        if ext == '.mp3'
+        else MAX_VIDEO_FILE_SIZE_BYTES
+    )
+    if size > max_size:
+        mb = max_size // (1024 * 1024)
+        msg = f'File size must be under {mb} MB.'
+        raise ValueError(msg)
+
+
+async def save_upload(content: bytes, ext: str, filepath: str) -> None:
+    """Save an uploaded sound file to filepath as an MP3.
+
+    Video uploads have their audio track extracted. In both cases the result
+    must be within the length limit. On failure the caller is responsible for
+    cleaning up filepath (see remove_if_exists()).
+
+    Args:
+        content (bytes): raw contents of the uploaded file.
+        ext (str): file extension of the upload, as returned by
+            validate_upload_extension().
+        filepath (str): path to write the resulting MP3 to.
+
+    Raises:
+        ValueError:
+            if the sound is longer than MAX_SOUND_LENGTH_SECONDS or the audio
+            could not be extracted from a video.
+    """
+    if ext == '.mp3':
+        await asyncio.to_thread(pathlib.Path(filepath).write_bytes, content)
+        _check_duration(await mp3_duration_seconds(filepath))
+    else:
+        # ffmpeg needs a real file to probe and read, so stage the upload.
+        with tempfile.NamedTemporaryFile(suffix=ext) as temp_file:
+            temp_file.write(content)
+            temp_file.flush()
+            _check_duration(await mp3_duration_seconds(temp_file.name))
+            await extract_audio(temp_file.name, filepath)
+
+
+def _check_duration(duration: float) -> None:
+    """Raise ValueError if a sound exceeds the length limit."""
+    if duration > MAX_SOUND_LENGTH_SECONDS:
+        msg = (
+            f'Sound is too long ({duration:.1f}s). Maximum length '
+            f'is {MAX_SOUND_LENGTH_SECONDS} seconds.'
+        )
+        raise ValueError(msg)
+
+
+def remove_if_exists(filepath: str) -> None:
+    """Remove a file if it exists, ignoring missing files."""
+    with contextlib.suppress(FileNotFoundError):
+        pathlib.Path(filepath).unlink()
+
+
 class Sound(NamedTuple):
     """Representation of entry in sounds database."""
 
@@ -53,7 +162,14 @@ class Sound(NamedTuple):
         author_id: int,
         guild_id: int,
     ) -> Self:
-        """Create a new sound."""
+        """Create a new sound.
+
+        Raises:
+            ValueError:
+                if the name is not a valid sound name. Validating here means
+                no caller can build a filename from an unchecked name.
+        """
+        validate_sound_name(name)
         uuid_ = uuid.uuid4()
         return cls(
             uuid=str(uuid_),
@@ -109,12 +225,7 @@ class SoundsTable(SQLTableInterface[Sound]):
         if self.get(name=sound.name, guild_id=sound.guild_id) is not None:
             msg = 'Sound with that name already exists.'
             raise ValueError(msg)
-        if not alphanumeric(sound.name):
-            msg = 'Name must contain only alphanumeric characters.'
-            raise ValueError(msg)
-        if len(sound.name) == 0 or len(sound.name) > MAX_SOUND_NAME_CHARS:
-            msg = 'Name must be between 1 and 15 characters long.'
-            raise ValueError(msg)
+        validate_sound_name(sound.name)
         filepath = self.filepath(sound.filename)
         if not pathlib.Path(filepath).is_file():
             msg = f'{filepath} does not exist.'
@@ -123,28 +234,34 @@ class SoundsTable(SQLTableInterface[Sound]):
         self.update(sound)
         logger.info('added sound to database: %s', sound)
 
-    def _all(self, guild_id: int) -> list[Sound]:  # type: ignore[override]
+    def _all(self, guild_id: int) -> tuple[Sound, ...]:
         """List sounds in database."""
         return super()._all(guild_id=guild_id)
 
-    def _get(self, name: str, guild_id: int) -> Sound | None:  # type: ignore[override]
+    def _get(self, name: str, guild_id: int) -> Sound | None:
         """Get sound in database."""
         return super()._get(name=name, guild_id=guild_id)
 
-    def remove(self, name: str, guild_id: int) -> None:  # type: ignore[override]
-        """Remove sound from database."""
+    def remove(self, name: str, guild_id: int) -> int:
+        """Remove a sound from the table and delete its file.
+
+        Returns:
+            the number of rows removed.
+        """
         sound = self.get(name=name, guild_id=guild_id)
+        if sound is None:
+            return 0
 
-        if sound is not None:
-            super().remove(name=name, guild_id=guild_id)
-            filepath = self.filepath(sound.filename)
-            pathlib.Path(filepath).unlink()
+        removed = super().remove(name=name, guild_id=guild_id)
+        filepath = self.filepath(sound.filename)
+        pathlib.Path(filepath).unlink()
 
-            logger.info(
-                'removed sound from database: (name=%s, guild_id=%s)',
-                name,
-                guild_id,
-            )
+        logger.info(
+            'removed sound from database: (name=%s, guild_id=%s)',
+            name,
+            guild_id,
+        )
+        return removed
 
 
 class MemberSound(NamedTuple):
@@ -172,11 +289,11 @@ class MemberSoundTable(SQLTableInterface[MemberSound]):
             primary_keys=('member_id', 'guild_id'),
         )
 
-    def _all(self, guild_id: int) -> list[MemberSound]:  # type: ignore[override]
+    def _all(self, guild_id: int) -> tuple[MemberSound, ...]:
         """Get all member sounds in guild."""
         return super()._all(guild_id=guild_id)
 
-    def _get(  # type: ignore[override]
+    def _get(
         self,
         member_id: int,
         guild_id: int,
@@ -184,7 +301,7 @@ class MemberSoundTable(SQLTableInterface[MemberSound]):
         """Get MemberSound for member."""
         return super()._get(member_id=member_id, guild_id=guild_id)
 
-    def remove(self, member_id: int, guild_id: int) -> int:  # type: ignore[override]
+    def remove(self, member_id: int, guild_id: int) -> int:
         """Remove a MemberSound from the table."""
         return super().remove(member_id=member_id, guild_id=guild_id)
 
@@ -229,7 +346,14 @@ def download(link: str, filepath: str) -> None:
             msg = 'Error extracting sound metadata.'
             raise ValueError(msg) from e
 
-        if int(metadata['duration']) > MAX_SOUND_LENGTH_SECONDS:
+        # Livestreams and some link types have no duration, in which case we
+        # cannot enforce the length limit.
+        duration = metadata.get('duration')
+        if duration is None:
+            msg = 'Could not determine the length of the clip.'
+            raise ValueError(msg)
+
+        if int(duration) > MAX_SOUND_LENGTH_SECONDS:
             msg = f'Clip is longer than {MAX_SOUND_LENGTH_SECONDS} seconds.'
             raise ValueError(msg)
 
@@ -271,17 +395,15 @@ async def mp3_duration_seconds(filepath: str) -> float:
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    await proc.wait()
-
-    stdout, stderr = ('', '')
-    if proc.stdout is not None:
-        stdout = (await proc.stdout.read()).decode().strip()
-    if proc.stderr is not None:
-        stderr = (await proc.stderr.read()).decode().strip()
+    # communicate() drains both pipes while waiting; wait() alone deadlocks if
+    # the child fills the OS pipe buffer before exiting.
+    stdout_b, stderr_b = await proc.communicate()
+    stdout = stdout_b.decode().strip()
+    stderr = stderr_b.decode().strip()
 
     if proc.returncode != 0:
         message = (
-            f'Get duration with ffmpeg failed (exit code {proc.returncode}): '
+            f'Get duration with ffprobe failed (exit code {proc.returncode}): '
             f'{" ".join(cmd)}'
         )
         if stderr != '':
@@ -324,12 +446,11 @@ async def extract_audio(source_path: str, mp3_path: str) -> None:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        await proc.wait()
+        # See mp3_duration_seconds: communicate() avoids a pipe deadlock.
+        _, stderr_b = await proc.communicate()
 
     if proc.returncode != 0:
-        stderr = ''
-        if proc.stderr is not None:  # pragma: no branch
-            stderr = (await proc.stderr.read()).decode().strip()
+        stderr = stderr_b.decode().strip()
         logger.error(
             'extract audio with ffmpeg failed (exit code %s):\nstderr:\n%s',
             proc.returncode,

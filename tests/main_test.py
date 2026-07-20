@@ -10,11 +10,15 @@ from typing import Any
 from unittest import mock
 
 import pytest
+from hypercorn.logging import Logger as HypercornLogger
 
 import threepseat
 from testing.config import TEMPLATE_CONFIG
+from threepseat.logging import configure_logging
 from threepseat.main import amain
 from threepseat.main import main
+from threepseat.main import quiet_ssl_shutdown_errors
+from threepseat.main import webapp_config
 
 
 def test_main_no_args_raises_help(capsys) -> None:
@@ -59,7 +63,7 @@ def test_main_start(config: str) -> None:
             'threepseat.main.Bot.start',
             mock.AsyncMock(),
         ) as mocked_bot,
-        mock.patch('quart.Quart.run_task', mock.AsyncMock()) as mocked_app,
+        mock.patch('threepseat.main.serve', mock.AsyncMock()) as mocked_app,
     ):
         assert not mocked_bot.called
         assert not mocked_app.called
@@ -69,7 +73,76 @@ def test_main_start(config: str) -> None:
         assert mocked_app.called
 
 
-def test_main_errors(config: str, caplog) -> None:
+def test_webapp_config_binds_configured_port(config: str) -> None:
+    cfg = threepseat.config.load(config)
+    assert webapp_config(cfg).bind == [f'0.0.0.0:{cfg.sounds_port}']
+
+
+def test_webapp_logging_is_left_to_configure_logging(config: str) -> None:
+    # hypercorn takes over any log target given to it as a string (which is
+    # what quart's run_task passes), replacing the handlers and level set by
+    # configure_logging() and printing access logs in its own format.
+    configure_logging(logdir=None, level='INFO')
+    access = logging.getLogger('hypercorn.access')
+    handlers = list(access.handlers)
+
+    HypercornLogger(webapp_config(threepseat.config.load(config)))
+
+    assert access.handlers == handlers
+    assert access.level == logging.WARNING
+    assert access.propagate
+
+
+async def test_ssl_shutdown_timeout_is_not_an_error(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # A client that drops a TLS connection is routine and should not be
+    # reported as an unhandled exception.
+    caplog.set_level(logging.DEBUG)
+    loop = asyncio.get_running_loop()
+    original = loop.get_exception_handler()
+    try:
+        quiet_ssl_shutdown_errors(loop)
+        handler = loop.get_exception_handler()
+        assert handler is not None
+        handler(
+            loop,
+            {
+                'message': 'Unhandled exception in client_connected_cb',
+                'exception': TimeoutError('SSL shutdown timed out'),
+            },
+        )
+    finally:
+        loop.set_exception_handler(original)
+
+    assert not any(r.levelno >= logging.ERROR for r in caplog.records)
+    assert any('TLS shutdown' in record.message for record in caplog.records)
+
+
+async def test_other_loop_exceptions_still_reported(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.ERROR)
+    loop = asyncio.get_running_loop()
+    original = loop.get_exception_handler()
+    try:
+        # An existing handler is chained to rather than replaced.
+        quiet_ssl_shutdown_errors(loop)
+        quiet_ssl_shutdown_errors(loop)
+        handler = loop.get_exception_handler()
+        assert handler is not None
+        handler(
+            loop, {'message': 'something broke', 'exception': ValueError()}
+        )
+    finally:
+        loop.set_exception_handler(original)
+
+    assert any(
+        'something broke' in record.message for record in caplog.records
+    )
+
+
+def test_main_errors(config: str, caplog: pytest.LogCaptureFixture) -> None:
     caplog.set_level(logging.ERROR)
     with mock.patch(
         'threepseat.main.amain',
@@ -105,18 +178,16 @@ def test_cli() -> None:
     assert result.returncode == 0
 
 
-@pytest.mark.asyncio
 async def test_amain_shutdown_trigger(config: str) -> None:
     shutdown_event = asyncio.Event()
     triggers: list[Any] = []
 
-    # Patched onto the class, so this receives the Quart app as self.
-    async def _run_task(_self: Any, **kwargs: Any) -> None:
+    async def _serve(_app: Any, _config: Any, **kwargs: Any) -> None:
         triggers.append(kwargs['shutdown_trigger'])
 
     with (
         mock.patch('threepseat.main.Bot.start', mock.AsyncMock()),
-        mock.patch('quart.Quart.run_task', _run_task),
+        mock.patch('threepseat.main.serve', _serve),
     ):
         await amain(threepseat.config.load(config), shutdown_event)
 
@@ -126,8 +197,9 @@ async def test_amain_shutdown_trigger(config: str) -> None:
     assert await trigger() is None
 
 
-@pytest.mark.asyncio
-async def test_amain_surfaces_service_error(config: str, caplog) -> None:
+async def test_amain_surfaces_service_error(
+    config: str, caplog: pytest.LogCaptureFixture
+) -> None:
     caplog.set_level(logging.ERROR)
     with (
         mock.patch(
@@ -135,7 +207,7 @@ async def test_amain_surfaces_service_error(config: str, caplog) -> None:
             mock.AsyncMock(side_effect=asyncio.CancelledError),
         ),
         mock.patch(
-            'quart.Quart.run_task',
+            'threepseat.main.serve',
             mock.AsyncMock(side_effect=RuntimeError('webapp died')),
         ),
         pytest.raises(RuntimeError, match='webapp died'),
@@ -147,10 +219,9 @@ async def test_amain_surfaces_service_error(config: str, caplog) -> None:
     assert not any('bot exited' in record.message for record in caplog.records)
 
 
-@pytest.mark.asyncio
 async def test_amain_surfaces_first_of_many_errors(
     config: str,
-    caplog,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     caplog.set_level(logging.ERROR)
     with (
@@ -159,7 +230,7 @@ async def test_amain_surfaces_first_of_many_errors(
             mock.AsyncMock(side_effect=RuntimeError('bot died')),
         ),
         mock.patch(
-            'quart.Quart.run_task',
+            'threepseat.main.serve',
             mock.AsyncMock(side_effect=RuntimeError('webapp died')),
         ),
         # Both services failed, but only the first is raised.
