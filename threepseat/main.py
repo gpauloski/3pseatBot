@@ -8,6 +8,9 @@ import sys
 from collections.abc import Sequence
 from types import FrameType
 
+from hypercorn.asyncio import serve
+from hypercorn.config import Config as HypercornConfig
+
 import threepseat
 from threepseat import config
 from threepseat.bot import Bot
@@ -21,6 +24,27 @@ from threepseat.ext.sounds.web import create_app
 from threepseat.logging import configure_logging
 
 logger = logging.getLogger(__name__)
+
+
+def webapp_config(cfg: config.Config) -> HypercornConfig:
+    """Build the hypercorn config used to serve the sounds web app.
+
+    Quart's `run_task()` hardcodes `accesslog = '-'`, which makes hypercorn
+    install its own stdout handlers with its own format and reset the
+    `hypercorn.*` log levels to INFO, overriding `configure_logging()`. Handing
+    it `Logger` instances instead leaves those loggers alone, so hypercorn's
+    output uses our format and respects the levels in `threepseat.logging`.
+    """
+    hypercorn_config = HypercornConfig()
+    hypercorn_config.access_log_format = '%(h)s %(r)s %(s)s %(b)s %(D)s'
+    hypercorn_config.accesslog = logging.getLogger('hypercorn.access')
+    hypercorn_config.errorlog = logging.getLogger('hypercorn.error')
+    # Bind to all interfaces since this runs in a container and needs to be
+    # reachable via the host's port mapping.
+    hypercorn_config.bind = [f'0.0.0.0:{cfg.sounds_port}']
+    hypercorn_config.certfile = cfg.sounds_certfile
+    hypercorn_config.keyfile = cfg.sounds_keyfile
+    return hypercorn_config
 
 
 async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
@@ -66,13 +90,9 @@ async def amain(cfg: config.Config, shutdown_event: asyncio.Event) -> None:
     async with bot:
         results = await asyncio.gather(
             bot.start(cfg.bot_token, reconnect=True),
-            webapp.run_task(
-                # Bind to all interfaces since this runs in a container and
-                # needs to be reachable via the host's port mapping.
-                host='0.0.0.0',  # noqa: S104
-                port=cfg.sounds_port,
-                certfile=cfg.sounds_certfile,
-                keyfile=cfg.sounds_keyfile,
+            serve(
+                webapp,
+                webapp_config(cfg),
                 shutdown_trigger=wait_for_shutdown,
             ),
             return_exceptions=True,

@@ -10,11 +10,14 @@ from typing import Any
 from unittest import mock
 
 import pytest
+from hypercorn.logging import Logger as HypercornLogger
 
 import threepseat
 from testing.config import TEMPLATE_CONFIG
+from threepseat.logging import configure_logging
 from threepseat.main import amain
 from threepseat.main import main
+from threepseat.main import webapp_config
 
 
 def test_main_no_args_raises_help(capsys) -> None:
@@ -59,7 +62,7 @@ def test_main_start(config: str) -> None:
             'threepseat.main.Bot.start',
             mock.AsyncMock(),
         ) as mocked_bot,
-        mock.patch('quart.Quart.run_task', mock.AsyncMock()) as mocked_app,
+        mock.patch('threepseat.main.serve', mock.AsyncMock()) as mocked_app,
     ):
         assert not mocked_bot.called
         assert not mocked_app.called
@@ -67,6 +70,26 @@ def test_main_start(config: str) -> None:
             main(['--config', str(config)])
         assert mocked_bot.called
         assert mocked_app.called
+
+
+def test_webapp_config_binds_configured_port(config: str) -> None:
+    cfg = threepseat.config.load(config)
+    assert webapp_config(cfg).bind == [f'0.0.0.0:{cfg.sounds_port}']
+
+
+def test_webapp_logging_is_left_to_configure_logging(config: str) -> None:
+    # hypercorn takes over any log target given to it as a string (which is
+    # what quart's run_task passes), replacing the handlers and level set by
+    # configure_logging() and printing access logs in its own format.
+    configure_logging(logdir=None, level='INFO')
+    access = logging.getLogger('hypercorn.access')
+    handlers = list(access.handlers)
+
+    HypercornLogger(webapp_config(threepseat.config.load(config)))
+
+    assert access.handlers == handlers
+    assert access.level == logging.WARNING
+    assert access.propagate
 
 
 def test_main_errors(config: str, caplog: pytest.LogCaptureFixture) -> None:
@@ -109,13 +132,12 @@ async def test_amain_shutdown_trigger(config: str) -> None:
     shutdown_event = asyncio.Event()
     triggers: list[Any] = []
 
-    # Patched onto the class, so this receives the Quart app as self.
-    async def _run_task(_self: Any, **kwargs: Any) -> None:
+    async def _serve(_app: Any, _config: Any, **kwargs: Any) -> None:
         triggers.append(kwargs['shutdown_trigger'])
 
     with (
         mock.patch('threepseat.main.Bot.start', mock.AsyncMock()),
-        mock.patch('quart.Quart.run_task', _run_task),
+        mock.patch('threepseat.main.serve', _serve),
     ):
         await amain(threepseat.config.load(config), shutdown_event)
 
@@ -135,7 +157,7 @@ async def test_amain_surfaces_service_error(
             mock.AsyncMock(side_effect=asyncio.CancelledError),
         ),
         mock.patch(
-            'quart.Quart.run_task',
+            'threepseat.main.serve',
             mock.AsyncMock(side_effect=RuntimeError('webapp died')),
         ),
         pytest.raises(RuntimeError, match='webapp died'),
@@ -158,7 +180,7 @@ async def test_amain_surfaces_first_of_many_errors(
             mock.AsyncMock(side_effect=RuntimeError('bot died')),
         ),
         mock.patch(
-            'quart.Quart.run_task',
+            'threepseat.main.serve',
             mock.AsyncMock(side_effect=RuntimeError('webapp died')),
         ),
         # Both services failed, but only the first is raised.
