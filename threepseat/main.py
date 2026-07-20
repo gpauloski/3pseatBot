@@ -100,7 +100,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description='3pseatBot CLI',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        prog='python -m threepseatbot',
+        # Matches the console script in pyproject.toml; "python -m threepseat"
+        # also works but the installed entrypoint is what users are told about.
+        prog='threepseatbot',
     )
 
     # https://stackoverflow.com/a/8521644/812183

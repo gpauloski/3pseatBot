@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import pathlib
 from unittest import mock
 
 import discord
@@ -14,7 +13,6 @@ from testing.mock import MockUser
 from testing.mock import MockVoiceChannel
 from threepseat.bot import Bot
 from threepseat.utils import alphanumeric
-from threepseat.utils import cached_load
 from threepseat.utils import leave_on_empty
 from threepseat.utils import play_sound
 from threepseat.utils import primary_channel
@@ -28,16 +26,6 @@ def test_alphanumeric() -> None:
     assert alphanumeric('asdasdaASDASD213123')
     assert not alphanumeric(' ')
     assert not alphanumeric('$')
-
-
-def test_cached_load(tmp_path: pathlib.Path) -> None:
-    test_file = tmp_path / 'file.bytes'
-    data = b'12345'
-    with test_file.open('wb') as f:
-        f.write(data)
-
-    found = cached_load(test_file)
-    assert found.getvalue() == data
 
 
 def test_split_strings() -> None:

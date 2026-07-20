@@ -113,7 +113,10 @@ class SoundsTable(SQLTableInterface[Sound]):
             msg = 'Name must contain only alphanumeric characters.'
             raise ValueError(msg)
         if len(sound.name) == 0 or len(sound.name) > MAX_SOUND_NAME_CHARS:
-            msg = 'Name must be between 1 and 15 characters long.'
+            msg = (
+                'Name must be between 1 and '
+                f'{MAX_SOUND_NAME_CHARS} characters long.'
+            )
             raise ValueError(msg)
         filepath = self.filepath(sound.filename)
         if not pathlib.Path(filepath).is_file():
@@ -281,7 +284,7 @@ async def mp3_duration_seconds(filepath: str) -> float:
 
     if proc.returncode != 0:
         message = (
-            f'Get duration with ffmpeg failed (exit code {proc.returncode}): '
+            f'Get duration with ffprobe failed (exit code {proc.returncode}): '
             f'{" ".join(cmd)}'
         )
         if stderr != '':

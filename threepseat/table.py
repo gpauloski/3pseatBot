@@ -298,11 +298,11 @@ def fields_to_insert_str(fields: Sequence[str]) -> str:
 
 
 def fields_to_search_str(fields: Iterable[str]) -> str:
-    """Format field names as a SQL update string.
+    """Format field names as a SQL search string.
 
     Example:
         ('name', 'date', 'kind') ->
-            "name = :name ANY date = :date ANY kind = :kind"
+            "name = :name AND date = :date AND kind = :kind"
     """
     return ' AND '.join([f'{f} = :{f}' for f in fields])
 

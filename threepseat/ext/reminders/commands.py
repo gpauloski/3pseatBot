@@ -300,7 +300,7 @@ class ReminderCommands(CommandGroupExtension):
             )
 
         lines_str = '\n - '.join(lines)
-        msg = f'Exisiting reminders:\n - {lines_str}'
+        msg = f'Existing reminders:\n - {lines_str}'
 
         await interaction.response.send_message(msg, ephemeral=True)
 

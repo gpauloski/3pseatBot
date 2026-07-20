@@ -246,7 +246,7 @@ async def test_mp3_duration_seconds_ffprobe_error(
             'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
             mock.AsyncMock(return_value=proc),
         ),
-        pytest.raises(RuntimeError, match='ffmpeg failed'),
+        pytest.raises(RuntimeError, match='ffprobe failed'),
     ):
         await mp3_duration_seconds(filepath)
 
@@ -266,7 +266,7 @@ async def test_mp3_duration_seconds_no_pipes(tmp_path: pathlib.Path) -> None:
             'threepseat.ext.sounds.data.asyncio.create_subprocess_exec',
             mock.AsyncMock(return_value=proc),
         ),
-        pytest.raises(RuntimeError, match='ffmpeg failed'),
+        pytest.raises(RuntimeError, match='ffprobe failed'),
     ):
         await mp3_duration_seconds(filepath)
 

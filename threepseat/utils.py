@@ -2,15 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import datetime
-import functools
-import io
 import logging
 import re
 import warnings
 from collections.abc import Callable
 from collections.abc import Coroutine
 from collections.abc import Sequence
-from pathlib import Path
 from typing import Any
 from typing import cast
 
@@ -28,13 +25,6 @@ LoopType = tasks.Loop[LF]
 def alphanumeric(s: str) -> bool:
     """Check if string is alphanumeric characters only."""
     return len(re.findall(r'[^A-Za-z0-9]', s)) == 0
-
-
-@functools.lru_cache(maxsize=16)
-def cached_load(filepath: str) -> io.BytesIO:
-    """Load file as bytes (cached)."""
-    with Path(filepath).open('rb') as f:
-        return io.BytesIO(f.read())
 
 
 def split_strings(text: str, delimiter: str = ',') -> list[str]:
