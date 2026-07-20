@@ -71,13 +71,19 @@ def test_ignore_message_successes(mock_message) -> None:  # noqa: ARG001
     message.author.bot = True
     assert ignore_message(message)
 
-    # Ignore server boosters
-    message.author.bot = False
+    # Ignore server boosters (only guild members can be boosters)
     with (
         mock.patch('threepseat.ext.rules.utils.is_booster', return_value=True),
-        mock.patch('threepseat.ext.rules.utils.isinstance', return_value=True),
+        mock.patch(
+            'discord.Member.bot',
+            mock.PropertyMock(return_value=False),
+        ),
     ):
+        message.author = MockMember('user', 1234, MockGuild('guild', 5678))
         assert ignore_message(message)
+
+    message.author = MockUser('user', 1234)
+    message.author.bot = False
 
     # Ignore emojis
     message.content = '<:pog:1234>'

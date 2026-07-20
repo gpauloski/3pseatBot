@@ -137,7 +137,7 @@ async def test_send_text_reminder() -> None:
         assert mock_send.await_count == 1
 
 
-async def test_send_voice_reminder() -> None:
+async def test_send_voice_reminder_skips_empty_channels() -> None:
     client = MockClient(MockUser('user', 1234))
     channel = MockVoiceChannel()
     message = 'test message'
@@ -150,7 +150,7 @@ async def test_send_voice_reminder() -> None:
         assert mock_play.await_count == 0
 
 
-async def test_send_voice_reminder_skips_empty_channels() -> None:
+async def test_send_voice_reminder() -> None:
     client = MockClient(MockUser('user', 1234))
     channel = MockVoiceChannel()
     message = 'test message'

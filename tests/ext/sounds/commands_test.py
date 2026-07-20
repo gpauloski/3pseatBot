@@ -984,6 +984,7 @@ async def test_voice_state_update(
         await sounds.on_voice_state_update(member, before, after)
         assert mock_play.await_count == 1
 
+    caplog.set_level(logging.ERROR)
     with mock.patch(
         'threepseat.ext.sounds.commands.play_sound',
         side_effect=Exception(),
@@ -991,7 +992,6 @@ async def test_voice_state_update(
         # exception should be captured and logged
         await sounds.on_voice_state_update(member, before, after)
 
-    caplog.set_level(logging.ERROR)
     assert any('exception' in record.message for record in caplog.records)
 
 
@@ -1045,6 +1045,6 @@ async def test_register_command(
     await register_(sounds, interaction, name='mysound')
     assert len(sounds.join_table.all(interaction.guild.id)) == 1
 
-    assert interaction.response
+    assert interaction.responded
     assert interaction.response_message is not None
     assert 'Updated your voice channel entry' in interaction.response_message

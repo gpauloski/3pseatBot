@@ -6,6 +6,7 @@ from unittest import mock
 import discord
 import pytest
 
+from testing.mock import MockChannel
 from testing.mock import MockClient
 from testing.mock import MockGuild
 from testing.mock import MockMember
@@ -38,13 +39,14 @@ def test_split_strings() -> None:
 
 def test_primary_channel() -> None:
     guild = MockGuild('myguild', 5678)
-    with mock.patch('discord.TextChannel'):
-        channel = discord.TextChannel()  # type: ignore[call-arg]
+    text_channel = MockChannel('text-channel')
+    voice_channel = MockVoiceChannel()
+
     with mock.patch(
         'discord.Guild.system_channel',
-        mock.PropertyMock(return_value=channel),
+        mock.PropertyMock(return_value=text_channel),
     ):
-        assert primary_channel(guild) == channel
+        assert primary_channel(guild) == text_channel
 
     with (
         mock.patch(
@@ -55,22 +57,21 @@ def test_primary_channel() -> None:
             'discord.Guild.me',
             mock.PropertyMock(),
         ),
+        mock.patch.object(
+            text_channel,
+            'permissions_for',
+            return_value=mock.MagicMock(send_messages=True),
+        ),
     ):
         guild._channels = {}
         assert primary_channel(guild) is None
 
-        guild._channels = {'c1': channel}  # type: ignore[dict-item]
-        with mock.patch('threepseat.utils.isinstance', return_value=True):
-            assert primary_channel(guild) == channel
+        guild._channels = {'c1': text_channel}  # type: ignore[dict-item]
+        assert primary_channel(guild) == text_channel
 
-        with mock.patch('discord.VoiceChannel'):
-            channel = discord.VoiceChannel()  # type: ignore[assignment, call-arg]
-        guild._channels = {'c1': channel}  # type: ignore[dict-item]
-        with mock.patch(
-            'threepseat.utils.isinstance',
-            return_value=False,
-        ):  # pragma: no branch
-            assert primary_channel(guild) is None
+        # Voice channels cannot be posted in, so they are never candidates.
+        guild._channels = {'c1': voice_channel}  # type: ignore[dict-item]
+        assert primary_channel(guild) is None
 
 
 @pytest.mark.parametrize(

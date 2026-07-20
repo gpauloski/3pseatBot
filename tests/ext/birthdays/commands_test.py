@@ -158,17 +158,19 @@ async def test_list_birthdays(birthdays) -> None:
     birthdays.table.update(BIRTHDAY._replace(user_id=2))
     birthdays.table.update(BIRTHDAY._replace(guild_id=0, user_id=1))
 
-    # Mock second call to get_member to return None
-    _members = [MockMember('user', 1, guild), None]
+    # The second birthday in this guild belongs to a member that cannot be
+    # resolved, and the third belongs to another guild, so only one is listed.
+    member = MockMember('user', 1, guild)
 
-    with mock.patch.object(guild, 'get_member', side_effect=_members):
+    with mock.patch.object(guild, 'get_member', side_effect=[member, None]):
         await list_(birthdays, interaction)
 
     assert interaction.followed
-    assert interaction.followup_message is not None
-    # One output line because there are three rows, two in the guild we
-    # query from, and one of the members in the guild will not be found
-    assert len(interaction.followup_message.split('\n')) == 1
+    month = Months(BIRTHDAY.birth_month).name
+    assert (
+        interaction.followup_message
+        == f'{member.mention}: {month} {BIRTHDAY.birth_day}'
+    )
 
 
 async def test_list_birthdays_empty(birthdays) -> None:

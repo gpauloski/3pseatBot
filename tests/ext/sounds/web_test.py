@@ -1196,9 +1196,7 @@ def test_secret_key_generated_warns(
     assert app.secret_key  # a key was generated
     assert 'secret_key' in caplog.text
 
-    # Two apps built with the same key sign cookies identically (a restart
-    # keeps existing sessions valid); different keys do not.
-    data_path2 = str(tmp_path / 'sounds2')
-    app_a = _make_app('shared-key', tmp_file, data_path2)
-    app_b = _make_app('shared-key', tmp_file, data_path2)
-    assert app_a.secret_key == app_b.secret_key
+    # The warning matters because each app generates its own key, so a
+    # restart invalidates every existing session.
+    other = _make_app(None, tmp_file, str(tmp_path / 'sounds2'))
+    assert other.secret_key != app.secret_key

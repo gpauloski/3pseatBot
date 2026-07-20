@@ -61,7 +61,7 @@ async def test_roll() -> None:
 async def test_source() -> None:
     source_ = extract(source)
 
-    interaction = MockInteraction(roll, user='calling-user')
+    interaction = MockInteraction(source, user='calling-user')
 
     await source_(interaction)
     assert interaction.responded

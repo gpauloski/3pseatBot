@@ -82,7 +82,7 @@ async def test_timeout_member(commands) -> None:
     with mock.patch(
         'discord.Member.timeout',
         mock.AsyncMock(side_effect=Exception()),
-    ) as mock_timeout:
+    ):
         s = await commands.timeout_member(member, 1)
         assert 'cannot be timed out' in s
 
