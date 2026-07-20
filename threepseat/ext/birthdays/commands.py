@@ -186,9 +186,12 @@ class BirthdayCommands(CommandGroupExtension):
 
         await interaction.response.defer(thinking=True, ephemeral=True)
 
-        birthdays.sort(key=lambda b: (b.birth_month, b.birth_day))
+        birthdays_sorted = sorted(
+            birthdays,
+            key=lambda b: (b.birth_month, b.birth_day),
+        )
         birthdays_strs: list[str] = []
-        for birthday in birthdays:
+        for birthday in birthdays_sorted:
             member = interaction.guild.get_member(birthday.user_id)
             month = Months(birthday.birth_month).name
             day = birthday.birth_day

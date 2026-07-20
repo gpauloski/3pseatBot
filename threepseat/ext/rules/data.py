@@ -67,7 +67,7 @@ class RulesDatabase:
         """Get configuration for guild."""
         return self.config_table.get(guild_id)
 
-    def get_configs(self) -> list[GuildConfig]:
+    def get_configs(self) -> tuple[GuildConfig, ...]:
         """Get all guild configs."""
         return self.config_table.all()
 
@@ -83,7 +83,7 @@ class RulesDatabase:
         """Get the user offenses matching the guild and user id."""
         return self.offenses_table.get(guild_id, user_id)
 
-    def get_users(self, guild_id: int) -> list[UserOffenses]:
+    def get_users(self, guild_id: int) -> tuple[UserOffenses, ...]:
         """Get all user offenses in a guild."""
         return self.offenses_table.all(guild_id)
 
@@ -160,7 +160,7 @@ class GuildConfigTable(SQLTableInterface[GuildConfig]):
             primary_keys=('guild_id',),
         )
 
-    def _all(self) -> list[GuildConfig]:  # type: ignore[override]
+    def _all(self) -> tuple[GuildConfig, ...]:  # type: ignore[override]
         """Get guild configs."""
         return super()._all()
 
@@ -189,7 +189,7 @@ class UserOffensesTable(SQLTableInterface[UserOffenses]):
             primary_keys=('guild_id', 'user_id'),
         )
 
-    def _all(self, guild_id: int) -> list[UserOffenses]:  # type: ignore[override]
+    def _all(self, guild_id: int) -> tuple[UserOffenses, ...]:  # type: ignore[override]
         """Get all user offenses in the guild."""
         return super()._all(guild_id=guild_id)
 

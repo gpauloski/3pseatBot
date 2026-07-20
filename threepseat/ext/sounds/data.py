@@ -148,7 +148,7 @@ class SoundsTable(SQLTableInterface[Sound]):
         self.update(sound)
         logger.info('added sound to database: %s', sound)
 
-    def _all(self, guild_id: int) -> list[Sound]:  # type: ignore[override]
+    def _all(self, guild_id: int) -> tuple[Sound, ...]:  # type: ignore[override]
         """List sounds in database."""
         return super()._all(guild_id=guild_id)
 
@@ -197,7 +197,7 @@ class MemberSoundTable(SQLTableInterface[MemberSound]):
             primary_keys=('member_id', 'guild_id'),
         )
 
-    def _all(self, guild_id: int) -> list[MemberSound]:  # type: ignore[override]
+    def _all(self, guild_id: int) -> tuple[MemberSound, ...]:  # type: ignore[override]
         """Get all member sounds in guild."""
         return super()._all(guild_id=guild_id)
 

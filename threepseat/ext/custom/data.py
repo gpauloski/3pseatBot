@@ -35,7 +35,7 @@ class CustomCommandTable(SQLTableInterface[CustomCommand]):
     def _all(  # type: ignore[override]
         self,
         guild_id: int | None = None,
-    ) -> list[CustomCommand]:
+    ) -> tuple[CustomCommand, ...]:
         """Get all custom commands in guild."""
         if guild_id is None:
             return super()._all()

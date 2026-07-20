@@ -7,6 +7,7 @@ from typing import NamedTuple
 
 import pytest
 
+from threepseat.table import CACHE_MAXSIZE
 from threepseat.table import Field
 from threepseat.table import SQLTableInterface
 from threepseat.table import field_names
@@ -210,6 +211,19 @@ def test_all_caching(table) -> None:
     table.all(guild_id=0)
     assert table.all.cache_info().hits == 1
     assert table.all.cache_info().misses == 1
+
+
+def test_caches_are_bounded(table) -> None:
+    # Keys are the full kwargs combination, including ones that miss, so an
+    # unbounded cache would grow forever.
+    assert table.all.cache_info().maxsize == CACHE_MAXSIZE
+    assert table.get.cache_info().maxsize == CACHE_MAXSIZE
+
+
+def test_all_returns_immutable_result(table) -> None:
+    # Callers share the cached object, so it must not be mutable.
+    table.update(ExampleRow(0, 0, 0.0, None, True))
+    assert isinstance(table.all(guild_id=0), tuple)
 
 
 def test_update_resets_cache(table) -> None:

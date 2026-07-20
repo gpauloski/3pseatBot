@@ -37,7 +37,7 @@ class GamesTable(SQLTableInterface[Game]):
             primary_keys=('guild_id', 'name'),
         )
 
-    def _all(self, guild_id: int) -> list[Game]:  # type: ignore[override]
+    def _all(self, guild_id: int) -> tuple[Game, ...]:  # type: ignore[override]
         """Get all games in guild."""
         return super()._all(guild_id=guild_id)
 

@@ -51,7 +51,7 @@ class RemindersTable(SQLTableInterface[Reminder]):
             primary_keys=('guild_id', 'name'),
         )
 
-    def _all(self, guild_id: int) -> list[Reminder]:  # type: ignore[override]
+    def _all(self, guild_id: int) -> tuple[Reminder, ...]:  # type: ignore[override]
         """Get all reminders in guild."""
         return super()._all(guild_id=guild_id)
 

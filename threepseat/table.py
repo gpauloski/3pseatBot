@@ -34,6 +34,8 @@ BUILTIN_TO_SQLITE = {
 
 RowType = TypeVar('RowType', bound=NamedTuple)
 
+CACHE_MAXSIZE = 1024
+
 
 class Field(NamedTuple):
     """Field/column in SQLite3 table."""
@@ -110,8 +112,11 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
                 f'CREATE TABLE IF NOT EXISTS {self.name} ({columns_str})',
             )
 
-        self.all = functools.cache(self._all)
-        self.get = functools.cache(self._get)
+        # Bounded because the cache key is the full kwargs combination, so an
+        # unbounded cache would retain an entry for every distinct query ever
+        # made (misses included).
+        self.all = functools.lru_cache(maxsize=CACHE_MAXSIZE)(self._all)
+        self.get = functools.lru_cache(maxsize=CACHE_MAXSIZE)(self._get)
 
     @property
     def field_names(self) -> tuple[str, ...]:
@@ -181,8 +186,12 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
                 # any invalid kwarg, including wrong-typed values.
                 raise ValueError(msg)  # noqa: TRY004
 
-    def _all(self, **kwargs: Any) -> list[RowType]:  # noqa: ANN401
-        """Get all rows in the table match kwargs."""
+    def _all(self, **kwargs: Any) -> tuple[RowType, ...]:  # noqa: ANN401
+        """Get all rows in the table match kwargs.
+
+        Returns a tuple because the result is cached and shared by every
+        caller of all().
+        """
         self.validate_kwargs(kwargs)
 
         where = (
@@ -198,7 +207,7 @@ class SQLTableInterface(Generic[RowType]):  # noqa: UP046
                 f'SELECT * FROM {self.name} {where}',  # noqa: S608
                 kwargs,
             ).fetchall()
-            return [self._row_type(*row) for row in rows]
+            return tuple(self._row_type(*row) for row in rows)
 
     def _get(self, **kwargs: Any) -> RowType | None:  # noqa: ANN401
         """Get the row in the table matching kwargs.

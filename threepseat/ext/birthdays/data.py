@@ -41,7 +41,7 @@ class BirthdayTable(SQLTableInterface[Birthday]):
             primary_keys=('guild_id', 'user_id'),
         )
 
-    def _all(self, guild_id: int) -> list[Birthday]:  # type: ignore[override]
+    def _all(self, guild_id: int) -> tuple[Birthday, ...]:  # type: ignore[override]
         """Get all birthdays in guild."""
         return super()._all(guild_id=guild_id)
 
