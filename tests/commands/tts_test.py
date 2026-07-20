@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from unittest import mock
 
-import pytest
-
 from testing.mock import MockGuild
 from testing.mock import MockInteraction
 from testing.mock import MockMember
@@ -11,7 +9,6 @@ from testing.utils import extract
 from threepseat.commands.tts import tts
 
 
-@pytest.mark.asyncio
 async def test_tts_command() -> None:
     tts_ = extract(tts)
 
@@ -34,7 +31,6 @@ async def test_tts_command() -> None:
     assert 'Played' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_tts_command_text_too_long() -> None:
     tts_ = extract(tts)
 
@@ -52,7 +48,6 @@ async def test_tts_command_text_too_long() -> None:
     assert 'Text length is limited' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_tts_command_not_in_voice_channel() -> None:
     tts_ = extract(tts)
 
@@ -74,7 +69,6 @@ async def test_tts_command_not_in_voice_channel() -> None:
     assert 'must be in a voice channel' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_tts_command_exception() -> None:
     tts_ = extract(tts)
 

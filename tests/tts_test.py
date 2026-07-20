@@ -18,7 +18,6 @@ def test_accent_from_str() -> None:
     assert isinstance(Accent.from_str('', random_if_unknown=True), Accent)
 
 
-@pytest.mark.asyncio
 async def test_tts_as_mp3() -> None:
     with mock.patch('threepseat.tts.gTTS'):
         async with tts_as_mp3('test message') as fp:

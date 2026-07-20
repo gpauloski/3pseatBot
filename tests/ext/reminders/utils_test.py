@@ -4,8 +4,6 @@ import asyncio
 import logging
 from unittest import mock
 
-import pytest
-
 from testing.mock import MockChannel
 from testing.mock import MockClient
 from testing.mock import MockGuild
@@ -29,7 +27,6 @@ REMINDER = Reminder(
 )
 
 
-@pytest.mark.asyncio
 async def test_reminder_task() -> None:
     with (
         mock.patch(
@@ -66,7 +63,6 @@ async def test_reminder_task() -> None:
         task.cancel()
 
 
-@pytest.mark.asyncio
 async def test_reminder_task_missing_guild(caplog) -> None:
     caplog.set_level(logging.ERROR)
     client = MockClient(MockUser('user', 1234))
@@ -82,7 +78,6 @@ async def test_reminder_task_missing_guild(caplog) -> None:
     assert any('find guild' in record.message for record in caplog.records)
 
 
-@pytest.mark.asyncio
 async def test_reminder_task_missing_channel(caplog) -> None:
     caplog.set_level(logging.ERROR)
     client = MockClient(MockUser('user', 1234))
@@ -104,7 +99,6 @@ async def test_reminder_task_missing_channel(caplog) -> None:
     )
 
 
-@pytest.mark.asyncio
 async def test_reminder_task_callback() -> None:
     with mock.patch(
         'threepseat.ext.reminders.utils.send_text_reminder',
@@ -134,7 +128,6 @@ async def test_reminder_task_callback() -> None:
         assert callback.called
 
 
-@pytest.mark.asyncio
 async def test_send_text_reminder() -> None:
     channel = MockChannel('channel')
     message = 'test message'
@@ -144,7 +137,6 @@ async def test_send_text_reminder() -> None:
         assert mock_send.await_count == 1
 
 
-@pytest.mark.asyncio
 async def test_send_voice_reminder() -> None:
     client = MockClient(MockUser('user', 1234))
     channel = MockVoiceChannel()
@@ -158,7 +150,6 @@ async def test_send_voice_reminder() -> None:
         assert mock_play.await_count == 0
 
 
-@pytest.mark.asyncio
 async def test_send_voice_reminder_skips_empty_channels() -> None:
     client = MockClient(MockUser('user', 1234))
     channel = MockVoiceChannel()

@@ -143,7 +143,6 @@ def test_voice_channel() -> None:
     assert voice_channel(member) is None
 
 
-@pytest.mark.asyncio
 @mock.patch('discord.FFmpegOpusAudio')
 async def test_play_sound(mock_audio) -> None:
     sound = 'filepath'
@@ -195,7 +194,6 @@ async def test_play_sound(mock_audio) -> None:
     assert mock_audio.call_count == 2
 
 
-@pytest.mark.asyncio
 async def test_leave_on_empty() -> None:
     class MockVoiceClient(discord.VoiceClient):
         def __init__(self) -> None:

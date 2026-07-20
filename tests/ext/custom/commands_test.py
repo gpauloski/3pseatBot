@@ -25,7 +25,6 @@ def command_fixtures(
         yield bot, cc
 
 
-@pytest.mark.asyncio
 async def test_create(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     mockbot, custom = command_fixtures
     create_ = extract(custom.create)
@@ -54,7 +53,6 @@ async def test_create(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     assert interaction.followup_message is not None
 
 
-@pytest.mark.asyncio
 async def test_create_invalid_name(
     command_fixtures: tuple[Bot, CustomCommands],
 ) -> None:
@@ -81,7 +79,6 @@ async def test_create_invalid_name(
     assert 'alphanumeric' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_list(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     mockbot, custom = command_fixtures
     list_ = extract(custom.list)
@@ -128,7 +125,6 @@ async def test_list(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     assert 'mycommand' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_remove(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     mockbot, custom = command_fixtures
     remove_ = extract(custom.remove)
@@ -170,7 +166,6 @@ async def test_remove(command_fixtures: tuple[Bot, CustomCommands]) -> None:
     assert 'does not exist' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_on_error(
     command_fixtures: tuple[Bot, CustomCommands],
     caplog,
@@ -198,7 +193,6 @@ async def test_on_error(
     assert any('test1' in record.message for record in caplog.records)
 
 
-@pytest.mark.asyncio
 async def test_autocomplete(tmp_file: str) -> None:
     custom = CustomCommands(tmp_file)
     command = CustomCommand(

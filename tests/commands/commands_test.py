@@ -24,7 +24,6 @@ def test_app_commands_declared() -> None:
     assert len(set(names)) == len(names)
 
 
-@pytest.mark.asyncio
 async def test_admin_or_owner() -> None:
     interaction = MockInteraction(
         command=None,  # type: ignore[arg-type]
@@ -105,7 +104,6 @@ def test_extract_command_options() -> None:
     assert extract_command_options(interaction) == expected
 
 
-@pytest.mark.asyncio
 async def test_log_interaction(caplog) -> None:
     caplog.set_level(logging.INFO)
     interaction = MockInteraction(
@@ -119,7 +117,6 @@ async def test_log_interaction(caplog) -> None:
     assert any('1234' in record.message for record in caplog.records)
 
 
-@pytest.mark.asyncio
 async def test_log_interaction_without_channel(caplog) -> None:
     caplog.set_level(logging.INFO)
     interaction = MockInteraction(

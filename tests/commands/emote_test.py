@@ -3,7 +3,6 @@ from __future__ import annotations
 from unittest import mock
 
 import discord
-import pytest
 from emoji import emojize
 
 from testing.mock import MockInteraction
@@ -23,7 +22,6 @@ class _MockEmoji(discord.Emoji):
         return self._name
 
 
-@pytest.mark.asyncio
 async def test_emote() -> None:
     emote_ = extract(emote)
 
@@ -46,7 +44,6 @@ async def test_emote() -> None:
     )
 
 
-@pytest.mark.asyncio
 async def test_emote_no_emotes() -> None:
     emote_ = extract(emote)
 
@@ -64,7 +61,6 @@ async def test_emote_no_emotes() -> None:
     assert 'no custom emotes' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_emote_no_matches() -> None:
     emote_ = extract(emote)
 

@@ -21,7 +21,6 @@ def games(tmp_file: str) -> GamesCommands:
     return GamesCommands(tmp_file)
 
 
-@pytest.mark.asyncio
 async def test_autocomplete(games) -> None:
     guild = MockGuild('guild', GAME.guild_id)
     interaction = MockInteraction(
@@ -40,7 +39,6 @@ async def test_autocomplete(games) -> None:
     assert len(await games.autocomplete(interaction, current='A')) == 1
 
 
-@pytest.mark.asyncio
 async def test_add_game(games) -> None:
     add_ = extract(games.add)
 
@@ -57,7 +55,6 @@ async def test_add_game(games) -> None:
     assert 'Added' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_add_game_exists(games) -> None:
     add_ = extract(games.add)
 
@@ -72,7 +69,6 @@ async def test_add_game_exists(games) -> None:
     assert 'already exists' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_list_games(games) -> None:
     list_ = extract(games.list)
 
@@ -92,7 +88,6 @@ async def test_list_games(games) -> None:
     assert 'Game C' not in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_list_games_empty(games) -> None:
     list_ = extract(games.list)
 
@@ -106,7 +101,6 @@ async def test_list_games_empty(games) -> None:
     assert 'No games' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_remove_game(games) -> None:
     remove_ = extract(games.remove)
 
@@ -123,7 +117,6 @@ async def test_remove_game(games) -> None:
     assert 'Removed' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_remove_game_missing(games) -> None:
     remove_ = extract(games.remove)
 
@@ -137,7 +130,6 @@ async def test_remove_game_missing(games) -> None:
     assert 'does not exist' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_roll_games(games) -> None:
     roll_ = extract(games.roll)
 
@@ -159,7 +151,6 @@ async def test_roll_games(games) -> None:
     assert 'Game C' not in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_roll_games_empty(games) -> None:
     roll_ = extract(games.roll)
 

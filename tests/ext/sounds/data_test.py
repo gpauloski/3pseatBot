@@ -242,7 +242,6 @@ def _mock_ffprobe_process(
     return proc
 
 
-@pytest.mark.asyncio
 async def test_mp3_duration_seconds(tmp_path: pathlib.Path) -> None:
     filepath = str(tmp_path / 'test.mp3')
     proc = _mock_ffprobe_process(
@@ -259,7 +258,6 @@ async def test_mp3_duration_seconds(tmp_path: pathlib.Path) -> None:
     assert duration == 12.5
 
 
-@pytest.mark.asyncio
 async def test_mp3_duration_seconds_ffprobe_error(
     tmp_path: pathlib.Path,
 ) -> None:
@@ -280,7 +278,6 @@ async def test_mp3_duration_seconds_ffprobe_error(
         await mp3_duration_seconds(filepath)
 
 
-@pytest.mark.asyncio
 async def test_mp3_duration_seconds_ffprobe_error_no_output(
     tmp_path: pathlib.Path,
 ) -> None:
@@ -298,7 +295,6 @@ async def test_mp3_duration_seconds_ffprobe_error_no_output(
         await mp3_duration_seconds(filepath)
 
 
-@pytest.mark.asyncio
 async def test_mp3_duration_seconds_drains_pipes(
     tmp_path: pathlib.Path,
 ) -> None:
@@ -320,7 +316,6 @@ async def test_mp3_duration_seconds_drains_pipes(
     proc.wait.assert_not_awaited()
 
 
-@pytest.mark.asyncio
 async def test_extract_audio(tmp_path: pathlib.Path) -> None:
     source = str(tmp_path / 'clip.mp4')
     mp3_path = str(tmp_path / 'out.mp3')
@@ -334,7 +329,6 @@ async def test_extract_audio(tmp_path: pathlib.Path) -> None:
         await extract_audio(source, mp3_path)
 
 
-@pytest.mark.asyncio
 async def test_extract_audio_error(tmp_path: pathlib.Path) -> None:
     source = str(tmp_path / 'clip.mp4')
     mp3_path = str(tmp_path / 'out.mp3')

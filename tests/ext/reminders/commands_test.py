@@ -35,7 +35,6 @@ def reminders(tmp_file: str) -> ReminderCommands:
     return ReminderCommands(tmp_file)
 
 
-@pytest.mark.asyncio
 async def test_start_repeating_reminders(reminders) -> None:
     reminders.table.update(REMINDER._replace(name='a'))
     reminders.table.update(REMINDER._replace(name='b'))
@@ -59,7 +58,6 @@ async def test_start_repeating_reminders(reminders) -> None:
             await task._task
 
 
-@pytest.mark.asyncio
 async def test_start_stop_reminder(reminders) -> None:
     with mock.patch('discord.Client'):
         reminders.start_reminder(
@@ -85,7 +83,6 @@ async def test_start_stop_reminder(reminders) -> None:
     reminders.stop_reminder(REMINDER.guild_id, REMINDER.name)
 
 
-@pytest.mark.asyncio
 async def test_autocomplete(reminders) -> None:
     interaction = MockInteraction(
         None,  # type: ignore[arg-type]
@@ -116,7 +113,6 @@ async def test_autocomplete(reminders) -> None:
             await task._task
 
 
-@pytest.mark.asyncio
 async def test_one_time_reminders_delete_themselves(reminders) -> None:
     with mock.patch(
         'threepseat.ext.reminders.utils.send_text_reminder',
@@ -159,7 +155,6 @@ async def test_one_time_reminders_delete_themselves(reminders) -> None:
             await value_b.task._task
 
 
-@pytest.mark.asyncio
 async def test_create_one_time(reminders) -> None:
     create_ = extract(reminders.create)
 
@@ -187,7 +182,6 @@ async def test_create_one_time(reminders) -> None:
     assert 'Created' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_create_repeating(reminders) -> None:
     create_ = extract(reminders.create)
 
@@ -215,7 +209,6 @@ async def test_create_repeating(reminders) -> None:
     assert 'Created' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_create_alphanumeric_check(reminders) -> None:
     create_ = extract(reminders.create)
 
@@ -241,7 +234,6 @@ async def test_create_alphanumeric_check(reminders) -> None:
     assert 'alphanumeric' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_create_name_exists(reminders) -> None:
     create_ = extract(reminders.create)
 
@@ -269,7 +261,6 @@ async def test_create_name_exists(reminders) -> None:
     assert 'already exists' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_create_one_time_warn_long_delay(reminders) -> None:
     create_ = extract(reminders.create)
 
@@ -295,7 +286,6 @@ async def test_create_one_time_warn_long_delay(reminders) -> None:
     assert 'long delays may be lost' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_info(reminders) -> None:
     info_ = extract(reminders.info)
 
@@ -322,7 +312,6 @@ async def test_info(reminders) -> None:
     assert ReminderType.ONE_TIME.value in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_info_empty(reminders) -> None:
     info_ = extract(reminders.info)
 
@@ -339,7 +328,6 @@ async def test_info_empty(reminders) -> None:
     assert 'does not exist' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_list(reminders) -> None:
     list_ = extract(reminders.list)
 
@@ -378,7 +366,6 @@ async def test_list(reminders) -> None:
     assert 'b:' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_list_empty(reminders) -> None:
     list_ = extract(reminders.list)
 
@@ -395,7 +382,6 @@ async def test_list_empty(reminders) -> None:
     assert 'no reminders' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_remove_one_time(reminders) -> None:
     remove_ = extract(reminders.remove)
 
@@ -422,7 +408,6 @@ async def test_remove_one_time(reminders) -> None:
     assert 'Removed' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_remove_repeating(reminders) -> None:
     create_ = extract(reminders.create)
     remove_ = extract(reminders.remove)
@@ -471,7 +456,6 @@ async def test_remove_repeating(reminders) -> None:
     assert 'Removed' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_remove_missing(reminders) -> None:
     remove_ = extract(reminders.remove)
 

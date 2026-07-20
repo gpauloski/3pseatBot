@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from testing.mock import MockInteraction
 from testing.mock import MockUser
 from testing.utils import extract
@@ -10,7 +8,6 @@ from threepseat.commands.general import roll
 from threepseat.commands.general import source
 
 
-@pytest.mark.asyncio
 async def test_flip() -> None:
     flip_ = extract(flip)
 
@@ -38,7 +35,6 @@ async def test_flip() -> None:
     assert 'calling-user' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_roll() -> None:
     roll_ = extract(roll)
 
@@ -62,7 +58,6 @@ async def test_roll() -> None:
     assert 'calling-user' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_source() -> None:
     source_ = extract(source)
 

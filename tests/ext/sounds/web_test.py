@@ -8,7 +8,6 @@ from http import HTTPStatus
 from unittest import mock
 
 import pytest
-import pytest_asyncio
 import quart
 from quart.datastructures import FileStorage
 
@@ -35,7 +34,7 @@ def _upload_file(
     return FileStorage(stream=io.BytesIO(content), filename=filename)
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def quart_app(
     tmp_file: str,
     tmp_path: pathlib.Path,
@@ -68,7 +67,6 @@ async def quart_app(
             yield test_app
 
 
-@pytest.mark.asyncio
 async def test_index_authorized(quart_app) -> None:
     # Our test configuration sets authorized by default
     client = quart_app.test_client()
@@ -80,7 +78,6 @@ async def test_index_authorized(quart_app) -> None:
     assert location[1] == '/guilds/'
 
 
-@pytest.mark.asyncio
 async def test_index_unauthorized(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -95,7 +92,6 @@ async def test_index_unauthorized(quart_app) -> None:
     assert response.status_code == HTTPStatus.OK
 
 
-@pytest.mark.asyncio
 async def test_guilds(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -108,7 +104,6 @@ async def test_guilds(quart_app) -> None:
     assert response.status_code == HTTPStatus.OK
 
 
-@pytest.mark.asyncio
 async def test_sound_grid(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -148,7 +143,6 @@ async def test_sound_grid(quart_app) -> None:
     assert b'entrance-btn active' not in await response.get_data()
 
 
-@pytest.mark.asyncio
 async def test_sound_grid_marks_entrance_sound(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -218,7 +212,6 @@ def test_author_name() -> None:
     assert author_name(client_none, None, 1) == 'unknown'
 
 
-@pytest.mark.asyncio
 async def test_sound_play(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -237,7 +230,6 @@ async def test_sound_play(quart_app) -> None:
     assert response.status_code == HTTPStatus.OK
 
 
-@pytest.mark.asyncio
 async def test_sound_play_no_member(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -258,7 +250,6 @@ async def test_sound_play_no_member(quart_app) -> None:
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-@pytest.mark.asyncio
 async def test_sound_play_no_sound(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -281,7 +272,6 @@ async def test_sound_play_no_sound(quart_app) -> None:
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-@pytest.mark.asyncio
 async def test_sound_play_no_channel(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -309,7 +299,6 @@ async def test_sound_play_no_channel(quart_app) -> None:
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-@pytest.mark.asyncio
 async def test_sound_play_error(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -338,7 +327,6 @@ async def test_sound_play_error(quart_app) -> None:
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-@pytest.mark.asyncio
 async def test_set_entrance_new(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -370,7 +358,6 @@ async def test_set_entrance_new(quart_app) -> None:
     assert saved.name == 'mysound'
 
 
-@pytest.mark.asyncio
 async def test_set_entrance_toggle_clear(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -410,7 +397,6 @@ async def test_set_entrance_toggle_clear(quart_app) -> None:
     assert member_sounds.get(member_id=1234, guild_id=5678) is None
 
 
-@pytest.mark.asyncio
 async def test_set_entrance_no_member(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -432,7 +418,6 @@ async def test_set_entrance_no_member(quart_app) -> None:
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-@pytest.mark.asyncio
 async def test_set_entrance_no_sound(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -459,7 +444,6 @@ async def test_set_entrance_no_sound(quart_app) -> None:
     assert b'Unable to locate' in await response.get_data()
 
 
-@pytest.mark.asyncio
 async def test_sound_file_success(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -483,7 +467,6 @@ async def test_sound_file_success(quart_app) -> None:
     assert await response.get_data() == b'id3 audio'
 
 
-@pytest.mark.asyncio
 async def test_sound_file_missing(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -545,7 +528,6 @@ def test_get_member() -> None:
         assert get_member(client, user, 1234) == 1
 
 
-@pytest.mark.asyncio
 async def test_sound_add_success(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -580,7 +562,6 @@ async def test_sound_add_success(quart_app) -> None:
     assert sounds.get('mysound', guild_id=5678) is not None
 
 
-@pytest.mark.asyncio
 async def test_sound_add_video_success(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -624,7 +605,6 @@ async def test_sound_add_video_success(quart_app) -> None:
     assert sounds.get('fromvideo', guild_id=5678) is not None
 
 
-@pytest.mark.asyncio
 async def test_sound_add_unsupported_type(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -657,7 +637,6 @@ async def test_sound_add_unsupported_type(quart_app) -> None:
     'name',
     ['../../evil', 'has space', '', 'a' * 100],
 )
-@pytest.mark.asyncio
 async def test_sound_add_invalid_name(quart_app, name: str) -> None:
     # The name is interpolated into the sound's filename, so an invalid one
     # must be rejected before anything is written to disk.
@@ -694,7 +673,6 @@ async def test_sound_add_invalid_name(quart_app, name: str) -> None:
     assert set(search_root.rglob('*.mp3')) == before
 
 
-@pytest.mark.asyncio
 async def test_sound_add_video_extract_error(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -737,7 +715,6 @@ async def test_sound_add_video_extract_error(quart_app) -> None:
     assert sounds.get('badvideo', guild_id=5678) is None
 
 
-@pytest.mark.asyncio
 async def test_sound_add_video_too_long(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -778,7 +755,6 @@ async def test_sound_add_video_too_long(quart_app) -> None:
     assert sounds.get('longvideo', guild_id=5678) is None
 
 
-@pytest.mark.asyncio
 async def test_sound_add_no_member(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -804,7 +780,6 @@ async def test_sound_add_no_member(quart_app) -> None:
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-@pytest.mark.asyncio
 async def test_sound_add_no_file(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -831,7 +806,6 @@ async def test_sound_add_no_file(quart_app) -> None:
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-@pytest.mark.asyncio
 async def test_sound_add_empty_filename(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -859,7 +833,6 @@ async def test_sound_add_empty_filename(quart_app) -> None:
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-@pytest.mark.asyncio
 async def test_sound_add_bad_extension(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -888,7 +861,6 @@ async def test_sound_add_bad_extension(quart_app) -> None:
     assert b'MP3' in await response.get_data()
 
 
-@pytest.mark.asyncio
 async def test_sound_add_bad_description(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -917,7 +889,6 @@ async def test_sound_add_bad_description(quart_app) -> None:
     assert b'Description' in await response.get_data()
 
 
-@pytest.mark.asyncio
 async def test_sound_add_file_too_large(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -950,7 +921,6 @@ async def test_sound_add_file_too_large(quart_app) -> None:
     assert b'File size' in await response.get_data()
 
 
-@pytest.mark.asyncio
 async def test_sound_add_too_long(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -986,7 +956,6 @@ async def test_sound_add_too_long(quart_app) -> None:
     assert sounds.get('mysound', guild_id=5678) is None
 
 
-@pytest.mark.asyncio
 async def test_sound_add_duplicate_name(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -1031,7 +1000,6 @@ async def test_sound_add_duplicate_name(quart_app) -> None:
     assert b'already exists' in await response.get_data()
 
 
-@pytest.mark.asyncio
 async def test_sound_add_save_error(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -1064,7 +1032,6 @@ async def test_sound_add_save_error(quart_app) -> None:
     assert b'Failed to save' in await response.get_data()
 
 
-@pytest.mark.asyncio
 async def test_sound_add_youtube_success(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -1109,7 +1076,6 @@ async def test_sound_add_youtube_success(quart_app) -> None:
     assert saved.link == 'https://youtube.com/watch?v=abc'
 
 
-@pytest.mark.asyncio
 async def test_sound_add_youtube_error(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -1147,7 +1113,6 @@ async def test_sound_add_youtube_error(quart_app) -> None:
     assert sounds.get('mysound', guild_id=5678) is None
 
 
-@pytest.mark.asyncio
 async def test_sound_add_link_and_file(quart_app) -> None:
     client = quart_app.test_client()
 
@@ -1180,7 +1145,6 @@ async def test_sound_add_link_and_file(quart_app) -> None:
     assert b'not both' in await response.get_data()
 
 
-@pytest.mark.asyncio
 async def test_request_too_large_handler() -> None:
     # Uploads exceeding MAX_CONTENT_LENGTH are rejected by the ASGI server
     # with a 413 before reaching the handler; verify the friendly response.

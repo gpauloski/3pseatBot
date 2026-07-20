@@ -48,7 +48,6 @@ def create_mock_attachment(
     return attachment
 
 
-@pytest.mark.asyncio
 async def test_add_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
@@ -74,7 +73,6 @@ async def test_add_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     assert 'Added' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_add_command_invalid_name(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -108,7 +106,6 @@ async def test_add_command_invalid_name(
     assert mock_download.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_add_command_exists(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -137,7 +134,6 @@ async def test_add_command_exists(
     assert 'already exists' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_add_command_failure(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -169,7 +165,6 @@ async def test_add_command_failure(
     assert 'Error downloading sound.' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_autocomplete(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
@@ -203,7 +198,6 @@ async def test_autocomplete(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     assert len(choices) == 0
 
 
-@pytest.mark.asyncio
 async def test_list_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
@@ -251,7 +245,6 @@ async def test_list_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     assert 'mysound' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_info_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
@@ -299,7 +292,6 @@ async def test_info_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     assert 'mysound' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_play_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     mockbot, sounds = sound_fixtures
     add_ = extract(sounds.add)
@@ -344,7 +336,6 @@ async def test_play_command(sound_fixtures: tuple[Bot, SoundCommands]) -> None:
     assert 'Played!' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_play_command_missing(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -365,7 +356,6 @@ async def test_play_command_missing(
     assert 'does not exist' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_play_command_not_in_channel(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -406,7 +396,6 @@ async def test_play_command_not_in_channel(
     assert 'voice channel' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_play_command_error(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -453,7 +442,6 @@ async def test_play_command_error(
     assert 'Failed to play' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_remove_command_missing(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -474,7 +462,6 @@ async def test_remove_command_missing(
     assert 'does not exist' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_remove_command(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -525,7 +512,6 @@ async def test_remove_command(
     assert 'does not exist' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_upload_command_success(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -557,7 +543,6 @@ async def test_upload_command_success(
     assert 'Uploaded and added' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_upload_command_invalid_extension(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -585,7 +570,6 @@ async def test_upload_command_invalid_extension(
     assert 'must be an MP3' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_upload_command_invalid_name(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -615,7 +599,6 @@ async def test_upload_command_invalid_name(
     assert 'Name must' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_upload_command_file_too_large(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -643,7 +626,6 @@ async def test_upload_command_file_too_large(
     assert 'File size must be under' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_upload_command_duration_too_long(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -675,7 +657,6 @@ async def test_upload_command_duration_too_long(
     assert 'Sound is too long' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_upload_command_duration_extraction_error(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -707,7 +688,6 @@ async def test_upload_command_duration_extraction_error(
     assert 'Could not process the file' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_upload_command_write_disk_error(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -746,7 +726,6 @@ async def test_upload_command_write_disk_error(
     assert 'Could not process the file' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_upload_command_video_success(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -788,7 +767,6 @@ async def test_upload_command_video_success(
     assert 'Uploaded and added' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_upload_command_unsupported_type(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -816,7 +794,6 @@ async def test_upload_command_unsupported_type(
     assert 'supported video' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_upload_command_video_too_large(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -847,7 +824,6 @@ async def test_upload_command_video_too_large(
     assert 'File size must be under' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_upload_command_video_too_long(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -879,7 +855,6 @@ async def test_upload_command_video_too_long(
     assert 'Sound is too long' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_upload_command_video_extract_error(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -917,7 +892,6 @@ async def test_upload_command_video_extract_error(
     assert 'Could not process the file' in interaction.followup_message
 
 
-@pytest.mark.asyncio
 async def test_on_error(
     sound_fixtures: tuple[Bot, SoundCommands],
     caplog,
@@ -945,7 +919,6 @@ async def test_on_error(
     assert any('test1' in record.message for record in caplog.records)
 
 
-@pytest.mark.asyncio
 async def test_post_init(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -961,7 +934,6 @@ async def test_post_init(
     assert sounds.join_table._db is None
 
 
-@pytest.mark.asyncio
 async def test_voice_state_update(
     sound_fixtures: tuple[Bot, SoundCommands],
     caplog,
@@ -1023,7 +995,6 @@ async def test_voice_state_update(
     assert any('exception' in record.message for record in caplog.records)
 
 
-@pytest.mark.asyncio
 async def test_register_command_sound_missing(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:
@@ -1045,7 +1016,6 @@ async def test_register_command_sound_missing(
     assert 'does not exist' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_register_command(
     sound_fixtures: tuple[Bot, SoundCommands],
 ) -> None:

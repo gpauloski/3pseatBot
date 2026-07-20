@@ -105,7 +105,6 @@ def test_cli() -> None:
     assert result.returncode == 0
 
 
-@pytest.mark.asyncio
 async def test_amain_shutdown_trigger(config: str) -> None:
     shutdown_event = asyncio.Event()
     triggers: list[Any] = []
@@ -126,7 +125,6 @@ async def test_amain_shutdown_trigger(config: str) -> None:
     assert await trigger() is None
 
 
-@pytest.mark.asyncio
 async def test_amain_surfaces_service_error(config: str, caplog) -> None:
     caplog.set_level(logging.ERROR)
     with (
@@ -147,7 +145,6 @@ async def test_amain_surfaces_service_error(config: str, caplog) -> None:
     assert not any('bot exited' in record.message for record in caplog.records)
 
 
-@pytest.mark.asyncio
 async def test_amain_surfaces_first_of_many_errors(
     config: str,
     caplog,

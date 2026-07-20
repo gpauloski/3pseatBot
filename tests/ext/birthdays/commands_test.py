@@ -31,7 +31,6 @@ def birthdays(tmp_file: str) -> BirthdayCommands:
     return BirthdayCommands(tmp_file)
 
 
-@pytest.mark.asyncio
 async def test_birthday_task(birthdays) -> None:
     with mock.patch('discord.Client'):
         client = discord.Client()  # type: ignore[call-arg]
@@ -51,7 +50,6 @@ async def test_birthday_task(birthdays) -> None:
         assert mock_send.await_count >= 1
 
 
-@pytest.mark.asyncio
 async def test_post_init_shutdown(birthdays) -> None:
     with mock.patch('discord.Client'):
         client = discord.Client()  # type: ignore[call-arg]
@@ -64,7 +62,6 @@ async def test_post_init_shutdown(birthdays) -> None:
     assert birthdays.table._db is None
 
 
-@pytest.mark.asyncio
 async def test_send_birthday_messages(birthdays) -> None:
     guild = MockGuild('guild', BIRTHDAY.guild_id)
     channel = MockChannel('channel', 42)
@@ -98,7 +95,6 @@ async def test_send_birthday_messages(birthdays) -> None:
         assert mock_send.await_count == 1
 
 
-@pytest.mark.asyncio
 async def test_send_birthday_messages_no_channel_found(birthdays) -> None:
     guild = MockGuild('guild', BIRTHDAY.guild_id)
 
@@ -109,7 +105,6 @@ async def test_send_birthday_messages_no_channel_found(birthdays) -> None:
         await birthdays.send_birthday_messages(guild)
 
 
-@pytest.mark.asyncio
 async def test_add_birthday(birthdays) -> None:
     add_ = extract(birthdays.add)
 
@@ -134,7 +129,6 @@ async def test_add_birthday(birthdays) -> None:
     assert 'Added birthday' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_add_birthday_invalid_date(birthdays) -> None:
     add_ = extract(birthdays.add)
 
@@ -154,7 +148,6 @@ async def test_add_birthday_invalid_date(birthdays) -> None:
     assert 'Invalid birthday' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_list_birthdays(birthdays) -> None:
     list_ = extract(birthdays.list)
 
@@ -178,7 +171,6 @@ async def test_list_birthdays(birthdays) -> None:
     assert len(interaction.followup_message.split('\n')) == 1
 
 
-@pytest.mark.asyncio
 async def test_list_birthdays_empty(birthdays) -> None:
     list_ = extract(birthdays.list)
 
@@ -192,7 +184,6 @@ async def test_list_birthdays_empty(birthdays) -> None:
     assert 'no birthdays' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_remove_birthday(birthdays) -> None:
     remove_ = extract(birthdays.remove)
 
@@ -213,7 +204,6 @@ async def test_remove_birthday(birthdays) -> None:
     assert 'Removed' in interaction.response_message
 
 
-@pytest.mark.asyncio
 async def test_remove_birthday_missing(birthdays) -> None:
     remove_ = extract(birthdays.remove)
 
