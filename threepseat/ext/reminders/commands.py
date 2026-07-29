@@ -163,7 +163,7 @@ class ReminderCommands(CommandGroupExtension):
     )
     @app_commands.check(admin_or_owner)
     @app_commands.check(log_interaction)
-    async def create(  # noqa: PLR0913
+    async def create(  # noqa: PLR0913,PLR0917
         self,
         interaction: discord.Interaction[commands.Bot],
         kind: ReminderType,

@@ -38,7 +38,7 @@ class CommandGroupExtension(app_commands.Group):
             await interaction.response.send_message(str(error), ephemeral=True)
             logger.info('app command check failed: %s', error)
         else:
-            logger.exception(error)
+            logger.error(error)
 
     async def post_shutdown(self) -> None:
         """Release resources held by the extension.

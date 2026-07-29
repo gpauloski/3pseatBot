@@ -102,6 +102,8 @@ extend-ignore = [
     "A002", "A003", "A005",
     # formatter-conflicting rules (ruff docs recommend disabling these)
     "COM812", "ISC001",
+    # Copyright notices
+    "CPY",
     # pydocstyles
     "D100", "D104", "D105", "D401",
     # boolean-trap rules: not worth the churn of making bool args kw-only
