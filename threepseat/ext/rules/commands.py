@@ -352,7 +352,7 @@ class RulesCommands(CommandGroupExtension):
     )
     @app_commands.check(admin_or_owner)
     @app_commands.check(log_interaction)
-    async def configure(  # noqa: PLR0913
+    async def configure(  # noqa: PLR0913,PLR0917
         self,
         interaction: discord.Interaction[commands.Bot],
         prefixes: str,
