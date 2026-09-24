@@ -12,9 +12,10 @@ from discord.interactions import InteractionResponse
 
 
 class MockUser(discord.User):
-    def __init__(self, name: str, id_: int) -> None:
+    def __init__(self, name: str, id_: int, *, bot: bool = False) -> None:
         self.name = name
         self.id = id_
+        self.bot = bot
 
     @property
     def mention(self) -> str:
