@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import datetime
 from collections.abc import AsyncIterator
 from collections.abc import Generator
 from unittest import mock
 
+import discord
 import pytest
 from emoji import emojize
 
@@ -16,6 +18,13 @@ from threepseat.commands.clan import clan
 INVOKER = MockUser('invoker', 1)
 BOT = MockUser('bot', 2, bot=True)
 JUMP_URL = 'https://discord.com/channels/1/2/3'
+NOW = datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC)
+
+
+@pytest.fixture(autouse=True)
+def mock_now() -> Generator[None, None, None]:
+    with mock.patch('discord.utils.utcnow', return_value=NOW):
+        yield
 
 
 @pytest.fixture(autouse=True)
@@ -56,6 +65,11 @@ def _interaction(
     return interaction, message
 
 
+def _closed_at(minutes: int) -> str:
+    end = NOW + datetime.timedelta(minutes=minutes)
+    return discord.utils.format_dt(end, 'f')
+
+
 async def test_clan_fewer_entrants_than_spots(
     mock_sleep: mock.AsyncMock,
 ) -> None:
@@ -75,13 +89,12 @@ async def test_clan_fewer_entrants_than_spots(
     mock_sleep.assert_awaited_once_with(120)
     assert interaction.response_message is not None
     assert 'Griffin' in interaction.response_message
-    assert 'There are 3 spots available.' in interaction.response_message
+    assert 'There are **3 spots available**.' in interaction.response_message
     assert 'Entries close <t:' in interaction.response_message
     assert ':R>. React to enter' in interaction.response_message
     assert interaction.followup_message is not None
     assert interaction.followup_message == (
-        f'Drawing results for {JUMP_URL}: <@user> was selected '
-        '(1 of 3 spots filled). Hosted by <@invoker>.'
+        '<@user> was selected for **Griffin** hosted by <@invoker>.'
     )
 
 
@@ -94,7 +107,10 @@ async def test_clan_more_entrants_than_spots() -> None:
     assert len(selected) == 2
     assert all(user in users for user in selected)
     assert interaction.followup_message is not None
-    assert ' were selected from 5 entrants.' in interaction.followup_message
+    assert (
+        ' were selected for **Devil** hosted by <@invoker>.'
+        in interaction.followup_message
+    )
     assert ' and ' in interaction.followup_message
 
 
@@ -109,7 +125,7 @@ async def test_clan_deduplicates_and_excludes_invoker() -> None:
 
     assert selected == [user]
     assert interaction.followup_message is not None
-    assert '(1 of 1 spot filled)' in interaction.followup_message
+    assert 'was selected for **Griffin**' in interaction.followup_message
 
 
 async def test_clan_no_entrants() -> None:
@@ -120,12 +136,13 @@ async def test_clan_no_entrants() -> None:
     assert selected == []
     assert interaction.followup_message is not None
     assert interaction.followup_message == (
-        f'No one entered the drawing for {JUMP_URL}, <@invoker>.'
+        'No one entered the drawing for **Griffin**, <@invoker>.'
     )
     interaction.edit_original_response.assert_awaited_once_with(  # type: ignore[attr-defined]
         content=(
-            '<@invoker> is starting an event: Griffin'
-            '\n\nEntries closed. No one entered.'
+            '<@invoker> is starting an event: **Griffin**'
+            '\n\nThere were **2 spots available**. '
+            f'Entries closed at {_closed_at(3)}. No one entered.'
         ),
     )
 
@@ -137,7 +154,7 @@ async def test_clan_event_header() -> None:
 
     assert interaction.response_message is not None
     assert interaction.response_message.startswith(
-        '<@invoker> is starting an event: Griffin 10x\n\n',
+        '<@invoker> is starting an event: **Griffin 10x**\n\n',
     )
 
 
@@ -147,7 +164,7 @@ async def test_clan_singular_wording() -> None:
     await extract(clan)(interaction, 'Griffin', 1, 1)
 
     assert interaction.response_message is not None
-    assert 'There is 1 spot available.' in interaction.response_message
+    assert 'There is **1 spot available**.' in interaction.response_message
 
 
 async def test_clan_closes_entries_with_selected() -> None:
@@ -158,8 +175,9 @@ async def test_clan_closes_entries_with_selected() -> None:
 
     interaction.edit_original_response.assert_awaited_once_with(  # type: ignore[attr-defined]
         content=(
-            '<@invoker> is starting an event: Griffin 10x'
-            '\n\nEntries closed. Selected: '
+            '<@invoker> is starting an event: **Griffin 10x**'
+            '\n\nThere were **3 spots available**. '
+            f'Entries closed at {_closed_at(3)}. Selected: '
             '<@user0>, <@user1>, and <@user2>.'
         ),
     )
