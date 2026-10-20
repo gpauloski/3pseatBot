@@ -108,6 +108,8 @@ extend-ignore = [
     "D100", "D104", "D105", "D401",
     # boolean-trap rules: not worth the churn of making bool args kw-only
     "FBT001", "FBT002", "FBT003",
+    # Do not require unconventional imports styles (e.g., datetime as dt)
+    "ICN001",
     # assert is used pervasively for mypy type-narrowing, not just in tests
     "S101",
     # random is only used for gameplay/sound selection, never security
