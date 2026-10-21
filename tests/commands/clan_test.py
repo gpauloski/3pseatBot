@@ -48,10 +48,10 @@ def _reaction(*users: MockUser) -> mock.MagicMock:
 
 def _interaction(
     *reactions: mock.MagicMock,
-) -> tuple[MockInteraction, mock.AsyncMock]:
+) -> tuple[MockInteraction, mock.AsyncMock, mock.AsyncMock]:
     # The cached original response never sees new reactions; only a fresh
     # fetch of the message does.
-    fetched = mock.MagicMock()
+    fetched = mock.AsyncMock()
     fetched.reactions = list(reactions)
     message = mock.AsyncMock()
     message.reactions = []
@@ -62,7 +62,12 @@ def _interaction(
         return_value=message,
     )
     interaction.edit_original_response = mock.AsyncMock()  # type: ignore[method-assign]
-    return interaction, message
+    return interaction, message, fetched
+
+
+def _sent(fetched: mock.AsyncMock) -> str:
+    fetched.channel.send.assert_awaited_once()
+    return fetched.channel.send.await_args.args[0]  # type: ignore[no-any-return]
 
 
 def _closed_at(minutes: int) -> str:
@@ -74,9 +79,14 @@ async def test_clan_fewer_entrants_than_spots(
     mock_sleep: mock.AsyncMock,
 ) -> None:
     user = MockUser('user', 3)
-    interaction, message = _interaction(_reaction(BOT, user))
+    interaction, message, fetched = _interaction(_reaction(BOT, user))
 
     selected = await extract(clan)(interaction, 'Griffin', 3, 2)
+
+    # Interaction tokens expire after 15 minutes so the interaction's
+    # webhook must not be used after waiting.
+    interaction.edit_original_response.assert_not_awaited()  # type: ignore[attr-defined]
+    assert interaction.followup_message is None
 
     assert selected == [user]
     message.add_reaction.assert_awaited_once_with(
@@ -92,31 +102,30 @@ async def test_clan_fewer_entrants_than_spots(
     assert 'There are **3 spots available**.' in interaction.response_message
     assert 'Entries close <t:' in interaction.response_message
     assert ':R>. React to enter' in interaction.response_message
-    assert interaction.followup_message is not None
-    assert interaction.followup_message == (
+    assert _sent(fetched) == (
         '<@user> was selected for **Griffin** hosted by <@invoker>.'
     )
 
 
 async def test_clan_more_entrants_than_spots() -> None:
     users = [MockUser(f'user{i}', 10 + i) for i in range(5)]
-    interaction, _ = _interaction(_reaction(*users[:3]), _reaction(*users[3:]))
+    interaction, _, fetched = _interaction(
+        _reaction(*users[:3]),
+        _reaction(*users[3:]),
+    )
 
     selected = await extract(clan)(interaction, 'Devil', 2, 1)
 
     assert len(selected) == 2
     assert all(user in users for user in selected)
-    assert interaction.followup_message is not None
-    assert (
-        ' were selected for **Devil** hosted by <@invoker>.'
-        in interaction.followup_message
-    )
-    assert ' and ' in interaction.followup_message
+    sent = _sent(fetched)
+    assert ' were selected for **Devil** hosted by <@invoker>.' in sent
+    assert ' and ' in sent
 
 
 async def test_clan_deduplicates_and_excludes_invoker() -> None:
     user = MockUser('user', 3)
-    interaction, _ = _interaction(
+    interaction, _, fetched = _interaction(
         _reaction(BOT, INVOKER, user),
         _reaction(user, INVOKER),
     )
@@ -124,21 +133,19 @@ async def test_clan_deduplicates_and_excludes_invoker() -> None:
     selected = await extract(clan)(interaction, 'Griffin', 1, 1)
 
     assert selected == [user]
-    assert interaction.followup_message is not None
-    assert 'was selected for **Griffin**' in interaction.followup_message
+    assert 'was selected for **Griffin**' in _sent(fetched)
 
 
 async def test_clan_no_entrants() -> None:
-    interaction, _ = _interaction(_reaction(BOT, INVOKER))
+    interaction, _, fetched = _interaction(_reaction(BOT, INVOKER))
 
     selected = await extract(clan)(interaction, 'Griffin', 2)
 
     assert selected == []
-    assert interaction.followup_message is not None
-    assert interaction.followup_message == (
+    assert _sent(fetched) == (
         'No one entered the drawing for **Griffin**, <@invoker>.'
     )
-    interaction.edit_original_response.assert_awaited_once_with(  # type: ignore[attr-defined]
+    fetched.edit.assert_awaited_once_with(
         content=(
             '<@invoker> is starting an event: **Griffin**'
             '\n\nThere were **2 spots available**. '
@@ -148,7 +155,7 @@ async def test_clan_no_entrants() -> None:
 
 
 async def test_clan_event_header() -> None:
-    interaction, _ = _interaction()
+    interaction, _, _ = _interaction()
 
     await extract(clan)(interaction, 'Griffin 10x', 2)
 
@@ -159,7 +166,7 @@ async def test_clan_event_header() -> None:
 
 
 async def test_clan_singular_wording() -> None:
-    interaction, _ = _interaction()
+    interaction, _, _ = _interaction()
 
     await extract(clan)(interaction, 'Griffin', 1, 1)
 
@@ -169,11 +176,11 @@ async def test_clan_singular_wording() -> None:
 
 async def test_clan_closes_entries_with_selected() -> None:
     users = [MockUser(f'user{i}', 10 + i) for i in range(3)]
-    interaction, _ = _interaction(_reaction(*users))
+    interaction, _, fetched = _interaction(_reaction(*users))
 
     await extract(clan)(interaction, 'Griffin 10x', 3)
 
-    interaction.edit_original_response.assert_awaited_once_with(  # type: ignore[attr-defined]
+    fetched.edit.assert_awaited_once_with(
         content=(
             '<@invoker> is starting an event: **Griffin 10x**'
             '\n\nThere were **3 spots available**. '
@@ -184,7 +191,7 @@ async def test_clan_closes_entries_with_selected() -> None:
 
 
 async def test_clan_skips_reaction_removal_without_client_user() -> None:
-    interaction, message = _interaction()
+    interaction, message, _ = _interaction()
     interaction._client = MockClient(None)  # type: ignore[arg-type]
 
     await extract(clan)(interaction, 'Griffin', 2)

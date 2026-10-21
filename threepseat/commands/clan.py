@@ -46,7 +46,10 @@ async def clan(
     await asyncio.sleep(minutes * 60)
 
     # original_response() is cached and the bot lacks the reactions intent,
-    # so re-fetch the message to see the current reactions.
+    # so re-fetch the message to see the current reactions. The fetched
+    # message is also used for the edit and announcement below because
+    # interaction tokens expire after 15 minutes, so the interaction's
+    # webhook (edit_original_response() and followup) cannot be used.
     fetched = await message.fetch()
     entrants: dict[int, discord.User | discord.Member] = {}
     for reaction in fetched.reactions:
@@ -64,9 +67,9 @@ async def clan(
     mentions = _join([user.mention for user in selected])
 
     # Relative timestamps keep counting into the past, so replace it.
-    # Edits do not send mention notifications so a followup is still needed.
+    # Edits do not send mention notifications so a new message is needed.
     result = f'Selected: {mentions}.' if selected else 'No one entered.'
-    await interaction.edit_original_response(
+    await fetched.edit(
         content=(
             f'{header}\n\n'
             f'There {"were" if plural else "was"} {available}. '
@@ -78,13 +81,13 @@ async def clan(
         await message.remove_reaction(emoji, interaction.client.user)
 
     if not selected:
-        await interaction.followup.send(
+        await fetched.channel.send(
             f'No one entered the drawing for **{event}**, {invoker.mention}.',
         )
         return []
 
     verb = 'was' if len(selected) == 1 else 'were'
-    await interaction.followup.send(
+    await fetched.channel.send(
         f'{mentions} {verb} selected for **{event}** '
         f'hosted by {invoker.mention}.',
     )
